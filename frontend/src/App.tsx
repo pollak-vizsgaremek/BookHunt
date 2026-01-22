@@ -1,18 +1,22 @@
-import { Route, Routes } from 'react-router'
-import './App.css'
-import ProtectedRoute from './pages/ProtectedRoute'
+// import { useState } from 'react'
+
+// ============ pages ============
+import ProtectedRoute from "./components/ProtectedRoute";
+import Home from "./pages/Home";
+import "./App.css";
+import { Route, Routes } from "react-router";
+// ===============================
 
 function App() {
-
   return (
     <>
-        <Routes>
-          <Route>
-            <ProtectedRoute/>
-          </Route>
-        </Routes>
+      <Routes>
+        <Route element={<ProtectedRoute />}>
+          <Route path="/" element={<Home></Home>} />  
+        </Route>
+      </Routes>
     </>
-  )
+  );
 }
 
-export default App
+export default App;
