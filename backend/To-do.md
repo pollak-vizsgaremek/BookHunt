@@ -1,3 +1,12 @@
-[text](https://www.prisma.io/docs/getting-started/prisma-orm/quickstart/mysql)
-[text](https://expressjs.com/)
-- npm i nodemon (into scripts: "dev": server.js)
+- (2026.01.28)
+[text](https://www.prisma.io/docs/getting-started/prisma-orm/quickstart/mysql) ✔
+[text](https://expressjs.com/) ✔
+- cors ✔
+- dotenv ✔
+- npm i nodemon (into scripts: "dev": server.js) ✔
+- npm install jsonwebtoken ✔
+- npm i bcryptjs ✔ 
+
+
+- prisma/schema.prsima -> database, migrations
+- routes/auth.js -> avatar upload? login via username OR email
