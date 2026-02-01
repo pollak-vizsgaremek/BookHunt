@@ -5,9 +5,16 @@ const Navigation = () => {
       name: "Home",
       route: "/",
     },
-    // Add more routes here 
+    {
+      name: "Login",
+      route: "/login",
+    },
+    {
+      name: "Register",
+      route: "/register",
+    },
   ];
-
+  {/* I'll merge these two later with a profile page */ }
   return (
     <div className="w-full absolute top-0 left-0 bg-[#333446] z-50 shadow-md">
       <img src="../../public/images/BookHuntNavbar.png" className="m-0 p-0 absolute " alt="BookHunt logo" />
