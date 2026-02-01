@@ -13,24 +13,27 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// Routes
+app.use("/api/auth", authRoutes);
+
 // Health check
 app.get("/api/health", (req, res) => {
-    res.json({ status: "OK", message: "BookHunt server is running" });
-  });
+  res.json({ status: "OK", message: "BookHunt server is running" });
+});
 
 // 404 handler
 app.use((req, res) => {
-    res.status(404).json({ error: "Route not found" });
-  });
-  
+  res.status(404).json({ error: "Route not found" });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
-    console.error("Server error:", err);
-    res.status(500).json({ error: "Internal server error" });
-  });
-  
-  // Start server
+  console.error("Server error:", err);
+  res.status(500).json({ error: "Internal server error" });
+});
+
+// Start server
 app.listen(PORT, () => {
-    console.log(`BookHunt server running on http://localhost:${PORT}`);
-    console.log(`API endpoints available at http://localhost:${PORT}/api`);
-  });
+  console.log(`BookHunt server running on http://localhost:${PORT}`);
+  console.log(`API endpoints available at http://localhost:${PORT}/api`);
+});
