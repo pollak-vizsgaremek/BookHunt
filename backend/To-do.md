@@ -15,3 +15,15 @@
 
 
 - routes/auth.js -> avatar upload? login via username OR email
+
+
+- web scraping...
+-   npm i axios cheerio puppeteer ✔
+-   -> src/services
+
+
+- Prisma V6
+-   downgrade ✔
+-   generate ✔ (.gitignore)
+-   test migrate ✔
+-   change api port
