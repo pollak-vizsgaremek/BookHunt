@@ -13,10 +13,114 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id       Int      @id @default(autoincrement())
-  username String   @unique
-  email    String   @unique
-  password String
-  createdAt DateTime @default(now())
+// bookhunt.sql szerinti adatmodell + relációk
+
+model Felhasznalo {
+  felhasznalo_id  Int      @id @default(autoincrement())
+  jelszo         String
+  email          String   @unique
+  felhasznalonev String   @unique
+  profilkep       String? // opcionális
+
+  @@index([email], name: "idx_email")
+  @@index([felhasznalonev], name: "idx_felhasznalonev")
+  Keres Keres[]
+  Kedvencek Kedvencek[]
+}
+model WebAruhaz {
+  webaruhaz_id Int    @id @default(autoincrement())
+  url          String @unique
+  nev          String
+
+  @@index([url], name: "idx_url")
+  Keres Keres[]
+  Feljegyzes Feljegyzes[]
+  Arak Arak[]
+}
+
+model Termek {
+  termek_id Int    @id @default(autoincrement())
+  cim       String @db.VarChar(500)
+  tipus     Tipus // enum!
+  szerzo    String? @db.VarChar(255)
+  isbn_issn String? @db.VarChar(20)
+
+  @@index([tipus], name: "idx_tipus")
+  @@index([szerzo], name: "idx_szerzo")
+  @@index([isbn_issn], name: "idx_isbn_issn")
+  Kedvencek Kedvencek[]
+  Feljegyzes Feljegyzes[]
+}
+
+enum Tipus {
+  konyv
+  e_konyv
+  manga
+  kepregeny
+  hangoskonyv
+}
+
+model Keres {
+  keres_id      Int      @id @default(autoincrement())
+  felhasznalo_id Int
+  webaruhaz_id  Int
+
+  Felhasznalo  Felhasznalo @relation(fields: [felhasznalo_id], references: [felhasznalo_id], onDelete: Cascade, onUpdate: Cascade)
+  WebAruhaz    WebAruhaz   @relation(fields: [webaruhaz_id], references: [webaruhaz_id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([felhasznalo_id], name: "idx_felhasznalo")
+  @@index([webaruhaz_id], name: "idx_webaruhaz")
+}
+
+model Kedvencek {
+  kedvencek_id  Int      @id @default(autoincrement())
+  felhasznalo_id Int
+  termek_id     Int
+
+  Felhasznalo  Felhasznalo @relation(fields: [felhasznalo_id], references: [felhasznalo_id], onDelete: Cascade, onUpdate: Cascade)
+  Termek      Termek      @relation(fields: [termek_id], references: [termek_id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([felhasznalo_id, termek_id], name: "unique_kedvenc")
+  @@index([felhasznalo_id], name: "idx_felhasznalo")
+  @@index([termek_id], name: "idx_termek")
+  Arak Arak[]
+}
+
+model Feljegyzes {
+  feljegyzes_id Int      @id @default(autoincrement())
+  termek_id     Int
+  webaruhaz_id  Int
+
+  Termek      Termek      @relation(fields: [termek_id], references: [termek_id], onDelete: Cascade, onUpdate: Cascade)
+  WebAruhaz   WebAruhaz   @relation(fields: [webaruhaz_id], references: [webaruhaz_id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([termek_id, webaruhaz_id], name: "unique_feljegyzes")
+  @@index([termek_id], name: "idx_termek")
+  @@index([webaruhaz_id], name: "idx_webaruhaz")
+  Ar_Tortenet Ar_Tortenet[]
+}
+
+model Arak {
+  arak_id        Int      @id @default(autoincrement())
+  kedvencek_id   Int
+  webaruhaz_id   Int
+  last_known_price Decimal @db.Decimal(10, 2)
+
+  Kedvencek  Kedvencek @relation(fields: [kedvencek_id], references: [kedvencek_id], onDelete: Cascade, onUpdate: Cascade)
+  WebAruhaz  WebAruhaz @relation(fields: [webaruhaz_id], references: [webaruhaz_id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([kedvencek_id], name: "idx_kedvencek")
+  @@index([webaruhaz_id], name: "idx_webaruhaz")
+}
+
+model Ar_Tortenet {
+  ar_id        Int      @id @default(autoincrement())
+  feljegyzes_id Int
+  ar           Decimal  @db.Decimal(10, 2)
+  datum        DateTime @default(now())
+
+  Feljegyzes  Feljegyzes @relation(fields: [feljegyzes_id], references: [feljegyzes_id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([feljegyzes_id], name: "idx_feljegyzes")
+  @@index([datum], name: "idx_datum")
 }
