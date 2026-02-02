@@ -33,7 +33,7 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`BookHunt server running on http://localhost:${PORT}`);
-  console.log(`API endpoints available at http://localhost:${PORT}/api`);
+app.listen(port, () => {
+  console.log(`BookHunt server running on http://localhost:${port}`);
+  console.log(`API endpoints available at http://localhost:${port}/api`);
 });
