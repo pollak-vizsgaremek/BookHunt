@@ -33,6 +33,9 @@ const Navigation = () => {
           </NavLink>
         ))}
       </nav>
+      <NavLink to="/profile" className="absolute top-1/2 right-6 transform -translate-y-1/2">
+        <img src="/images/profile_icon.png" alt="Profile" className="w-12 h-12 rounded-full hover:opacity-80 transition-opacity" />
+      </NavLink>
     </div>
   );
 };
