@@ -8,5 +8,10 @@
 - npm i bcryptjs ✔ 
 
 
-- prisma/schema.prsima -> database, migrations
+- (2026.02.02)
+- prisma/schema.prsima -> database, migrations ✔
+- model, relations ✔ (+opcionális profilkép)
+- seed.ts (4 webáruház, 4 termék) ✔
+
+
 - routes/auth.js -> avatar upload? login via username OR email
