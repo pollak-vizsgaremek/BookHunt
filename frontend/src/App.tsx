@@ -7,6 +7,7 @@ import "./App.css";
 import { Routes, Route } from "react-router";
 import LoginPage from './pages/Login';
 import RegisterPage from './pages/Register';
+import Profile from './pages/Profile';
 // ===============================
 
 function App() {
@@ -15,7 +16,8 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} /> {/* I'll merge these two later with a profile page */}
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/profile" element={<Profile />} />
       </Routes>
     </>
   );
