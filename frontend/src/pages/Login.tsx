@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 
@@ -117,3 +118,20 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
+=======
+import Navigation from "../components/Navigation";
+
+const Login = () => {
+  return (
+    <div className="min-h-screen">
+      <Navigation />
+      {/* Placeholder for main content of the home page */}
+      <div className="pt-15 max-w-6xl mx-auto p-4">
+        <div className=" bg-[#7F8CAA] w-[80%] h-[80%]"></div>
+      </div>
+    </div>
+  );
+};
+
+export default Login;
+>>>>>>> Stashed changes
