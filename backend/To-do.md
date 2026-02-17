@@ -26,4 +26,8 @@
 -   downgrade ✔
 -   generate ✔ (.gitignore)
 -   test migrate ✔
--   change api port
+-   change api port ✔
+
+- (2026.02.17)
+- server.js
+-   API routes
