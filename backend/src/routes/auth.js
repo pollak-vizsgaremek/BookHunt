@@ -133,4 +133,28 @@ router.get("/me", async (req, res) => {
   }
 });
 
+// authentication middleware that sets req.user
+export const authenticate = (req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) {
+    return res.status(401).json({ error: "No token provided" });
+  }
+
+  try {
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET || "bookhunt_secret",
+    );
+    req.user = { userId: decoded.userId };
+    next();
+  } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({ error: "Token expired" });
+    }
+    return res.status(401).json({ error: "Invalid token" });
+  }
+};
+
+
+
 export default router;
