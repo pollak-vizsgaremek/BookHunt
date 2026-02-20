@@ -45,6 +45,7 @@ model Termek {
   tipus     Tipus // enum!
   szerzo    String? @db.VarChar(255)
   isbn_issn String? @db.VarChar(20)
+  boritokep String? @db.VarChar(500)
 
   @@index([tipus], name: "idx_tipus")
   @@index([szerzo], name: "idx_szerzo")
