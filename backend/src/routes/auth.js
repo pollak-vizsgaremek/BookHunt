@@ -1,13 +1,26 @@
 import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "../../generated/prisma/index.js";
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// Auth API root info
+router.get("/", (req, res) => {
+  res.send(`
+    <h1>Authentication API</h1>
+    <p>Available endpoints:</p>
+    <ul>
+      <li><strong>POST</strong> /api/auth/register - Register a new user</li>
+      <li><strong>POST</strong> /api/auth/login - Login user</li>
+      <li><strong>GET</strong> /api/auth/me - Get current user (Requires token)</li>
+    </ul>
+    <p><a href="/">Go back to main API</a></p>
+  `);
+});
+
 // Register
-// To-do: avatar upload (if any)
 router.post("/register", async (req, res) => {
   try {
     const { username, password, email } = req.body;
@@ -18,8 +31,8 @@ router.post("/register", async (req, res) => {
         .json({ error: "Username, password and email are required" });
     }
 
-    const existingUser = await prisma.user.findUnique({
-      where: { username },
+    const existingUser = await prisma.felhasznalo.findUnique({
+      where: { felhasznalonev: username },
     });
 
     if (existingUser) {
@@ -27,17 +40,18 @@ router.post("/register", async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await prisma.user.create({
+
+    const user = await prisma.felhasznalo.create({
       data: {
-        username,
-        password: hashedPassword,
+        felhasznalonev: username,
+        jelszo: hashedPassword,
         email,
       },
     });
 
     // Create Token
     const token = jwt.sign(
-      { userId: user.id },
+      { userId: user.felhasznalo_id },
       process.env.JWT_SECRET || "bookhunt_secret",
       {
         expiresIn: "7d", // Token valid for 7 days
@@ -59,26 +73,34 @@ router.post("/register", async (req, res) => {
 });
 
 // Login
-// To-do: Email OR username login
 router.post("/login", async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, email, password } = req.body;
+    const identifier = username || email;
 
-    const user = await prisma.user.findUnique({
-      where: { username },
+    if (!identifier || !password) {
+      return res
+        .status(400)
+        .json({ error: "Username/Email and password are required" });
+    }
+
+    const user = await prisma.felhasznalo.findFirst({
+      where: {
+        OR: [{ felhasznalonev: identifier }, { email: identifier }],
+      },
     });
 
     if (!user) {
       return res.status(400).json({ error: "Invalid credentials" });
     }
 
-    const validPassword = await bcrypt.compare(password, user.password);
+    const validPassword = await bcrypt.compare(password, user.jelszo);
     if (!validPassword) {
       return res.status(400).json({ error: "Invalid credentials" });
     }
 
     const token = jwt.sign(
-      { userId: user.id },
+      { userId: user.felhasznalo_id },
       process.env.JWT_SECRET || "bookhunt_secret",
       {
         expiresIn: "7d",
@@ -88,8 +110,9 @@ router.post("/login", async (req, res) => {
     res.json({
       token,
       user: {
-        id: user.id,
-        username: user.username,
+        id: user.felhasznalo_id,
+        username: user.felhasznalonev,
+        email: user.email,
       },
     });
   } catch (error) {
@@ -111,8 +134,8 @@ router.get("/me", async (req, res) => {
       token,
       process.env.JWT_SECRET || "bookhunt_secret",
     );
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
+    const user = await prisma.felhasznalo.findUnique({
+      where: { felhasznalo_id: decoded.userId },
     });
 
     if (!user) {
@@ -121,8 +144,9 @@ router.get("/me", async (req, res) => {
 
     res.json({
       user: {
-        id: user.id,
-        username: user.username,
+        id: user.felhasznalo_id,
+        username: user.felhasznalonev,
+        email: user.email,
       },
     });
   } catch (error) {
@@ -154,7 +178,5 @@ export const authenticate = (req, res, next) => {
     return res.status(401).json({ error: "Invalid token" });
   }
 };
-
-
 
 export default router;
