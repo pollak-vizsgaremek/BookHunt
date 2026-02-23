@@ -11,7 +11,6 @@
 - (2026.02.02)
 - prisma/schema.prsima -> database, migrations ✔
 - model, relations ✔ (+opcionális profilkép)
-- seed.ts (4 webáruház, 4 termék) ✔
 
 
 - routes/auth.js -> avatar upload? login via username OR email
@@ -31,3 +30,8 @@
 - (2026.02.17)
 - server.js
 -   API routes
+
+- Book API (2026.02.25)
+-   TO-DO: [text](https://booksrun.com/page/api-reference) BookRun Api -> prices
+-   TO-DO: [text](https://developers.google.com/books) Google Book Api -> meta data
+-   fixed seed.ts 
