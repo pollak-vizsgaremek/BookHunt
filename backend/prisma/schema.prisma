@@ -74,6 +74,7 @@ model Keres {
   @@index([webaruhaz_id], name: "idx_webaruhaz")
 }
 
+
 model Kedvencek {
   kedvencek_id  Int      @id @default(autoincrement())
   felhasznalo_id Int
