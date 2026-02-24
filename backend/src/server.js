@@ -1,7 +1,9 @@
 import express from "express";
+import swaggerUi from "swagger-ui-express";
+import swaggerJsDoc from "swagger-jsdoc";
 import cors from "cors";
 import dotenv from "dotenv";
-import authRoutes from "./routes/auth.js";
+import authRoutes, { authenticate } from "./routes/auth.js";
 import usersRoutes from "./routes/users.js";
 import webshopsRoutes from "./routes/webshops.js";
 import productsRoutes from "./routes/products.js";
@@ -10,6 +12,28 @@ import favoritesRoutes from "./routes/favorites.js";
 import searchesRoutes from "./routes/searches.js";
 import notesRoutes from "./routes/notes.js";
 import pricesRoutes from "./routes/prices.js";
+import healthRoutes from "./routes/health.js";
+
+// Swagger setup
+const swaggerOptions = {
+  swaggerDefinition: {
+    myapi: '3.0.0',
+    info: {
+      title: 'My API',
+      version: '1.0.0',
+      description: 'API documentation',
+    },
+    servers: [
+      {
+        url: 'http://localhost:5000',
+      },
+    ],
+  },
+  apis: ['./routes/*.js'], // files containing annotations as above
+};
+
+const swaggerDocs = swaggerJsDoc(swaggerOptions);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 // Load environment variables
 dotenv.config();
@@ -25,24 +49,13 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api", webshopsRoutes);
-app.use("/api", productsRoutes);
+app.use("/api", authenticate,productsRoutes);
 app.use("/api/price-history", priceHistoryRoutes);
 app.use("/api/favorites", favoritesRoutes);
 app.use("/api/searches", searchesRoutes);
 app.use("/api/notes", notesRoutes);
 app.use("/api/prices", pricesRoutes);
-
-// Health check
-app.get("/api/health", (req, res) => {
-  res.send(`
-    <h1>The server is running!</h1>
-    <p>Server time: ${new Date().toISOString()}</p>
-    <p>Available endpoints:</p>
-    <ul>
-      <li><a href="/">/</a> - Go back</li>
-    </ul>
-  `);
-});
+app.use("/api/health", healthRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
