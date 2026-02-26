@@ -4,7 +4,31 @@ import { PrismaClient } from "../../generated/prisma/index.js";
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// manually upload webshop
+/**
+ * @swagger
+ * /api/webshop:
+ *   post:
+ *     summary: Manually add a webshop
+ *     tags: [Webshops]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [url, nev]
+ *             properties:
+ *               url:
+ *                 type: string
+ *               nev:
+ *                 type: string
+ *                 description: Name of the webshop
+ *     responses:
+ *       201:
+ *         description: Webshop added successfully
+ *       500:
+ *         description: Webshop creation failed
+ */
 router.post("/webshop", async (req, res) => {
   try {
     const { url, nev } = req.body;
@@ -30,7 +54,18 @@ router.post("/webshop", async (req, res) => {
   }
 });
 
-// get all webshops
+/**
+ * @swagger
+ * /api/webshops:
+ *   get:
+ *     summary: Get all webshops
+ *     tags: [Webshops]
+ *     responses:
+ *       200:
+ *         description: List of all webshops
+ *       500:
+ *         description: Failed to fetch webshops
+ */
 router.get("/webshops", async (req, res) => {
   try {
     const webshops = await prisma.webAruhaz.findMany({

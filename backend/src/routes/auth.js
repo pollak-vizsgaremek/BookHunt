@@ -7,6 +7,16 @@ const router = express.Router();
 const prisma = new PrismaClient();
 
 // Auth API root info
+/**
+ * @swagger
+ * /api/auth:
+ *   get:
+ *     summary: Auth API info
+ *     tags: [Auth]
+ *     responses:
+ *       200:
+ *         description: Returns auth endpoint list as HTML
+ */
 router.get("/", (req, res) => {
   res.send(`
     <h1>Authentication API</h1>
@@ -21,6 +31,34 @@ router.get("/", (req, res) => {
 });
 
 // Register
+/**
+ * @swagger
+ * /api/auth/register:
+ *   post:
+ *     summary: Register a new user
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [username, password, email]
+ *             properties:
+ *               username:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: User registered successfully, returns JWT token
+ *       400:
+ *         description: Missing fields or username already taken
+ *       500:
+ *         description: Register failed
+ */
 router.post("/register", async (req, res) => {
   try {
     const { username, password, email } = req.body;

@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client-js"
-  output = "../generated/prisma"
+  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -15,6 +15,7 @@ model Felhasznalo {
   felhasznalonev String      @unique
   Keres          Keres[]
   Kedvencek      Kedvencek[]
+  Velemenyek     Velemeny[]
 
   @@index([email], name: "idx_email")
   @@index([felhasznalonev], name: "idx_felhasznalonev")
@@ -40,6 +41,7 @@ model Termek {
   boritokep  String?      @db.VarChar(500)
   Kedvencek  Kedvencek[]
   Feljegyzes Feljegyzes[]
+  Velemenyek Velemeny[]
 
   @@index([tipus], name: "idx_tipus")
   @@index([szerzo], name: "idx_szerzo")
@@ -117,4 +119,20 @@ model Ar_Tortenet {
 
   @@index([feljegyzes_id], name: "idx_feljegyzes")
   @@index([datum], name: "idx_datum")
+}
+
+model Velemeny {
+  velemeny_id    Int      @id @default(autoincrement())
+  felhasznalo_id Int
+  termek_id      Int
+  csillag        Int // star rating 1–5
+  szoveg         String?  @db.Text
+  datum          DateTime @default(now())
+
+  Felhasznalo Felhasznalo @relation(fields: [felhasznalo_id], references: [felhasznalo_id], onDelete: Cascade, onUpdate: Cascade)
+  Termek      Termek      @relation(fields: [termek_id], references: [termek_id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([felhasznalo_id, termek_id], name: "unique_velemeny")
+  @@index([termek_id], name: "idx_termek")
+  @@index([felhasznalo_id], name: "idx_felhasznalo")
 }

@@ -5,7 +5,34 @@ import { authenticate } from "./auth.js";
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// POST /api/favorites
+/**
+ * @swagger
+ * /api/favorites:
+ *   post:
+ *     summary: Add a product to favorites
+ *     tags: [Favorites]
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [termek_id]
+ *             properties:
+ *               termek_id:
+ *                 type: integer
+ *     responses:
+ *       201:
+ *         description: Favorite added
+ *       400:
+ *         description: Missing field or already a favorite
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Failed to add favorite
+ */
 router.post("/", authenticate, async (req, res) => {
   try {
     const { termek_id } = req.body;
@@ -39,7 +66,22 @@ router.post("/", authenticate, async (req, res) => {
   }
 });
 
-// GET /api/favorites
+/**
+ * @swagger
+ * /api/favorites:
+ *   get:
+ *     summary: Get all favorites for the logged-in user
+ *     tags: [Favorites]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of favorites
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Failed to fetch favorites
+ */
 router.get("/", authenticate, async (req, res) => {
   try {
     const felhasznalo_id = req.user.userId;
@@ -56,7 +98,32 @@ router.get("/", authenticate, async (req, res) => {
   }
 });
 
-// DELETE /api/favorites/:id
+/**
+ * @swagger
+ * /api/favorites/{id}:
+ *   delete:
+ *     summary: Delete a favorite by ID
+ *     tags: [Favorites]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Favorite deleted
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Favorite not found
+ *       500:
+ *         description: Failed to delete favorite
+ */
 router.delete("/:id", authenticate, async (req, res) => {
   try {
     const felhasznalo_id = req.user.userId;
@@ -85,7 +152,32 @@ router.delete("/:id", authenticate, async (req, res) => {
   }
 });
 
-// GET /api/favorites/:id
+/**
+ * @swagger
+ * /api/favorites/{id}:
+ *   get:
+ *     summary: Get a favorite by ID
+ *     tags: [Favorites]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Favorite found
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Favorite not found
+ *       500:
+ *         description: Failed to fetch favorite
+ */
 router.get("/:id", authenticate, async (req, res) => {
   try {
     const felhasznalo_id = req.user.userId;
