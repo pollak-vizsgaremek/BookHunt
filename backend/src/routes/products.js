@@ -4,7 +4,40 @@ import { PrismaClient } from "../../generated/prisma/index.js";
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// manually post product
+/**
+ * @swagger
+ * /api/product:
+ *   post:
+ *     summary: Manually add a product
+ *     tags: [Products]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [cim, tipus]
+ *             properties:
+ *               cim:
+ *                 type: string
+ *                 description: Title
+ *               tipus:
+ *                 type: string
+ *                 description: Type (book, magazine, etc.)
+ *               szerzo:
+ *                 type: string
+ *                 description: Author
+ *               isbn_issn:
+ *                 type: string
+ *               boritokep:
+ *                 type: string
+ *                 description: Cover image URL
+ *     responses:
+ *       201:
+ *         description: Product added successfully
+ *       500:
+ *         description: Product creation failed
+ */
 router.post("/product", async (req, res) => {
   try {
     const { cim, tipus, szerzo, isbn_issn, boritokep } = req.body;
@@ -36,7 +69,18 @@ router.post("/product", async (req, res) => {
   }
 });
 
-// get all products
+/**
+ * @swagger
+ * /api/products:
+ *   get:
+ *     summary: Get all products
+ *     tags: [Products]
+ *     responses:
+ *       200:
+ *         description: List of all products
+ *       500:
+ *         description: Failed to fetch products
+ */
 router.get("/products", async (req, res) => {
   try {
     const products = await prisma.termek.findMany({
@@ -56,7 +100,26 @@ router.get("/products", async (req, res) => {
   }
 });
 
-// GET /api/products/:id
+/**
+ * @swagger
+ * /api/products/{id}:
+ *   get:
+ *     summary: Get a product by ID
+ *     tags: [Products]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Product found
+ *       404:
+ *         description: Product not found
+ *       500:
+ *         description: Failed to fetch product
+ */
 router.get("/:id", async (req, res) => {
   try {
     const termek_id = parseInt(req.params.id);

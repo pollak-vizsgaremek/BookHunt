@@ -1,11 +1,38 @@
 import express from "express";
 import { PrismaClient } from "../../generated/prisma/index.js";
-import { authenticate } from "./auth.js"; // Optional depending on requirements
+import { authenticate } from "./auth.js";
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// POST /api/prices
+/**
+ * @swagger
+ * /api/prices:
+ *   post:
+ *     summary: Create a price record
+ *     tags: [Prices]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [kedvencek_id, webaruhaz_id, last_known_price]
+ *             properties:
+ *               kedvencek_id:
+ *                 type: integer
+ *               webaruhaz_id:
+ *                 type: integer
+ *               last_known_price:
+ *                 type: number
+ *     responses:
+ *       201:
+ *         description: Price created
+ *       400:
+ *         description: Missing fields
+ *       500:
+ *         description: Failed to create price
+ */
 router.post("/", async (req, res) => {
   try {
     const { kedvencek_id, webaruhaz_id, last_known_price } = req.body;
@@ -31,7 +58,18 @@ router.post("/", async (req, res) => {
   }
 });
 
-// GET /api/prices
+/**
+ * @swagger
+ * /api/prices:
+ *   get:
+ *     summary: Get all prices
+ *     tags: [Prices]
+ *     responses:
+ *       200:
+ *         description: List of all prices
+ *       500:
+ *         description: Failed to fetch prices
+ */
 router.get("/", async (req, res) => {
   try {
     const prices = await prisma.arak.findMany({
@@ -47,7 +85,24 @@ router.get("/", async (req, res) => {
   }
 });
 
-// DELETE /api/prices/:id
+/**
+ * @swagger
+ * /api/prices/{id}:
+ *   delete:
+ *     summary: Delete a price by ID
+ *     tags: [Prices]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Price deleted
+ *       500:
+ *         description: Failed to delete price
+ */
 router.delete("/:id", async (req, res) => {
   try {
     const arak_id = parseInt(req.params.id);
@@ -63,7 +118,26 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-// GET /api/prices/:id
+/**
+ * @swagger
+ * /api/prices/{id}:
+ *   get:
+ *     summary: Get a price by ID
+ *     tags: [Prices]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Price found
+ *       404:
+ *         description: Price not found
+ *       500:
+ *         description: Failed to fetch price
+ */
 router.get("/:id", async (req, res) => {
   try {
     const arak_id = parseInt(req.params.id);

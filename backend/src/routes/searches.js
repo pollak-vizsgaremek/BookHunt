@@ -5,7 +5,34 @@ import { authenticate } from "./auth.js";
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// POST /api/searches
+/**
+ * @swagger
+ * /api/searches:
+ *   post:
+ *     summary: Create a new search record
+ *     tags: [Searches]
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [webaruhaz_id]
+ *             properties:
+ *               webaruhaz_id:
+ *                 type: integer
+ *     responses:
+ *       201:
+ *         description: Search created
+ *       400:
+ *         description: Missing webaruhaz_id
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Failed to add search
+ */
 router.post("/", authenticate, async (req, res) => {
   try {
     const { webaruhaz_id } = req.body;
@@ -29,7 +56,22 @@ router.post("/", authenticate, async (req, res) => {
   }
 });
 
-// GET /api/searches
+/**
+ * @swagger
+ * /api/searches:
+ *   get:
+ *     summary: Get all searches for the logged-in user
+ *     tags: [Searches]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of searches
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Failed to fetch searches
+ */
 router.get("/", authenticate, async (req, res) => {
   try {
     const felhasznalo_id = req.user.userId;
@@ -46,7 +88,32 @@ router.get("/", authenticate, async (req, res) => {
   }
 });
 
-// DELETE /api/searches/:id
+/**
+ * @swagger
+ * /api/searches/{id}:
+ *   delete:
+ *     summary: Delete a search by ID
+ *     tags: [Searches]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Search deleted
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Search not found
+ *       500:
+ *         description: Failed to delete search
+ */
 router.delete("/:id", authenticate, async (req, res) => {
   try {
     const felhasznalo_id = req.user.userId;
@@ -75,7 +142,32 @@ router.delete("/:id", authenticate, async (req, res) => {
   }
 });
 
-// GET /api/searches/:id
+/**
+ * @swagger
+ * /api/searches/{id}:
+ *   get:
+ *     summary: Get a search by ID
+ *     tags: [Searches]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Search found
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Search not found
+ *       500:
+ *         description: Failed to fetch search
+ */
 router.get("/:id", authenticate, async (req, res) => {
   try {
     const felhasznalo_id = req.user.userId;

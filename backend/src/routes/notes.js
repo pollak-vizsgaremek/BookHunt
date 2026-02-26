@@ -1,11 +1,36 @@
 import express from "express";
 import { PrismaClient } from "../../generated/prisma/index.js";
-import { authenticate } from "./auth.js"; // Optional: if notes should be authenticated later
+import { authenticate } from "./auth.js";
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// POST /api/notes
+/**
+ * @swagger
+ * /api/notes:
+ *   post:
+ *     summary: Create a new note (product-webshop link)
+ *     tags: [Notes]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [termek_id, webaruhaz_id]
+ *             properties:
+ *               termek_id:
+ *                 type: integer
+ *               webaruhaz_id:
+ *                 type: integer
+ *     responses:
+ *       201:
+ *         description: Note created
+ *       400:
+ *         description: Missing fields or note already exists
+ *       500:
+ *         description: Failed to create note
+ */
 router.post("/", async (req, res) => {
   try {
     const { termek_id, webaruhaz_id } = req.body;
@@ -42,7 +67,18 @@ router.post("/", async (req, res) => {
   }
 });
 
-// GET /api/notes
+/**
+ * @swagger
+ * /api/notes:
+ *   get:
+ *     summary: Get all notes
+ *     tags: [Notes]
+ *     responses:
+ *       200:
+ *         description: List of all notes
+ *       500:
+ *         description: Failed to fetch notes
+ */
 router.get("/", async (req, res) => {
   try {
     const notes = await prisma.feljegyzes.findMany({
@@ -58,7 +94,34 @@ router.get("/", async (req, res) => {
   }
 });
 
-// PUT /api/notes/:id
+/**
+ * @swagger
+ * /api/notes/{id}:
+ *   put:
+ *     summary: Update a note by ID
+ *     tags: [Notes]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               termek_id:
+ *                 type: integer
+ *               webaruhaz_id:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Note updated
+ *       500:
+ *         description: Failed to update note
+ */
 router.put("/:id", async (req, res) => {
   try {
     const feljegyzes_id = parseInt(req.params.id);
@@ -79,7 +142,24 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// DELETE /api/notes/:id
+/**
+ * @swagger
+ * /api/notes/{id}:
+ *   delete:
+ *     summary: Delete a note by ID
+ *     tags: [Notes]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Note deleted
+ *       500:
+ *         description: Failed to delete note
+ */
 router.delete("/:id", async (req, res) => {
   try {
     const feljegyzes_id = parseInt(req.params.id);
@@ -95,7 +175,26 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-// GET /api/notes/:id
+/**
+ * @swagger
+ * /api/notes/{id}:
+ *   get:
+ *     summary: Get a note by ID
+ *     tags: [Notes]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Note found
+ *       404:
+ *         description: Note not found
+ *       500:
+ *         description: Failed to fetch note
+ */
 router.get("/:id", async (req, res) => {
   try {
     const feljegyzes_id = parseInt(req.params.id);

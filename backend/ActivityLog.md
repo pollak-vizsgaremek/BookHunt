@@ -36,38 +36,16 @@
 - Health.js still won't work
 - npm install express swagger-ui-express swagger-jsdoc
 
+## 2026.02.26
+- Health check into `server.js`
+- Removed `authenticate` from `productsRoutes`
+- Swagger setup
+- Added reviews to the database
+- Added reviews routes
+
 
 ---
 
 ## To-Do List
 - Connect BooksRun API to get book prices
 - Connect Google Books API to get book metadata
-- Swagger 
--   [text](https://dev.to/cuongnp/swagger-nodejs-express-a-step-by-step-guide-4ob)
-- server.js authenticate az importokhoz
-- health check fix 
-- add reviews in the database
-
-<!-- 
-/**
- * @swagger
- * /api/user:
- *   get:
- *     summary: Retrieve a list of users
- *     responses:
- *       200:
- *         description: A list of users
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: integer
- *                     example: 1
- *                   name:
- *                     type: string
- *                     example: John Doe
- */ --> 

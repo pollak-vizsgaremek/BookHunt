@@ -4,7 +4,18 @@ import { PrismaClient } from "../../generated/prisma/index.js";
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// get all users
+/**
+ * @swagger
+ * /api/users:
+ *   get:
+ *     summary: Get all users
+ *     tags: [Users]
+ *     responses:
+ *       200:
+ *         description: List of all users
+ *       500:
+ *         description: Failed to fetch users
+ */
 router.get("/", async (req, res) => {
   try {
     const users = await prisma.felhasznalo.findMany({
