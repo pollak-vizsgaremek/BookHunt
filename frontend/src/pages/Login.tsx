@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
+import { GoogleLogin } from '@react-oauth/google';
 
 import Navigation from '../components/Navigation';
 
@@ -20,7 +21,7 @@ const LoginPage = () => {
         setError('');
 
         try {
-            const response = await fetch('http://localhost:5000/api/auth/login', {
+            const response = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData),
@@ -36,8 +37,42 @@ const LoginPage = () => {
             localStorage.setItem('user', JSON.stringify(data.user));
             navigate('/');
         } catch (err: any) {
-            setError(err.message);
+            if (err.message === 'Failed to fetch') {
+                setError('Unable to connect to the server. Please try again later.');
+            } else {
+                setError(err.message);
+            }
         }
+    };
+
+    const handleGoogleSuccess = async (credentialResponse: any) => {
+        try {
+            const response = await fetch('/api/auth/google', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ credential: credentialResponse.credential }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Google login failed');
+            }
+
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('user', JSON.stringify(data.user));
+            navigate('/');
+        } catch (err: any) {
+            if (err.message === 'Failed to fetch') {
+                setError('Unable to connect to the server. Please try again later.');
+            } else {
+                setError(err.message);
+            }
+        }
+    };
+
+    const handleGoogleError = () => {
+        setError('Google login failed. Please try again.');
     };
 
     return (
@@ -100,6 +135,22 @@ const LoginPage = () => {
                                 >
                                     Sign In
                                 </button>
+                            </div>
+
+                            <div className="flex items-center justify-center space-x-2 my-4">
+                                <hr className="w-full border-[#DFE6E6]/20" />
+                                <span className="text-[#DFE6E6]/60 text-sm px-2">or</span>
+                                <hr className="w-full border-[#DFE6E6]/20" />
+                            </div>
+
+                            <div className="flex justify-center mt-4">
+                                <GoogleLogin
+                                    onSuccess={handleGoogleSuccess}
+                                    onError={handleGoogleError}
+                                    theme="filled_black"
+                                    text="signin_with"
+                                    shape="circle"
+                                />
                             </div>
                         </form>
 
