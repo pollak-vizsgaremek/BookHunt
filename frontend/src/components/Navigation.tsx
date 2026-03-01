@@ -7,18 +7,12 @@ const Navigation = () => {
     },
     {
       name: "Login",
-<<<<<<< Updated upstream
       route: "/login",
     },
     {
       name: "Register",
       route: "/register",
     },
-=======
-      route: "/Login",
-    },
-    // Add more routes here
->>>>>>> Stashed changes
   ];
   {/* I'll merge these two later with a profile page */ }
   return (
