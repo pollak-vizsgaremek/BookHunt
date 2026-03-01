@@ -1,6 +1,19 @@
 @import "tailwindcss";
+
+@font-face {
+  font-family: 'Contrail';
+  src: url('/fonts/CONTRAIL.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@theme {
+  --font-sans: 'Contrail', system-ui, sans-serif;
+  --font-serif: 'Contrail', serif;
+}
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Contrail', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
