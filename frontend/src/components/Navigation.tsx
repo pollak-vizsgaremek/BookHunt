@@ -1,5 +1,9 @@
 import { NavLink } from "react-router"; // Ensure 'react-router-dom' is used
+
 const Navigation = () => {
+  const userStr = localStorage.getItem('user');
+  const user = userStr ? JSON.parse(userStr) : null;
+
   const routes = [
     {
       name: "Home",
@@ -37,7 +41,8 @@ const Navigation = () => {
           </NavLink>
         ))}
       </nav>
-      <NavLink to="/profile" className="absolute top-1/2 right-6 transform -translate-y-1/2">
+      <NavLink to="/profile" className="absolute top-1/2 right-6 transform -translate-y-1/2 flex items-center gap-3">
+        {user && <span className="text-white font-medium text-lg hidden sm:block">{user.username}</span>}
         <img src="/images/profile_icon.png" alt="Profile" className="w-12 h-12 rounded-full hover:opacity-80 transition-opacity" />
       </NavLink>
     </div>
