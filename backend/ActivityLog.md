@@ -47,5 +47,10 @@
 ---
 
 ## To-Do List
-- Connect BooksRun API to get book prices
 - Connect Google Books API to get book metadata
+- Connect BooksRun API (vagy hasonló) to get real price data
+- Price alert system
+- Implement user roles and permissions
+- Write unit and integration tests
+- Write database schema documentation
+- Write code comments
