@@ -43,12 +43,14 @@
 - Added reviews to the database
 - Added reviews routes
 
+## 2026.03.21
+- Added Google Books API integration
+- Added BooksRun API integration (routes)
+- Added currency conversion (USD to HUF in utils)
 
 ---
 
 ## To-Do List
-- Connect Google Books API to get book metadata
-- Connect BooksRun API (vagy hasonló) to get real price data
 - Price alert system
 - Implement user roles and permissions
 - Write unit and integration tests

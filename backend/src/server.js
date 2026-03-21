@@ -14,6 +14,8 @@ import searchesRoutes from "./routes/searches.js";
 import notesRoutes from "./routes/notes.js";
 import pricesRoutes from "./routes/prices.js";
 import reviewsRoutes from "./routes/reviews.js";
+import booksRoutes from "./routes/books.js";
+import bookPricesRoutes from "./routes/bookPrices.js";
 
 // Swagger setup
 const swaggerOptions = {
@@ -64,6 +66,8 @@ app.use("/api/searches", searchesRoutes);
 app.use("/api/notes", notesRoutes);
 app.use("/api/prices", pricesRoutes);
 app.use("/api/reviews", reviewsRoutes);
+app.use("/api/books", booksRoutes);
+app.use("/api/book-prices", bookPricesRoutes);
 
 // Root route — server status page
 app.get("/", async (req, res) => {
