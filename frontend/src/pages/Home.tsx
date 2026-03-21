@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Navigation from "../components/Navigation";
 import ProductCard, { type BookItem } from "../components/ProductCard";
 import ScrollFloat from "../components/ScrollFloat";
@@ -6,6 +6,7 @@ import Carousel from "../components/Carousel";
 import Grainient from "../components/Grainient";
 import SplitText from "../components/SplitText";
 import BookDetailsModal from "../components/BookDetailsModal";
+import FilterModal, { type FilterOptions } from "../components/FilterModal";
 
 const Home = () => {
   const [localProducts, setLocalProducts] = useState<BookItem[]>([]);
@@ -13,9 +14,22 @@ const Home = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   
   const [selectedBook, setSelectedBook] = useState<BookItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [filters, setFilters] = useState<FilterOptions>({
+    genre: 'All',
+    type: 'All',
+    year: '',
+    sortBy: 'Relevance'
+  });
+  const [startIndex, setStartIndex] = useState(0);
+
+  // Keep track of previous query params to know if we are appending or resetting
+  const lastFetchRef = useRef({ q: '', filters: filters });
 
   // Fetch local products on mount
   useEffect(() => {
@@ -25,7 +39,7 @@ const Home = () => {
         if (response.ok) {
           const data = await response.json();
           const mapped: BookItem[] = data.map((p: any) => ({
-            id: p.termek_id,
+            id: `local_${p.termek_id}`,
             title: p.cim,
             author: p.szerzo,
             type: p.tipus,
@@ -44,20 +58,51 @@ const Home = () => {
     fetchProducts();
   }, []);
 
-  // Debounced search for Google Books API
+  // Effect to handle search logic
   useEffect(() => {
-    if (!searchQuery.trim()) {
+    if (!searchQuery.trim() && filters.genre === 'All') {
       setSearchResults([]);
       return;
     }
 
     const timer = setTimeout(async () => {
+      const isNewQuery = 
+          lastFetchRef.current.q !== searchQuery || 
+          JSON.stringify(lastFetchRef.current.filters) !== JSON.stringify(filters);
+
+      if (isNewQuery) {
+          setStartIndex(0);
+      }
+
+      const activeStartIndex = isNewQuery ? 0 : startIndex;
+
       setIsSearching(true);
       try {
-        const response = await fetch(`/api/books/search?q=${encodeURIComponent(searchQuery)}`);
+        let qParams = searchQuery.trim() || "";
+        if (filters.year) qParams += ` ${filters.year}`;
+        if (filters.type === 'Manga') qParams += ` manga comics`; // Append manga/comics keyword
+        
+        // At least one valid query string or subject needed
+        if (!qParams && filters.genre === 'All') {
+            setSearchResults([]);
+            setIsSearching(false);
+            return;
+        }
+
+        let url = `/api/books/search?maxResults=10&startIndex=${activeStartIndex}`;
+        
+        if (qParams) url += `&q=${encodeURIComponent(qParams)}`;
+        if (filters.genre !== 'All') url += `&subject=${encodeURIComponent(filters.genre)}`;
+        if (filters.type === 'Book') url += `&printType=books`;
+        if (filters.type === 'E-book') url += `&filter=ebooks`;
+        if (filters.sortBy === 'Newest') url += `&orderBy=newest`;
+        else if (filters.sortBy === 'Relevance') url += `&orderBy=relevance`;
+
+        const response = await fetch(url);
+        
         if (response.ok) {
           const data = await response.json();
-          const mapped: BookItem[] = data.books.map((b: any) => ({
+          const mapped: BookItem[] = (data.books || []).map((b: any) => ({
             id: b.googleId,
             title: b.title,
             author: b.authors && b.authors.length > 0 ? b.authors.join(', ') : 'Unknown Author',
@@ -72,17 +117,37 @@ const Home = () => {
             language: b.language,
             isLocal: false,
           }));
-          setSearchResults(mapped);
+          
+          if (mapped.length < 10) setHasMore(false);
+          else setHasMore(true);
+
+          if (isNewQuery) {
+              setSearchResults(mapped);
+          } else {
+              // Appending, filter out duplicates just in case
+              setSearchResults(prev => {
+                  const existingIds = new Set(prev.map(p => p.id));
+                  const newItems = mapped.filter(p => !existingIds.has(p.id));
+                  return [...prev, ...newItems];
+              });
+          }
+
+          lastFetchRef.current = { q: searchQuery, filters };
         }
       } catch (error) {
         console.error("Failed to fetch search results", error);
       } finally {
         setIsSearching(false);
       }
-    }, 600);
+    }, isNewQuery() ? 600 : 0); // debounce only on typing, not on load more
+
+    function isNewQuery() {
+        return lastFetchRef.current.q !== searchQuery || 
+               JSON.stringify(lastFetchRef.current.filters) !== JSON.stringify(filters);
+    }
 
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, filters, startIndex]);
 
   const handleBookClick = (book: BookItem) => {
     setSelectedBook(book);
@@ -91,12 +156,34 @@ const Home = () => {
 
   const localMatches = localProducts.filter((product) => {
     const query = searchQuery.toLowerCase();
-    return (
-      product.title.toLowerCase().includes(query) ||
-      (product.author && product.author.toLowerCase().includes(query)) ||
-      (product.isbn && product.isbn.toLowerCase().includes(query))
-    );
+    const matchesQuery = !query || product.title.toLowerCase().includes(query) ||
+        (product.author && product.author.toLowerCase().includes(query)) ||
+        (product.isbn && product.isbn.toLowerCase().includes(query));
+    
+    const matchesGenre = filters.genre === 'All' || (product.categories && product.categories.includes(filters.genre));
+    // Notice: local DB doesn't have reliable genre/year info unless populated, so we just filter roughly
+    
+    return matchesQuery && matchesGenre;
   });
+
+  // Apply custom client-side sorting before rendering
+  const getSortedResults = (items: BookItem[]) => {
+      let sorted = [...items];
+      if (filters.sortBy === 'A-Z') {
+          sorted.sort((a,b) => a.title.localeCompare(b.title));
+      } else if (filters.sortBy === 'Z-A') {
+          sorted.sort((a,b) => b.title.localeCompare(a.title));
+      } else if (filters.sortBy === 'Year (Desc)') {
+          sorted.sort((a,b) => parseInt(b.publishedDate || '0') - parseInt(a.publishedDate || '0'));
+      } else if (filters.sortBy === 'Year (Asc)') {
+          sorted.sort((a,b) => parseInt(a.publishedDate || '9999') - parseInt(b.publishedDate || '9999'));
+      }
+      return sorted;
+  };
+
+  const displayedSearchResults = getSortedResults(searchResults);
+  const displayedLocalMatches = getSortedResults(localMatches);
+  const showResults = searchQuery.trim() || filters.genre !== 'All';
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -140,8 +227,8 @@ const Home = () => {
           <Carousel />
 
           {/* Premium Search Bar */}
-          <div className="relative mt-20 group w-full">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <div className="relative mt-20 group w-full flex items-center bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl shadow-xl focus-within:ring-2 focus-within:ring-black/30 dark:focus-within:ring-white/30 focus-within:bg-black/10 dark:focus-within:bg-white/10 backdrop-blur-md transition-all duration-300">
+            <div className="pl-4 flex items-center pointer-events-none">
               <svg className="h-6 w-6 text-gray-500 dark:text-[#DFE6E6]/50 group-focus-within:text-gray-900 group-focus-within:dark:text-[#DFE6E6] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
@@ -151,74 +238,118 @@ const Home = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by title, author, or ISBN in Google Books..."
-              className="block w-full pl-12 pr-4 py-4 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl text-lg text-gray-900 dark:text-[#DFE6E6] placeholder-gray-500 dark:placeholder-[#DFE6E6]/40 focus:outline-none focus:ring-2 focus:ring-black/30 dark:focus:ring-white/30 focus:bg-black/10 dark:focus:bg-white/10 backdrop-blur-md shadow-xl transition-all duration-300"
+              className="block flex-1 pl-4 pr-12 py-4 bg-transparent text-lg text-gray-900 dark:text-[#DFE6E6] placeholder-gray-500 dark:placeholder-[#DFE6E6]/40 focus:outline-none"
             />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-500 dark:text-[#DFE6E6]/50 hover:text-gray-900 dark:hover:text-[#DFE6E6] transition-colors focus:outline-none"
-              >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
+            
+            {/* Action Buttons */}
+            <div className="absolute right-2 flex items-center gap-1">
+                {searchQuery && (
+                <button
+                    onClick={() => { setSearchQuery(""); setFilters({ ...filters, genre: 'All' }); }}
+                    className="p-2 text-gray-500 hover:text-gray-900 dark:text-[#DFE6E6]/50 dark:hover:text-white transition-colors focus:outline-none"
+                    title="Clear search"
+                >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+                )}
+                
+                <div className="h-6 w-px bg-black/10 dark:bg-white/20 mx-1"></div>
+                
+                <button
+                    onClick={() => setIsFilterModalOpen(true)}
+                    className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors focus:outline-none flex items-center gap-1"
+                    title="Filters"
+                >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                </button>
+            </div>
           </div>
         </div>
 
         {/* Product Grid or Custom Content */}
-        {loading || isSearching ? (
+        {loading || (isSearching && startIndex === 0) ? (
           <div className="flex justify-center items-center py-20 w-full flex-col gap-4">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black/50 dark:border-white/50"></div>
             <p className="text-gray-500">
                 {isSearching ? "Searching Google Books library..." : "Loading collections..."}
             </p>
           </div>
-        ) : searchQuery ? (
+        ) : showResults ? (
           <div className="w-full flex flex-col gap-12">
             
-            {/* Google Books Results */}
-            <div>
+            {/* Google Books Results in Constrained Height Container */}
+            <div className="flex flex-col">
               <div className="w-full flex justify-between items-center mb-6 pl-2">
                 <h2 className="text-2xl font-serif font-bold text-gray-900 dark:text-[#DFE6E6]">
                   Global Results
                 </h2>
                 <span className="text-gray-600 dark:text-[#DFE6E6]/60 text-sm">
-                  {searchResults.length} {searchResults.length === 1 ? 'match' : 'matches'}
+                  {searchResults.length} {searchResults.length === 1 ? 'match' : 'matches'} loaded
                 </span>
               </div>
 
               {searchResults.length > 0 ? (
-                <div className="w-full justify-center grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                  {searchResults.map((product) => (
-                    <ProductCard key={product.id} product={product} onClick={handleBookClick} />
-                  ))}
+                <div className="w-full max-h-[700px] overflow-y-auto custom-scrollbar pr-4 pb-12 shadow-inner rounded-3xl p-2 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5">
+                    <div className="w-full justify-center grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 relative">
+                        {displayedSearchResults.map((product) => (
+                            <ProductCard key={product.id} product={product} onClick={handleBookClick} />
+                        ))}
+                    </div>
+                    
+                    {/* Load More Button */}
+                    {hasMore && (
+                        <div className="mt-12 flex justify-center pb-4">
+                            <button 
+                                onClick={() => setStartIndex(prev => prev + 10)}
+                                disabled={isSearching}
+                                className="group relative px-8 py-3 bg-white dark:bg-[#1a1b26] border border-black/10 dark:border-white/20 hover:border-emerald-500 dark:hover:border-emerald-500 text-gray-900 dark:text-white rounded-xl font-bold font-serif tracking-wide shadow-md hover:shadow-xl transition-all duration-300 disabled:opacity-50 overflow-hidden"
+                            >
+                                <span className="relative z-10 flex items-center gap-2">
+                                    {isSearching && startIndex > 0 ? (
+                                        <span className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></span>
+                                    ) : (
+                                        <svg className="w-5 h-5 text-emerald-500 group-hover:-translate-y-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    )}
+                                    Load 10 more
+                                </span>
+                            </button>
+                        </div>
+                    )}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-center w-full bg-black/5 dark:bg-white/5 rounded-3xl border border-black/10 dark:border-white/10 backdrop-blur-sm mt-4 transition-colors">
+                <div className="flex flex-col items-center justify-center py-12 text-center w-full bg-black/5 dark:bg-white/5 rounded-3xl border border-black/10 dark:border-white/10 backdrop-blur-sm transition-colors">
                   <svg className="h-12 w-12 text-gray-400 dark:text-[#DFE6E6]/30 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <h3 className="text-lg font-bold text-gray-900 dark:text-[#DFE6E6] mb-1">No global matches</h3>
+                  <p className="text-sm text-gray-500">Try adjusting your filters or search terms.</p>
                 </div>
               )}
             </div>
 
             {/* Local Matches */}
-            {localMatches.length > 0 && (
+            {displayedLocalMatches.length > 0 && (
               <div>
                 <div className="w-full flex justify-between items-center mb-6 pl-2">
                   <h2 className="text-2xl font-serif font-bold text-gray-900 dark:text-[#DFE6E6]">
                     Local Collection Matches
                   </h2>
                   <span className="text-gray-600 dark:text-[#DFE6E6]/60 text-sm">
-                    {localMatches.length} {localMatches.length === 1 ? 'match' : 'matches'}
+                    {displayedLocalMatches.length} {displayedLocalMatches.length === 1 ? 'match' : 'matches'}
                   </span>
                 </div>
-                <div className="w-full justify-center grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                  {localMatches.map((product) => (
-                    <ProductCard key={product.id} product={product} onClick={handleBookClick} />
-                  ))}
+                <div className="w-full max-h-[700px] overflow-y-auto custom-scrollbar pr-4 shadow-inner rounded-3xl p-2 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5">
+                    <div className="w-full justify-center grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {displayedLocalMatches.map((product) => (
+                            <ProductCard key={product.id} product={product} onClick={handleBookClick} />
+                        ))}
+                    </div>
                 </div>
               </div>
             )}
@@ -258,6 +389,13 @@ const Home = () => {
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         book={selectedBook} 
+      />
+
+      <FilterModal 
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        filters={filters}
+        onApply={(newFilters) => setFilters(newFilters)}
       />
     </div>
   );

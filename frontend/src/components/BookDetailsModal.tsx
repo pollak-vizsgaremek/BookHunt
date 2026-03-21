@@ -78,7 +78,7 @@ const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
                         transition={{ duration: 0.2, ease: "easeOut" }}
-                        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-4xl max-h-[90vh] overflow-y-auto bg-[#f8f5f0] dark:bg-[#1a1b26] border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden transition-colors"
+                        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#f8f5f0] dark:bg-[#1a1b26] border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl z-50 transition-colors"
                     >
                         {/* Header Banner */}
                         <div className="h-32 bg-linear-to-r from-emerald-600/40 to-teal-600/40 relative">
