@@ -30,23 +30,33 @@ const router = express.Router();
  *         description: Failed to fetch from Google Books
  */
 router.get("/search", async (req, res) => {
-  const { q, maxResults = 10 } = req.query;
+  const { q, maxResults = 10, startIndex = 0, orderBy, printType, filter, subject } = req.query;
 
   // Make sure the user provided a search term
-  if (!q) {
-    return res.status(400).json({ error: "Search query (q) is required." });
+  if (!q && !subject) {
+    return res.status(400).json({ error: "Search query (q) or subject is required." });
   }
 
   try {
+    let finalQuery = q || "";
+    if (subject) {
+      finalQuery += finalQuery ? `+subject:${subject}` : `subject:${subject}`;
+    }
+
+    const params = {
+      q: finalQuery,
+      maxResults,
+      startIndex,
+      key: process.env.GOOGLE_BOOKS_API_KEY,
+    };
+
+    if (orderBy) params.orderBy = orderBy;
+    if (printType) params.printType = printType;
+    if (filter) params.filter = filter;
+
     const response = await axios.get(
       "https://www.googleapis.com/books/v1/volumes",
-      {
-        params: {
-          q,
-          maxResults,
-          key: process.env.GOOGLE_BOOKS_API_KEY,
-        },
-      }
+      { params }
     );
 
     // Extract only the useful fields from Google's response
