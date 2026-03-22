@@ -136,3 +136,9 @@ model Velemeny {
   @@index([termek_id], name: "idx_termek")
   @@index([felhasznalo_id], name: "idx_felhasznalo")
 }
+
+model CachedPrice {
+  isbn      String   @id @db.VarChar(20)
+  data      Json
+  updatedAt DateTime @default(now()) @updatedAt
+}

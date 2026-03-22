@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export interface FilterOptions {
     genre: string;
-    type: 'All' | 'Book' | 'E-book' | 'Manga';
+    type: 'All' | 'Book' | 'E-book' | 'Manga' | 'Graphic Novel' | 'Audiobook';
     year: string;
     sortBy: 'Relevance' | 'Newest' | 'A-Z' | 'Z-A' | 'Year (Desc)' | 'Year (Asc)';
 }
@@ -103,8 +103,8 @@ const FilterModal = ({ isOpen, onClose, filters, onApply }: FilterModalProps) =>
                     {/* Format Type */}
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 dark:text-[#DFE6E6]/80 mb-2">Format Type</label>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                            {['All', 'Book', 'E-book', 'Manga'].map((type) => (
+                        <div className="grid grid-cols-3 gap-2">
+                            {['All', 'Book', 'E-book', 'Manga', 'Graphic Novel', 'Audiobook'].map((type) => (
                                 <button
                                     key={type}
                                     onClick={() => setLocalFilters({ ...localFilters, type: type as any })}
