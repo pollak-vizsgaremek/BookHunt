@@ -8,9 +8,21 @@ interface BookDetailsModalProps {
     book: BookItem | null;
 }
 
+interface Offer {
+    store: string;
+    condition: string;
+    price: number;
+    currency: string;
+    buyUrl: string;
+}
+
+interface PricesState {
+    compare: { offers: Offer[] } | null;
+}
+
 const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
     const [currency, setCurrency] = useState<'USD' | 'HUF'>('USD');
-    const [prices, setPrices] = useState<any>(null);
+    const [prices, setPrices] = useState<PricesState | null>(null);
     const [loadingPrices, setLoadingPrices] = useState(false);
     const [priceError, setPriceError] = useState<string | null>(null);
 
@@ -21,21 +33,10 @@ const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
             setLoadingPrices(true);
             setPriceError(null);
             try {
-                // To fetch both buy and sell prices
-                const [buyRes, sellRes] = await Promise.all([
-                    fetch(`/api/book-prices/buy/${book.isbn}?currency=${currency}`),
-                    fetch(`/api/book-prices/sell/${book.isbn}?currency=${currency}`)
-                ]);
-
-                if (!buyRes.ok && !sellRes.ok) throw new Error('Failed to fetch prices');
-
-                const buyData = buyRes.ok ? await buyRes.json() : null;
-                const sellData = sellRes.ok ? await sellRes.json() : null;
-
-                setPrices({
-                    buy: buyData,
-                    sell: sellData
-                });
+                const res = await fetch(`/api/compare/${book.isbn}`);
+                if (!res.ok) throw new Error('Failed to fetch prices');
+                const data = await res.json();
+                setPrices({ compare: data });
             } catch (err) {
                 console.error("Price fetch error:", err);
                 setPriceError("Could not retrieve latest prices for this book.");
@@ -48,16 +49,6 @@ const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
     }, [isOpen, book, currency]);
 
     if (!book) return null;
-
-    const formatPrice = (priceVal: any) => {
-        if (!priceVal) return 'N/A';
-        const num = parseFloat(priceVal);
-        if (isNaN(num)) return 'N/A';
-        if (currency === 'HUF') {
-            return `${Math.round(num).toLocaleString('hu-HU')} Ft`;
-        }
-        return `$${num.toFixed(2)}`;
-    };
 
     return (
         <AnimatePresence>
@@ -146,11 +137,6 @@ const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
                                             Market Prices
-                                            {prices?.buy?._usdToHufRate && currency === 'HUF' && (
-                                                <span className="text-xs font-normal text-gray-500 ml-2">
-                                                    (Rate: {prices.buy._usdToHufRate})
-                                                </span>
-                                            )}
                                         </h3>
                                         
                                         {/* Currency Toggle */}
@@ -177,60 +163,55 @@ const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
                                     ) : loadingPrices ? (
                                         <div className="flex flex-col items-center justify-center py-8">
                                             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-500 mb-4"></div>
-                                            <p className="text-gray-500 text-sm animate-pulse">Fetching live prices from BooksRun...</p>
+                                            <p className="text-gray-500 text-sm animate-pulse">Fetching live prices from stores...</p>
                                         </div>
                                     ) : priceError ? (
                                         <div className="text-center py-6 text-red-500 bg-red-50 dark:bg-red-900/10 rounded-xl">
                                             {priceError}
                                         </div>
                                     ) : prices ? (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {/* Buy Prices */}
-                                            <div className="bg-emerald-50 dark:bg-emerald-900/10 rounded-xl p-4 border border-emerald-100 dark:border-emerald-800/30">
-                                                <h4 className="font-bold text-emerald-800 dark:text-emerald-400 mb-3 border-b border-emerald-200 dark:border-emerald-800/30 pb-2">Buy / Rent</h4>
+                                        <div className="space-y-6">
+                                            {/* Unified Pricing Table */}
+                                            <div className="bg-emerald-50 dark:bg-emerald-900/10 rounded-xl p-4 border border-emerald-100 dark:border-emerald-800/30 overflow-hidden">
+                                                <h4 className="font-bold text-emerald-800 dark:text-emerald-400 mb-3 border-b border-emerald-200 dark:border-emerald-800/30 pb-2">Compare Prices</h4>
                                                 
-                                                {prices.buy?.result?.offers?.booksrun?.new?.price || prices.buy?.result?.offers?.booksrun?.used?.price ? (
-                                                    <div className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
-                                                        {prices.buy.result.offers.booksrun.new?.price && (
-                                                            <div className="flex justify-between items-center text-lg">
-                                                                <span>New:</span>
-                                                                <span className="font-bold text-emerald-700 dark:text-emerald-300">
-                                                                    {formatPrice(prices.buy.result.offers.booksrun.new.price)}
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                        {prices.buy.result.offers.booksrun.used?.price && (
-                                                            <div className="flex justify-between items-center text-lg">
-                                                                <span>Used:</span>
-                                                                <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                                                                    {formatPrice(prices.buy.result.offers.booksrun.used.price)}
-                                                                </span>
-                                                            </div>
-                                                        )}
+                                                {(prices.compare?.offers?.length ?? 0) > 0 ? (
+                                                    <div className="overflow-x-auto">
+                                                        <table className="w-full text-left text-sm text-gray-700 dark:text-gray-300">
+                                                            <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-emerald-100/50 dark:bg-emerald-900/20">
+                                                                <tr>
+                                                                    <th scope="col" className="px-4 py-3 rounded-tl-lg">Store</th>
+                                                                    <th scope="col" className="px-4 py-3">Condition</th>
+                                                                    <th scope="col" className="px-4 py-3">Price</th>
+                                                                    <th scope="col" className="px-4 py-3 text-right rounded-tr-lg">Action</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {/* Sort by price ascending to automatically show "best price" first */}
+                                                                {[...(prices.compare?.offers || [])].sort((a, b) => a.price - b.price).map((offer: Offer, idx: number) => (
+                                                                    <tr key={idx} className="border-b border-emerald-100 dark:border-emerald-800/30 last:border-0 hover:bg-white dark:hover:bg-emerald-900/40 transition-colors">
+                                                                        <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{offer.store}</td>
+                                                                        <td className="px-4 py-3">
+                                                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${offer.condition === 'New' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300'}`}>
+                                                                                {offer.condition}
+                                                                            </span>
+                                                                        </td>
+                                                                        <td className="px-4 py-3 font-bold text-emerald-600 dark:text-emerald-400">
+                                                                            {offer.price.toLocaleString('hu-HU')} {offer.currency}
+                                                                        </td>
+                                                                        <td className="px-4 py-3 text-right">
+                                                                            <a href={offer.buyUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center bg-black hover:bg-gray-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white py-1 px-4 rounded-lg text-xs font-bold transition-all shadow-sm">
+                                                                                buy
+                                                                            </a>
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
                                                     </div>
                                                 ) : (
-                                                    <div className="text-sm text-gray-500 italic mt-2">
-                                                        No buy offers currently available for this edition.
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            {/* Sell Prices */}
-                                            <div className="bg-blue-50 dark:bg-blue-900/10 rounded-xl p-4 border border-blue-100 dark:border-blue-800/30">
-                                                <h4 className="font-bold text-blue-800 dark:text-blue-400 mb-3 border-b border-blue-200 dark:border-blue-800/30 pb-2">Sell To BooksRun</h4>
-                                                
-                                                {prices.sell?.result?.booksrun?.price?.price ? (
-                                                    <div className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
-                                                        <div className="flex justify-between items-center text-lg">
-                                                            <span>Buyback Price:</span>
-                                                            <span className="font-bold text-blue-700 dark:text-blue-300">
-                                                                {formatPrice(prices.sell.result.booksrun.price.price)}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="text-sm text-gray-500 italic mt-2">
-                                                        No buyback offers available for this edition.
+                                                    <div className="text-sm text-gray-500 italic mt-2 py-2">
+                                                        No offers currently available for this edition across our tracked stores.
                                                     </div>
                                                 )}
                                             </div>

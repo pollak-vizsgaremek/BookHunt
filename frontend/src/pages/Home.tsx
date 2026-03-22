@@ -80,7 +80,10 @@ const Home = () => {
       try {
         let qParams = searchQuery.trim() || "";
         if (filters.year) qParams += ` ${filters.year}`;
-        if (filters.type === 'Manga') qParams += ` manga comics`; // Append manga/comics keyword
+        // Append type-specific keywords to improve relevance
+        if (filters.type === 'Manga') qParams += ` manga comics`;
+        if (filters.type === 'Graphic Novel') qParams += ` graphic novel comics`;
+        if (filters.type === 'Audiobook') qParams += ` audiobook`;
         
         // At least one valid query string or subject needed
         if (!qParams && filters.genre === 'All') {
@@ -89,7 +92,8 @@ const Home = () => {
             return;
         }
 
-        let url = `/api/books/search?maxResults=10&startIndex=${activeStartIndex}`;
+        // Fetch a few extra results so we have enough after ISBN filtering
+        let url = `/api/books/search?maxResults=20&startIndex=${activeStartIndex}`;
         
         if (qParams) url += `&q=${encodeURIComponent(qParams)}`;
         if (filters.genre !== 'All') url += `&subject=${encodeURIComponent(filters.genre)}`;
@@ -102,7 +106,7 @@ const Home = () => {
         
         if (response.ok) {
           const data = await response.json();
-          const mapped: BookItem[] = (data.books || []).map((b: any) => ({
+          const allMapped: BookItem[] = (data.books || []).map((b: any) => ({
             id: b.googleId,
             title: b.title,
             author: b.authors && b.authors.length > 0 ? b.authors.join(', ') : 'Unknown Author',
@@ -117,8 +121,11 @@ const Home = () => {
             language: b.language,
             isLocal: false,
           }));
+
+          // Only show books that have an ISBN — required for price lookup
+          const mapped = allMapped.filter(b => !!b.isbn);
           
-          if (mapped.length < 10) setHasMore(false);
+          if (allMapped.length < 20) setHasMore(false);
           else setHasMore(true);
 
           if (isNewQuery) {
@@ -154,6 +161,15 @@ const Home = () => {
     setIsModalOpen(true);
   };
 
+  // Map filter display names to DB Prisma enum values
+  const TYPE_TO_DB: Record<string, string> = {
+    'Book': 'konyv',
+    'E-book': 'e_konyv',
+    'Manga': 'manga',
+    'Graphic Novel': 'kepregeny',
+    'Audiobook': 'hangoskonyv',
+  };
+
   const localMatches = localProducts.filter((product) => {
     const query = searchQuery.toLowerCase();
     const matchesQuery = !query || product.title.toLowerCase().includes(query) ||
@@ -161,9 +177,12 @@ const Home = () => {
         (product.isbn && product.isbn.toLowerCase().includes(query));
     
     const matchesGenre = filters.genre === 'All' || (product.categories && product.categories.includes(filters.genre));
-    // Notice: local DB doesn't have reliable genre/year info unless populated, so we just filter roughly
+
+    // Filter by type: compare the DB enum value to the product's type field
+    const dbType = filters.type !== 'All' ? TYPE_TO_DB[filters.type] : null;
+    const matchesType = !dbType || product.type === dbType;
     
-    return matchesQuery && matchesGenre;
+    return matchesQuery && matchesGenre && matchesType;
   });
 
   // Apply custom client-side sorting before rendering

@@ -48,6 +48,10 @@
 - Added BooksRun API integration (routes)
 - Added currency conversion (USD to HUF in utils)
 
+## 2026.03.22
+- Added Google OAuth setup
+- Fixed the filter modal
+
 ---
 
 ## To-Do List
@@ -56,3 +60,20 @@
 - Write unit and integration tests
 - Write database schema documentation
 - Write code comments
+- Admin page -> user management, book management, review management, etc.
+- Clean database structure
+- Soft web scraping (for the IMPORTANT comparing feature)
+- Price comparing feature
+- https://openlibrary.org/developers/api
+- to scrape: https://waltscomicshop.com/, www.amazon.com, 
+- clean folder structure
+---
+
+## Issues
+- N/A on market price
+- Does the api fill in missing data for books? (e.g. cover image, etc.)
+- Solution: use the database (we have it, use it!)
+
+BooksRun: 'hey we sell this'
+Our comparing fetaure: 'okay but what about this other shop?'
+Other shops: *doesn't exist*
