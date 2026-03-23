@@ -52,6 +52,12 @@
 - Added Google OAuth setup
 - Fixed the filter modal
 
+## 2026.03.23
+- Set up Open Library API integration
+- Implemented soft web scraping for Walts Comic Shop and Amazon
+- Fixed currency switch
+- Implemented scrapers for Crunchyroll, ThriftBooks, and Barnes & Noble
+
 ---
 
 ## To-Do List
@@ -64,8 +70,6 @@
 - Clean database structure
 - Soft web scraping (for the IMPORTANT comparing feature)
 - Price comparing feature
-- https://openlibrary.org/developers/api
-- to scrape: https://waltscomicshop.com/, www.amazon.com, 
 - clean folder structure
 ---
 

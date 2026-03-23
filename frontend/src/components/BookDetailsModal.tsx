@@ -21,7 +21,7 @@ interface PricesState {
 }
 
 const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
-    const [currency, setCurrency] = useState<'USD' | 'HUF'>('USD');
+    const [currency, setCurrency] = useState<'USD' | 'HUF'>('HUF');
     const [prices, setPrices] = useState<PricesState | null>(null);
     const [loadingPrices, setLoadingPrices] = useState(false);
     const [priceError, setPriceError] = useState<string | null>(null);
@@ -33,7 +33,7 @@ const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
             setLoadingPrices(true);
             setPriceError(null);
             try {
-                const res = await fetch(`/api/compare/${book.isbn}`);
+                const res = await fetch(`/api/compare/${book.isbn}?currency=${currency}`);
                 if (!res.ok) throw new Error('Failed to fetch prices');
                 const data = await res.json();
                 setPrices({ compare: data });
