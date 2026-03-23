@@ -1,0 +1,434 @@
+diff --git a/frontend/src/components/ProductCard.tsx b/frontend/src/components/ProductCard.tsx
+index fd20893..1646568 100644
+--- a/frontend/src/components/ProductCard.tsx
++++ b/frontend/src/components/ProductCard.tsx
+@@ -56,7 +56,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onClick }) => {
+ 
+                 {/* Details */}
+                 <div className="p-5 flex flex-col grow relative z-10 w-full transition-colors">
+-                    <h3 className="text-gray-900 dark:text-[#DFE6E6] font-serif font-bold text-xl leading-tight line-clamp-2 mb-2 group-hover:text-black dark:group-hover:text-white transition-colors">
++                    <h3 className="text-gray-900 dark:text-[#DFE6E6]  font-bold text-xl leading-tight line-clamp-2 mb-2 group-hover:text-black dark:group-hover:text-white transition-colors">
+                         {product.title}
+                     </h3>
+ 
+diff --git a/frontend/src/components/ThemeProvider.tsx b/frontend/src/components/ThemeProvider.tsx
+index 5cf14b0..220f713 100644
+--- a/frontend/src/components/ThemeProvider.tsx
++++ b/frontend/src/components/ThemeProvider.tsx
+@@ -33,8 +33,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
+         const isDark = theme === 'dark';
+         const newTheme = isDark ? 'light' : 'dark';
+ 
+-        // If View Transitions API is not supported, just switch and return
+-        if (!document.startViewTransition) {
++        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++
++        // If View Transitions API is not supported, or reduced motion is preferred, just switch and return
++        if (!document.startViewTransition || prefersReducedMotion) {
+             changeTheme(newTheme);
+             return;
+         }
+@@ -59,16 +61,22 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
+                 `circle(${endRadius}px at ${originX}px ${originY}px)`
+             ];
+ 
+-            document.documentElement.animate(
+-                {
+-                    clipPath: isDark ? [...clipPath].reverse() : clipPath
+-                },
+-                {
+-                    duration: 600,
+-                    easing: 'ease-in-out',
+-                    pseudoElement: isDark ? '::view-transition-old(root)' : '::view-transition-new(root)'
+-                }
+-            );
++            try {
++                document.documentElement.animate(
++                    {
++                        clipPath: isDark ? [...clipPath].reverse() : clipPath
++                    },
++                    {
++                        duration: 600,
++                        easing: 'ease-in-out',
++                        pseudoElement: isDark ? '::view-transition-old(root)' : '::view-transition-new(root)'
++                    }
++                );
++            } catch (e) {
++                console.error("Failed to animate pseudo-element:", e);
++            }
++        }).catch((e) => {
++            console.error("View transition failed:", e);
+         });
+     };
+ 
+diff --git a/frontend/src/index.css b/frontend/src/index.css
+index 3f41d74..33d41ac 100644
+--- a/frontend/src/index.css
++++ b/frontend/src/index.css
+@@ -1,5 +1,5 @@
+ @import "tailwindcss";
+-@variant dark (&:is(.dark, .dark *));
++@custom-variant dark (&:is(.dark, .dark *));
+ 
+ @font-face {
+   font-family: 'Contrail';
+diff --git a/frontend/src/pages/Home.tsx b/frontend/src/pages/Home.tsx
+index 9a392d0..c413e57 100644
+--- a/frontend/src/pages/Home.tsx
++++ b/frontend/src/pages/Home.tsx
+@@ -15,10 +15,10 @@ const Home = () => {
+   const [loading, setLoading] = useState(true);
+   const [isSearching, setIsSearching] = useState(false);
+   const [hasMore, setHasMore] = useState(true);
+-  
++
+   const [selectedBook, setSelectedBook] = useState<BookItem | null>(null);
+   const [isModalOpen, setIsModalOpen] = useState(false);
+-  
++
+   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+   const [filters, setFilters] = useState<FilterOptions>({
+     genre: 'All',
+@@ -66,12 +66,12 @@ const Home = () => {
+     }
+ 
+     const timer = setTimeout(async () => {
+-      const isNewQuery = 
+-          lastFetchRef.current.q !== searchQuery || 
+-          JSON.stringify(lastFetchRef.current.filters) !== JSON.stringify(filters);
++      const isNewQuery =
++        lastFetchRef.current.q !== searchQuery ||
++        JSON.stringify(lastFetchRef.current.filters) !== JSON.stringify(filters);
+ 
+       if (isNewQuery) {
+-          setStartIndex(0);
++        setStartIndex(0);
+       }
+ 
+       const activeStartIndex = isNewQuery ? 0 : startIndex;
+@@ -84,17 +84,17 @@ const Home = () => {
+         if (filters.type === 'Manga') qParams += ` manga comics`;
+         if (filters.type === 'Graphic Novel') qParams += ` graphic novel comics`;
+         if (filters.type === 'Audiobook') qParams += ` audiobook`;
+-        
++
+         // At least one valid query string or subject needed
+         if (!qParams && filters.genre === 'All') {
+-            setSearchResults([]);
+-            setIsSearching(false);
+-            return;
++          setSearchResults([]);
++          setIsSearching(false);
++          return;
+         }
+ 
+         // Fetch a few extra results so we have enough after ISBN filtering
+         let url = `/api/books/search?maxResults=20&startIndex=${activeStartIndex}`;
+-        
++
+         if (qParams) url += `&q=${encodeURIComponent(qParams)}`;
+         if (filters.genre !== 'All') url += `&subject=${encodeURIComponent(filters.genre)}`;
+         if (filters.type === 'Book') url += `&printType=books`;
+@@ -103,16 +103,16 @@ const Home = () => {
+         else if (filters.sortBy === 'Relevance') url += `&orderBy=relevance`;
+ 
+         const response = await fetch(url);
+-        
++
+         if (response.ok) {
+           const data = await response.json();
+           const allMapped: BookItem[] = (data.books || []).map((b: any) => ({
+             id: b.googleId,
+             title: b.title,
+             author: b.authors && b.authors.length > 0 ? b.authors.join(', ') : 'Unknown Author',
+-            coverUrl: b.thumbnail 
+-                ? b.thumbnail.replace('http:', 'https:').replace('&zoom=1', '&zoom=3').replace('&edge=curl', '') 
+-                : null,
++            coverUrl: b.thumbnail
++              ? b.thumbnail.replace('http:', 'https:').replace('&zoom=1', '&zoom=3').replace('&edge=curl', '')
++              : null,
+             isbn: b.isbn || null,
+             description: b.description,
+             pageCount: b.pageCount,
+@@ -124,19 +124,19 @@ const Home = () => {
+ 
+           // Only show books that have an ISBN — required for price lookup
+           const mapped = allMapped.filter(b => !!b.isbn);
+-          
++
+           if (allMapped.length < 20) setHasMore(false);
+           else setHasMore(true);
+ 
+           if (isNewQuery) {
+-              setSearchResults(mapped);
++            setSearchResults(mapped);
+           } else {
+-              // Appending, filter out duplicates just in case
+-              setSearchResults(prev => {
+-                  const existingIds = new Set(prev.map(p => p.id));
+-                  const newItems = mapped.filter(p => !existingIds.has(p.id));
+-                  return [...prev, ...newItems];
+-              });
++            // Appending, filter out duplicates just in case
++            setSearchResults(prev => {
++              const existingIds = new Set(prev.map(p => p.id));
++              const newItems = mapped.filter(p => !existingIds.has(p.id));
++              return [...prev, ...newItems];
++            });
+           }
+ 
+           lastFetchRef.current = { q: searchQuery, filters };
+@@ -149,8 +149,8 @@ const Home = () => {
+     }, isNewQuery() ? 600 : 0); // debounce only on typing, not on load more
+ 
+     function isNewQuery() {
+-        return lastFetchRef.current.q !== searchQuery || 
+-               JSON.stringify(lastFetchRef.current.filters) !== JSON.stringify(filters);
++      return lastFetchRef.current.q !== searchQuery ||
++        JSON.stringify(lastFetchRef.current.filters) !== JSON.stringify(filters);
+     }
+ 
+     return () => clearTimeout(timer);
+@@ -173,31 +173,31 @@ const Home = () => {
+   const localMatches = localProducts.filter((product) => {
+     const query = searchQuery.toLowerCase();
+     const matchesQuery = !query || product.title.toLowerCase().includes(query) ||
+-        (product.author && product.author.toLowerCase().includes(query)) ||
+-        (product.isbn && product.isbn.toLowerCase().includes(query));
+-    
++      (product.author && product.author.toLowerCase().includes(query)) ||
++      (product.isbn && product.isbn.toLowerCase().includes(query));
++
+     const matchesGenre = filters.genre === 'All' || (product.categories && product.categories.includes(filters.genre));
+ 
+     // Filter by type: compare the DB enum value to the product's type field
+     const dbType = filters.type !== 'All' ? TYPE_TO_DB[filters.type] : null;
+     const matchesType = !dbType || product.type === dbType;
+-    
++
+     return matchesQuery && matchesGenre && matchesType;
+   });
+ 
+   // Apply custom client-side sorting before rendering
+   const getSortedResults = (items: BookItem[]) => {
+-      let sorted = [...items];
+-      if (filters.sortBy === 'A-Z') {
+-          sorted.sort((a,b) => a.title.localeCompare(b.title));
+-      } else if (filters.sortBy === 'Z-A') {
+-          sorted.sort((a,b) => b.title.localeCompare(a.title));
+-      } else if (filters.sortBy === 'Year (Desc)') {
+-          sorted.sort((a,b) => parseInt(b.publishedDate || '0') - parseInt(a.publishedDate || '0'));
+-      } else if (filters.sortBy === 'Year (Asc)') {
+-          sorted.sort((a,b) => parseInt(a.publishedDate || '9999') - parseInt(b.publishedDate || '9999'));
+-      }
+-      return sorted;
++    let sorted = [...items];
++    if (filters.sortBy === 'A-Z') {
++      sorted.sort((a, b) => a.title.localeCompare(b.title));
++    } else if (filters.sortBy === 'Z-A') {
++      sorted.sort((a, b) => b.title.localeCompare(a.title));
++    } else if (filters.sortBy === 'Year (Desc)') {
++      sorted.sort((a, b) => parseInt(b.publishedDate || '0') - parseInt(a.publishedDate || '0'));
++    } else if (filters.sortBy === 'Year (Asc)') {
++      sorted.sort((a, b) => parseInt(a.publishedDate || '9999') - parseInt(b.publishedDate || '9999'));
++    }
++    return sorted;
+   };
+ 
+   const displayedSearchResults = getSortedResults(searchResults);
+@@ -259,32 +259,32 @@ const Home = () => {
+               placeholder="Search by title, author, or ISBN in Google Books..."
+               className="block flex-1 pl-4 pr-12 py-4 bg-transparent text-lg text-gray-900 dark:text-[#DFE6E6] placeholder-gray-500 dark:placeholder-[#DFE6E6]/40 focus:outline-none"
+             />
+-            
++
+             {/* Action Buttons */}
+             <div className="absolute right-2 flex items-center gap-1">
+-                {searchQuery && (
++              {searchQuery && (
+                 <button
+-                    onClick={() => { setSearchQuery(""); setFilters({ ...filters, genre: 'All' }); }}
+-                    className="p-2 text-gray-500 hover:text-gray-900 dark:text-[#DFE6E6]/50 dark:hover:text-white transition-colors focus:outline-none"
+-                    title="Clear search"
++                  onClick={() => { setSearchQuery(""); setFilters({ ...filters, genre: 'All' }); }}
++                  className="p-2 text-gray-500 hover:text-gray-900 dark:text-[#DFE6E6]/50 dark:hover:text-white transition-colors focus:outline-none"
++                  title="Clear search"
+                 >
+-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+-                    </svg>
+-                </button>
+-                )}
+-                
+-                <div className="h-6 w-px bg-black/10 dark:bg-white/20 mx-1"></div>
+-                
+-                <button
+-                    onClick={() => setIsFilterModalOpen(true)}
+-                    className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors focus:outline-none flex items-center gap-1"
+-                    title="Filters"
+-                >
+-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+-                    </svg>
++                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
++                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
++                  </svg>
+                 </button>
++              )}
++
++              <div className="h-6 w-px bg-black/10 dark:bg-white/20 mx-1"></div>
++
++              <button
++                onClick={() => setIsFilterModalOpen(true)}
++                className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors focus:outline-none flex items-center gap-1"
++                title="Filters"
++              >
++                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
++                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
++                </svg>
++              </button>
+             </div>
+           </div>
+         </div>
+@@ -294,12 +294,12 @@ const Home = () => {
+           <div className="flex justify-center items-center py-20 w-full flex-col gap-4">
+             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black/50 dark:border-white/50"></div>
+             <p className="text-gray-500">
+-                {isSearching ? "Searching Google Books library..." : "Loading collections..."}
++              {isSearching ? "Searching Google Books library..." : "Loading collections..."}
+             </p>
+           </div>
+         ) : showResults ? (
+           <div className="w-full flex flex-col gap-12">
+-            
++
+             {/* Google Books Results in Constrained Height Container */}
+             <div className="flex flex-col">
+               <div className="w-full flex justify-between items-center mb-6 pl-2">
+@@ -313,33 +313,33 @@ const Home = () => {
+ 
+               {searchResults.length > 0 ? (
+                 <div className="w-full max-h-[700px] overflow-y-auto custom-scrollbar pr-4 pb-12 shadow-inner rounded-3xl p-2 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5">
+-                    <div className="w-full justify-center grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 relative">
+-                        {displayedSearchResults.map((product) => (
+-                            <ProductCard key={product.id} product={product} onClick={handleBookClick} />
+-                        ))}
++                  <div className="w-full justify-center grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 relative">
++                    {displayedSearchResults.map((product) => (
++                      <ProductCard key={product.id} product={product} onClick={handleBookClick} />
++                    ))}
++                  </div>
++
++                  {/* Load More Button */}
++                  {hasMore && (
++                    <div className="mt-12 flex justify-center pb-4">
++                      <button
++                        onClick={() => setStartIndex(prev => prev + 10)}
++                        disabled={isSearching}
++                        className="group relative px-8 py-3 bg-white dark:bg-[#1a1b26] border border-black/10 dark:border-white/20 hover:border-emerald-500 dark:hover:border-emerald-500 text-gray-900 dark:text-white rounded-xl font-bold font-serif tracking-wide shadow-md hover:shadow-xl transition-all duration-300 disabled:opacity-50 overflow-hidden"
++                      >
++                        <span className="relative z-10 flex items-center gap-2">
++                          {isSearching && startIndex > 0 ? (
++                            <span className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></span>
++                          ) : (
++                            <svg className="w-5 h-5 text-emerald-500 group-hover:-translate-y-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
++                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
++                            </svg>
++                          )}
++                          Load 10 more
++                        </span>
++                      </button>
+                     </div>
+-                    
+-                    {/* Load More Button */}
+-                    {hasMore && (
+-                        <div className="mt-12 flex justify-center pb-4">
+-                            <button 
+-                                onClick={() => setStartIndex(prev => prev + 10)}
+-                                disabled={isSearching}
+-                                className="group relative px-8 py-3 bg-white dark:bg-[#1a1b26] border border-black/10 dark:border-white/20 hover:border-emerald-500 dark:hover:border-emerald-500 text-gray-900 dark:text-white rounded-xl font-bold font-serif tracking-wide shadow-md hover:shadow-xl transition-all duration-300 disabled:opacity-50 overflow-hidden"
+-                            >
+-                                <span className="relative z-10 flex items-center gap-2">
+-                                    {isSearching && startIndex > 0 ? (
+-                                        <span className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></span>
+-                                    ) : (
+-                                        <svg className="w-5 h-5 text-emerald-500 group-hover:-translate-y-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+-                                        </svg>
+-                                    )}
+-                                    Load 10 more
+-                                </span>
+-                            </button>
+-                        </div>
+-                    )}
++                  )}
+                 </div>
+               ) : (
+                 <div className="flex flex-col items-center justify-center py-12 text-center w-full bg-black/5 dark:bg-white/5 rounded-3xl border border-black/10 dark:border-white/10 backdrop-blur-sm transition-colors">
+@@ -364,11 +364,11 @@ const Home = () => {
+                   </span>
+                 </div>
+                 <div className="w-full max-h-[700px] overflow-y-auto custom-scrollbar pr-4 shadow-inner rounded-3xl p-2 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5">
+-                    <div className="w-full justify-center grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+-                        {displayedLocalMatches.map((product) => (
+-                            <ProductCard key={product.id} product={product} onClick={handleBookClick} />
+-                        ))}
+-                    </div>
++                  <div className="w-full justify-center grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
++                    {displayedLocalMatches.map((product) => (
++                      <ProductCard key={product.id} product={product} onClick={handleBookClick} />
++                    ))}
++                  </div>
+                 </div>
+               </div>
+             )}
+@@ -379,14 +379,14 @@ const Home = () => {
+ 
+             {/* Display default local products if any exist since we removed the direct rendering of all local products above. Let's just show a few */}
+             {localProducts.length > 0 && (
+-                <div className="w-full">
+-                    <h2 className="text-3xl font-serif font-bold text-gray-900 dark:text-[#DFE6E6] mb-8 text-center">Featured Collection</h2>
+-                    <div className="w-full justify-center grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 px-4">
+-                        {localProducts.slice(0, 5).map((product) => (
+-                            <ProductCard key={product.id} product={product} onClick={handleBookClick} />
+-                        ))}
+-                    </div>
++              <div className="w-full">
++                <h2 className="text-3xl font-serif font-bold text-gray-900 dark:text-[#DFE6E6] mb-8 text-center">Featured Collection</h2>
++                <div className="w-full justify-center grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 px-4">
++                  {localProducts.slice(0, 5).map((product) => (
++                    <ProductCard key={product.id} product={product} onClick={handleBookClick} />
++                  ))}
+                 </div>
++              </div>
+             )}
+ 
+             <div className="max-w-4xl text-center space-y-6 text-gray-800 dark:text-[#DFE6E6]/80 text-xl  leading-relaxed">
+@@ -396,7 +396,7 @@ const Home = () => {
+             <ScrollFloat text="Search for any book in our massive library above, or browse our curated collections. Browse by genre, author, or ISBN number." textClassName="text-2xl md:text-2xl font-bold text-gray-600 dark:text-[#DFE6E6]/50" />
+             <ScrollFloat text="Or perhaps you'd want to keep track of your book progress in a fun modern way? We've got you covered with our state of the art progress tracking system that will make you want to read more and compete with others in a gameified system." textClassName="text-2xl md:text-2xl font-bold text-gray-600 dark:text-[#DFE6E6]/50" />
+ 
+-            <div className="mt-32 pb-40">
++            <div className="mt-32 pb-40 mb-32">
+               <ScrollFloat text="Keep exploring, keep hunting" textClassName="text-4xl md:text-5xl font-bold text-gray-600 dark:text-[#DFE6E6]/50" />
+             </div>
+           </div>
+@@ -404,13 +404,13 @@ const Home = () => {
+ 
+       </div>
+ 
+-      <BookDetailsModal 
+-        isOpen={isModalOpen} 
+-        onClose={() => setIsModalOpen(false)} 
+-        book={selectedBook} 
++      <BookDetailsModal
++        isOpen={isModalOpen}
++        onClose={() => setIsModalOpen(false)}
++        book={selectedBook}
+       />
+ 
+-      <FilterModal 
++      <FilterModal
+         isOpen={isFilterModalOpen}
+         onClose={() => setIsFilterModalOpen(false)}
+         filters={filters}
