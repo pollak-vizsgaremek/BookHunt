@@ -11,7 +11,7 @@ const Navigation = () => {
 
   const routes = [
     { name: "Home", route: "/" },
-    ...(user ? [] : [{ name: "Login", route: "/login" }]),
+    ...(user ? [{ name: "Wishlist", route: "/wishlist" }] : [{ name: "Login", route: "/login" }]),
   ];
   {/* I'll merge these two later with a profile page */ }
   return (

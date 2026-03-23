@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import SpotlightCard from './SpotlightCard';
 
 export interface BookItem {
@@ -19,9 +19,73 @@ export interface BookItem {
 interface ProductCardProps {
     product: BookItem;
     onClick?: (book: BookItem) => void;
+    onWishlistToggle?: () => void;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, onClick }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, onWishlistToggle }) => {
+    const [showLoginToast, setShowLoginToast] = useState(false);
+    const [isWishlisted, setIsWishlisted] = useState(false);
+    const [isAdding, setIsAdding] = useState(false);
+
+    const handleWishlistClick = async (e: React.MouseEvent) => {
+        e.stopPropagation(); // prevent clicking the card
+
+        const token = localStorage.getItem('token');
+        if (!token) {
+            setShowLoginToast(true);
+            setTimeout(() => setShowLoginToast(false), 3000);
+            return;
+        }
+
+        if (isAdding) return;
+        setIsAdding(true);
+
+        try {
+            // Determine if we need to remove or add
+            // This relies on whether this card is being rendered on the Wishlist page
+            // If onWishlistToggle is passed, it might be on the Wishlist page, 
+            // but we can also rely on local state 'isWishlisted' if we're on Home.
+            // On Wishlist page, they want to remove it:
+            if (onWishlistToggle) {
+                const res = await fetch(`/api/wishlist/${product.id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    onWishlistToggle();
+                }
+            } else {
+                // Add to wishlist
+                const res = await fetch('/api/wishlist', {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        bookId: product.id.toString(),
+                        title: product.title,
+                        author: product.author,
+                        coverUrl: product.coverUrl
+                    })
+                });
+                
+                if (res.ok) {
+                    setIsWishlisted(true);
+                } else {
+                    const errorData = await res.json();
+                    if (errorData.error === "Book is already in wishlist") {
+                        setIsWishlisted(true); // well it's already there
+                    }
+                }
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsAdding(false);
+        }
+    };
+
     return (
         <SpotlightCard 
             className="group bg-black/5 dark:bg-white/5 backdrop-blur-md rounded-2xl border border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 flex flex-col h-full min-h-[360px] cursor-pointer" 
@@ -51,6 +115,38 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onClick }) => {
                     {/* Type Badge */}
                     <div className="absolute top-3 right-3 bg-black/10 dark:bg-black/60 backdrop-blur-md text-gray-900 dark:text-[#DFE6E6] text-xs font-bold px-3 py-1 rounded-full border border-black/10 dark:border-white/10 shadow-sm uppercase tracking-wider transition-colors z-10">
                         {product.type || 'Book'}
+                    </div>
+
+                    {/* Wishlist Button */}
+                    <button 
+                        onClick={handleWishlistClick}
+                        disabled={isAdding}
+                        className="absolute top-3 left-3 bg-black/20 dark:bg-black/60 hover:bg-black/40 dark:hover:bg-white/20 backdrop-blur-md text-white p-2 rounded-full border border-black/10 dark:border-white/10 shadow-sm transition-all z-10 flex items-center justify-center group/btn"
+                        title={onWishlistToggle ? "Remove from Wishlist" : "Add to Wishlist"}
+                    >
+                        {onWishlistToggle ? (
+                            <svg className="w-5 h-5 text-red-500 fill-current" viewBox="0 0 24 24">
+                                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                                {/* Minus sign overlay for remove */}
+                                <line x1="8" y1="12" x2="16" y2="12" stroke="white" strokeWidth="2" />
+                            </svg>
+                        ) : (
+                            <div className="relative">
+                                <svg className={`w-5 h-5 transition-colors ${isWishlisted ? 'text-red-500 fill-current' : 'text-white'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                </svg>
+                                {!isWishlisted && (
+                                    <div className="absolute -top-1 -right-1 bg-emerald-500 rounded-full text-white w-3 h-3 flex items-center justify-center">
+                                        <svg className="w-2 h-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4"/></svg>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </button>
+
+                    {/* Unauthenticated Login Toast */}
+                    <div className={`absolute top-16 left-3 right-3 bg-red-500/90 backdrop-blur-md text-white px-3 py-2 rounded-lg text-sm text-center font-medium shadow-xl transition-all duration-300 z-20 pointer-events-none origin-top ${showLoginToast ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-2'}`}>
+                        Log in to save books
                     </div>
                 </div>
 
