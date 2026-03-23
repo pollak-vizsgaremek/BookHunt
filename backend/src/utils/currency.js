@@ -15,6 +15,19 @@ export async function getUsdToHufRate() {
 }
 
 /**
+ * Fetches the live exchange rate from EUR to HUF
+ * using the free Frankfurter API.
+ *
+ * @returns {Promise<number>} The EUR → HUF exchange rate
+ */
+export async function getEurToHufRate() {
+  const response = await axios.get("https://api.frankfurter.app/latest", {
+    params: { from: "EUR", to: "HUF" },
+  });
+  return response.data.rates.HUF;
+}
+
+/**
  * Converts a USD amount to HUF using a given exchange rate.
  * Returns null if the input is not a valid number.
  *
