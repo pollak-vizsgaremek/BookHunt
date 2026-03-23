@@ -16,6 +16,7 @@ model Felhasznalo {
   Keres          Keres[]
   Kedvencek      Kedvencek[]
   Velemenyek     Velemeny[]
+  Wishlist       Wishlist[]
 
   @@index([email], name: "idx_email")
   @@index([felhasznalonev], name: "idx_felhasznalonev")
@@ -141,4 +142,19 @@ model CachedPrice {
   isbn      String   @id @db.VarChar(20)
   data      Json
   updatedAt DateTime @default(now()) @updatedAt
+}
+
+model Wishlist {
+  id              Int      @id @default(autoincrement())
+  felhasznalo_id  Int
+  book_id         String   @db.VarChar(255)
+  title           String   @db.VarChar(500)
+  author          String?  @db.VarChar(255)
+  coverUrl        String?  @db.VarChar(500)
+  createdAt       DateTime @default(now())
+  
+  Felhasznalo     Felhasznalo @relation(fields: [felhasznalo_id], references: [felhasznalo_id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([felhasznalo_id, book_id], name: "unique_wishlist")
+  @@index([felhasznalo_id], name: "idx_wishlist_felhasznalo")
 }

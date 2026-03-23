@@ -17,6 +17,7 @@ import reviewsRoutes from "./routes/reviews.js";
 import booksRoutes from "./routes/books.js";
 import bookPricesRoutes from "./routes/bookPrices.js";
 import compareRoutes from "./routes/compare.js";
+import wishlistRoutes from "./routes/wishlist.js";
 
 // Swagger setup
 const swaggerOptions = {
@@ -59,6 +60,7 @@ app.use(express.json());
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);
+app.use("/api/wishlist", wishlistRoutes);
 app.use("/api", webshopsRoutes);
 app.use("/api", productsRoutes);
 app.use("/api/price-history", priceHistoryRoutes);
