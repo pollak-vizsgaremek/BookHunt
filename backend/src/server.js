@@ -18,6 +18,8 @@ import booksRoutes from "./routes/books.js";
 import bookPricesRoutes from "./routes/bookPrices.js";
 import compareRoutes from "./routes/compare.js";
 import wishlistRoutes from "./routes/wishlist.js";
+import notificationsRoutes from "./routes/notifications.js";
+import { startPriceAlerts } from "./scripts/priceAlertCron.js";
 
 // Swagger setup
 const swaggerOptions = {
@@ -61,6 +63,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/wishlist", wishlistRoutes);
+app.use("/api/notifications", notificationsRoutes);
 app.use("/api", webshopsRoutes);
 app.use("/api", productsRoutes);
 app.use("/api/price-history", priceHistoryRoutes);
@@ -111,6 +114,7 @@ app.use((err, req, res, next) => {
 // Start server
 app.listen(port, () => {
   console.log(`BookHunt server running on http://localhost:${port}`);
+  startPriceAlerts(prisma);
   console.log(`API endpoints available at http://localhost:${port}/api`);
   console.log(
     `Swagger documentation available at http://localhost:${port}/api-docs`,

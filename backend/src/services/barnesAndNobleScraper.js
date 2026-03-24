@@ -11,7 +11,7 @@ export const scrapeBarnesAndNoble = async (isbn) => {
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
     
     const searchUrl = `https://www.barnesandnoble.com/s/${isbn}`;
-    await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 12000 });
     
     // Wait for the dynamic content to load
     await page.waitForSelector('.product-shelf-info, .current-price, .price', { timeout: 10000 }).catch(() => {});

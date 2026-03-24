@@ -17,13 +17,13 @@ export const scrapeWalts = async (isbn) => {
     const $ = cheerio.load(response.data);
     
     // Check if there are any products
-    const firstProduct = $('.grid-product, .card-wrapper').first();
+    const firstProduct = $('.grid-product, .card-wrapper, .product-item').first();
     if (!firstProduct.length) {
       return null;
     }
     
     // Look for price
-    let priceText = firstProduct.find('.price, .money').text().trim();
+    let priceText = firstProduct.find('.price, .money, .product-item__price').text().trim();
     if (!priceText) {
       priceText = firstProduct.text(); // Fallback to entire card text and parse out EUR
     }

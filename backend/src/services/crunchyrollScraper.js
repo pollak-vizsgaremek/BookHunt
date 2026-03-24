@@ -11,18 +11,18 @@ export const scrapeCrunchyroll = async (isbn) => {
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
     
     const searchUrl = `https://store.crunchyroll.com/search?q=${isbn}`;
-    await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 12000 });
     
     // Wait for the dynamic content to load
     await page.waitForSelector('.product-tile, .sales .value', { timeout: 10000 }).catch(() => {});
     
     const data = await page.evaluate(() => {
-      // Find the first product tile
-      const productTile = document.querySelector('.product-tile');
+      // Find the first product tile (with fallbacks for updated classes)
+      const productTile = document.querySelector('.product-tile, div[class*="product-tile"], .css-13o7eu2');
       if (!productTile) return null;
       
-      const priceElement = productTile.querySelector('.sales .value, .price .value');
-      const linkElement = productTile.querySelector('a.link, a.product-tile-link');
+      const priceElement = productTile.querySelector('.sales .value, .price .value, span.chakra-text, [class*="price"]');
+      const linkElement = productTile.querySelector('a.link, a.product-tile-link, a[href*="/products/"]');
       
       let priceText = priceElement ? priceElement.innerText : null;
       let link = linkElement ? linkElement.href : null;

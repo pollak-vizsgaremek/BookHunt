@@ -24,7 +24,7 @@ export const scrapeLibristo = async (isbn) => {
     const searchUrl = `https://www.libristo.hu/hu/kereses?q=${isbn}`;
     
     // Go to the search URL, wait until the DOM is loaded
-    await page.goto(searchUrl, { waitUntil: 'load', timeout: 30000 });
+    await page.goto(searchUrl, { waitUntil: 'load', timeout: 12000 });
     
     // Cookiebot bypass
     try {

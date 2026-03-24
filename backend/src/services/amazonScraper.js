@@ -19,7 +19,7 @@ export const scrapeAmazon = async (isbn) => {
     });
     
     const searchUrl = `https://www.amazon.com/s?k=${isbn}`;
-    await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 12000 });
     
     const data = await page.evaluate(() => {
       // Avoid sponsored products if possible, look for data-component-type="s-search-result"

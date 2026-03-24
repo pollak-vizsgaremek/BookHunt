@@ -10,6 +10,7 @@ import axios from "axios";
 export async function getUsdToHufRate() {
   const response = await axios.get("https://api.frankfurter.app/latest", {
     params: { from: "USD", to: "HUF" },
+    timeout: 5000
   });
   return response.data.rates.HUF;
 }
@@ -23,6 +24,7 @@ export async function getUsdToHufRate() {
 export async function getEurToHufRate() {
   const response = await axios.get("https://api.frankfurter.app/latest", {
     params: { from: "EUR", to: "HUF" },
+    timeout: 5000
   });
   return response.data.rates.HUF;
 }

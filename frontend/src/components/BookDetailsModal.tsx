@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { BookItem } from './ProductCard';
 
@@ -26,27 +26,28 @@ const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
     const [loadingPrices, setLoadingPrices] = useState(false);
     const [priceError, setPriceError] = useState<string | null>(null);
 
+    const fetchPrices = useCallback(async (isManualRefresh = false) => {
+        if (!book?.isbn) return;
+        setLoadingPrices(true);
+        setPriceError(null);
+        try {
+            const res = await fetch(`/api/compare/${book.isbn}?currency=${currency}${isManualRefresh ? '&refresh=true' : ''}`);
+            if (!res.ok) throw new Error('Failed to fetch prices');
+            const data = await res.json();
+            setPrices({ compare: data });
+        } catch (err) {
+            console.error("Price fetch error:", err);
+            setPriceError("Could not retrieve latest prices for this book.");
+        } finally {
+            setLoadingPrices(false);
+        }
+    }, [book?.isbn, currency]);
+
     useEffect(() => {
-        if (!isOpen || !book || !book.isbn) return;
-
-        const fetchPrices = async () => {
-            setLoadingPrices(true);
-            setPriceError(null);
-            try {
-                const res = await fetch(`/api/compare/${book.isbn}?currency=${currency}`);
-                if (!res.ok) throw new Error('Failed to fetch prices');
-                const data = await res.json();
-                setPrices({ compare: data });
-            } catch (err) {
-                console.error("Price fetch error:", err);
-                setPriceError("Could not retrieve latest prices for this book.");
-            } finally {
-                setLoadingPrices(false);
-            }
-        };
-
-        fetchPrices();
-    }, [isOpen, book, currency]);
+        if (isOpen && book?.isbn) {
+            fetchPrices(false);
+        }
+    }, [isOpen, book?.isbn, fetchPrices]);
 
     if (!book) return null;
 
@@ -137,6 +138,16 @@ const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
                                             Market Prices
+                                            <button 
+                                                onClick={() => fetchPrices(true)} 
+                                                disabled={loadingPrices} 
+                                                className="text-gray-400 hover:text-emerald-500 transition-colors p-1 rounded-full hover:bg-gray-100 dark:hover:bg-black/30 disabled:opacity-50"
+                                                title="Refresh prices"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${loadingPrices ? 'animate-spin text-emerald-500' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m13 13v-5h-.581m0 0a8.003 8.003 0 01-15.356-2m0 0H15" />
+                                                </svg>
+                                            </button>
                                         </h3>
                                         
                                         {/* Currency Toggle */}
