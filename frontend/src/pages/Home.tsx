@@ -11,6 +11,7 @@ import FilterModal, { type FilterOptions } from "../components/FilterModal";
 const Home = () => {
   const [localProducts, setLocalProducts] = useState<BookItem[]>([]);
   const [searchResults, setSearchResults] = useState<BookItem[]>([]);
+  const [wishlistedBookIds, setWishlistedBookIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
@@ -55,7 +56,26 @@ const Home = () => {
         setLoading(false);
       }
     };
+
+    const fetchWishlistIds = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      try {
+        const res = await fetch('/api/wishlist', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const ids = new Set<string>(data.map((item: any) => item.book_id));
+          setWishlistedBookIds(ids);
+        }
+      } catch (err) {
+        console.error("Failed to fetch wishlist ids", err);
+      }
+    };
+
     fetchProducts();
+    fetchWishlistIds();
   }, []);
 
   // Effect to handle search logic
@@ -315,7 +335,12 @@ const Home = () => {
                 <div className="w-full max-h-[700px] overflow-y-auto custom-scrollbar pr-4 pb-12 shadow-inner rounded-3xl p-2 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5">
                     <div className="w-full justify-center grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 relative">
                         {displayedSearchResults.map((product) => (
-                            <ProductCard key={product.id} product={product} onClick={handleBookClick} />
+                            <ProductCard 
+                                key={product.id} 
+                                product={product} 
+                                onClick={handleBookClick} 
+                                initialIsWishlisted={wishlistedBookIds.has(product.id.toString())}
+                            />
                         ))}
                     </div>
                     
@@ -366,7 +391,12 @@ const Home = () => {
                 <div className="w-full max-h-[700px] overflow-y-auto custom-scrollbar pr-4 shadow-inner rounded-3xl p-2 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5">
                     <div className="w-full justify-center grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {displayedLocalMatches.map((product) => (
-                            <ProductCard key={product.id} product={product} onClick={handleBookClick} />
+                            <ProductCard 
+                                key={product.id} 
+                                product={product} 
+                                onClick={handleBookClick} 
+                                initialIsWishlisted={wishlistedBookIds.has(product.id.toString())}
+                            />
                         ))}
                     </div>
                 </div>
@@ -383,7 +413,12 @@ const Home = () => {
                     <h2 className="text-3xl font-serif font-bold text-gray-900 dark:text-[#DFE6E6] mb-8 text-center">Featured Collection</h2>
                     <div className="w-full justify-center grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 px-4">
                         {localProducts.slice(0, 5).map((product) => (
-                            <ProductCard key={product.id} product={product} onClick={handleBookClick} />
+                            <ProductCard 
+                                key={product.id} 
+                                product={product} 
+                                onClick={handleBookClick} 
+                                initialIsWishlisted={wishlistedBookIds.has(product.id.toString())}
+                            />
                         ))}
                     </div>
                 </div>
