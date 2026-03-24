@@ -10,6 +10,7 @@ import { scrapeCrunchyroll } from '../services/crunchyrollScraper.js';
 import { scrapeThriftBooks } from '../services/thriftbooksScraper.js';
 import { scrapeBarnesAndNoble } from '../services/barnesAndNobleScraper.js';
 import { getUsdToHufRate, getEurToHufRate, convertToHuf } from '../utils/currency.js';
+import { withTimeout } from '../utils/timeout.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -35,7 +36,7 @@ const BOOKSRUN_BUY_URL = 'https://booksrun.com/api/v3/price';
  */
 router.get('/:isbn', async (req, res) => {
   const { isbn } = req.params;
-  const { currency = 'HUF' } = req.query;
+  const { currency = 'HUF', refresh = 'false' } = req.query;
   if (!isbn) return res.status(400).json({ error: 'ISBN is required' });
 
   try {
@@ -43,7 +44,7 @@ router.get('/:isbn', async (req, res) => {
 
     // 1. Check DB Cache
     const cached = await prisma.cachedPrice.findUnique({ where: { isbn } });
-    if (cached) {
+    if (cached && refresh !== 'true') {
       const isFresh = (new Date() - cached.updatedAt) < 60 * 60 * 1000; // 1 hour
       if (isFresh) {
         finalResultData = cached.data;
@@ -57,17 +58,17 @@ router.get('/:isbn', async (req, res) => {
          waltsData, amazonData, crData, tbData, bnData, 
          usdRateRes, eurRateRes
       ] = await Promise.allSettled([
-        axios.get(`${BOOKSRUN_BUY_URL}/buy/${isbn}`, { params: { key: process.env.BOOKSRUN_API_KEY } }),
-        scrapeLibri(isbn),
-        scrapeBookline(isbn),
-        scrapeLibristo(isbn),
-        scrapeWalts(isbn),
-        scrapeAmazon(isbn),
-        scrapeCrunchyroll(isbn),
-        scrapeThriftBooks(isbn),
-        scrapeBarnesAndNoble(isbn),
-        getUsdToHufRate(),
-        getEurToHufRate()
+        withTimeout(axios.get(`${BOOKSRUN_BUY_URL}/buy/${isbn}`, { params: { key: process.env.BOOKSRUN_API_KEY } }), 15000),
+        withTimeout(scrapeLibri(isbn), 15000),
+        withTimeout(scrapeBookline(isbn), 15000),
+        withTimeout(scrapeLibristo(isbn), 15000),
+        withTimeout(scrapeWalts(isbn), 15000),
+        withTimeout(scrapeAmazon(isbn), 15000),
+        withTimeout(scrapeCrunchyroll(isbn), 15000),
+        withTimeout(scrapeThriftBooks(isbn), 15000),
+        withTimeout(scrapeBarnesAndNoble(isbn), 15000),
+        withTimeout(getUsdToHufRate(), 10000),
+        withTimeout(getEurToHufRate(), 10000)
       ]);
 
       const offers = [];

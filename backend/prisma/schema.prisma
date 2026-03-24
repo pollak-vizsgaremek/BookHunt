@@ -17,6 +17,7 @@ model Felhasznalo {
   Kedvencek      Kedvencek[]
   Velemenyek     Velemeny[]
   Wishlist       Wishlist[]
+  Notification   Notification[]
 
   @@index([email], name: "idx_email")
   @@index([felhasznalonev], name: "idx_felhasznalonev")
@@ -151,10 +152,23 @@ model Wishlist {
   title           String   @db.VarChar(500)
   author          String?  @db.VarChar(255)
   coverUrl        String?  @db.VarChar(500)
+  isbn            String?  @db.VarChar(20)
+  last_known_price Decimal? @db.Decimal(10, 2)
   createdAt       DateTime @default(now())
   
   Felhasznalo     Felhasznalo @relation(fields: [felhasznalo_id], references: [felhasznalo_id], onDelete: Cascade, onUpdate: Cascade)
 
   @@unique([felhasznalo_id, book_id], name: "unique_wishlist")
   @@index([felhasznalo_id], name: "idx_wishlist_felhasznalo")
+}
+
+model Notification {
+  notification_id Int      @id @default(autoincrement())
+  felhasznalo_id  Int
+  szoveg          String   @db.Text
+  olvasott        Boolean  @default(false)
+  datum          DateTime @default(now())
+
+  Felhasznalo     Felhasznalo @relation(fields: [felhasznalo_id], references: [felhasznalo_id], onDelete: Cascade, onUpdate: Cascade)
+  @@index([felhasznalo_id], name: "idx_notification_felhasznalo")
 }

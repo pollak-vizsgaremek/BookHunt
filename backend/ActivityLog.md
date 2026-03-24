@@ -58,26 +58,22 @@
 - Fixed currency switch
 - Implemented scrapers for Crunchyroll, ThriftBooks, and Barnes & Noble
 
+## 2026.03.24
+- Fixed slow scraper loads: reduced Puppeteer timeouts to 12s and added 15s absolute safety bounds in `compare.js`
+- Updated scraper selectors for Crunchyroll and Walts Comic Shop to match new site layouts
+- Identified that Barnes & Noble and ThriftBooks are blocking headless scrapers directly
+- Added a manual **Refresh button** in the frontend details modal and cache-bypass param on the backend API
+- Created test folder and test files
+- Implemented continuous Price Alert system: extended Wishlist with ISBN thresholds, created a background Cron scraper scanner, and introduced Frontend notification badges with a timeline alerts dashboard view
+
 ---
 
 ## To-Do List
-- Price alert system
 - Implement user roles and permissions
 - Write unit and integration tests
-- Write database schema documentation
 - Write code comments
 - Admin page -> user management, book management, review management, etc.
 - Clean database structure
-- Soft web scraping (for the IMPORTANT comparing feature)
-- Price comparing feature
-- clean folder structure
+- Upgrade blocked scrapers (B&N, ThriftBooks) with stealth plugins or proxies
+
 ---
-
-## Issues
-- N/A on market price
-- Does the api fill in missing data for books? (e.g. cover image, etc.)
-- Solution: use the database (we have it, use it!)
-
-BooksRun: 'hey we sell this'
-Our comparing fetaure: 'okay but what about this other shop?'
-Other shops: *doesn't exist*

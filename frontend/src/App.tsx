@@ -9,6 +9,7 @@ import LoginPage from './pages/Login';
 import RegisterPage from './pages/Register';
 import Profile from './pages/Profile';
 import Wishlist from './pages/Wishlist';
+import Notifications from './pages/Notifications';
 import { useNavigate } from "react-router";
 // ===============================
 
@@ -36,6 +37,7 @@ function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/wishlist" element={<Wishlist />} />
+        <Route path="/notifications" element={<Notifications />} />
       </Routes>
       <FloatingWishlistButton />
     </>

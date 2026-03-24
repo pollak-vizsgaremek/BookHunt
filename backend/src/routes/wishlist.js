@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 // Add a book to wishlist
 router.post("/", authenticate, async (req, res) => {
   try {
-    const { bookId, title, author, coverUrl } = req.body;
+    const { bookId, title, author, coverUrl, isbn, lastKnownPrice } = req.body;
     const felhasznalo_id = req.user.userId;
 
     if (!bookId || !title) {
@@ -32,6 +32,8 @@ router.post("/", authenticate, async (req, res) => {
         title,
         author,
         coverUrl,
+        isbn: isbn || null,
+        last_known_price: lastKnownPrice ? parseFloat(lastKnownPrice) : null,
       },
     });
 

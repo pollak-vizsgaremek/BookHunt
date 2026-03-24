@@ -69,7 +69,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, onWishlistT
                         bookId: product.id.toString(),
                         title: product.title,
                         author: product.author,
-                        coverUrl: product.coverUrl
+                        coverUrl: product.coverUrl,
+                        isbn: product.isbn || null
                     })
                 });
                 
