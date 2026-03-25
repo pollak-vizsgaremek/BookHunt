@@ -66,14 +66,24 @@
 - Created test folder and test files
 - Implemented continuous Price Alert system: extended Wishlist with ISBN thresholds, created a background Cron scraper scanner, and introduced Frontend notification badges with a timeline alerts dashboard view
 
+## 2026.03.25
+- Only search for manga on Crunchyroll
+- Only search for comics on Walts
+- Default search order: popularity (descending) 
+- **Database Refactor**:
+  - Translated entire `prisma.schema` to Hungarian (models & fields)
+  - Implemented many-to-many relationship for Authors (`Szerzo` table)
+  - Cleaned up database structure and removed unused fields
+  - Updated all backend routes and services to match the new schema
+
+
 ---
 
 ## To-Do List
 - Implement user roles and permissions
 - Write unit and integration tests
-- Write code comments
 - Admin page -> user management, book management, review management, etc.
-- Clean database structure
 - Upgrade blocked scrapers (B&N, ThriftBooks) with stealth plugins or proxies
+- Check if `Tipus` enum is still necessary (currently kept for validation)
 
 ---

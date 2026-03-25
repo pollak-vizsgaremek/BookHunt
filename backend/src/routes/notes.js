@@ -83,7 +83,11 @@ router.get("/", async (req, res) => {
   try {
     const notes = await prisma.feljegyzes.findMany({
       include: {
-        Termek: true,
+        Termek: {
+          include: {
+            Szerzok: true
+          }
+        },
         WebAruhaz: true,
       },
     });
@@ -202,7 +206,11 @@ router.get("/:id", async (req, res) => {
     const note = await prisma.feljegyzes.findUnique({
       where: { feljegyzes_id },
       include: {
-        Termek: true,
+        Termek: {
+          include: {
+            Szerzok: true
+          }
+        },
         WebAruhaz: true,
       },
     });

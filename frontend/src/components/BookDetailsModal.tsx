@@ -31,7 +31,8 @@ const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
         setLoadingPrices(true);
         setPriceError(null);
         try {
-            const res = await fetch(`/api/compare/${book.isbn}?currency=${currency}${isManualRefresh ? '&refresh=true' : ''}`);
+            const categoriesParam = book.categories ? `&categories=${encodeURIComponent(book.categories.join(','))}` : '';
+            const res = await fetch(`/api/compare/${book.isbn}?currency=${currency}${categoriesParam}${isManualRefresh ? '&refresh=true' : ''}`);
             if (!res.ok) throw new Error('Failed to fetch prices');
             const data = await res.json();
             setPrices({ compare: data });
@@ -41,7 +42,7 @@ const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
         } finally {
             setLoadingPrices(false);
         }
-    }, [book?.isbn, currency]);
+    }, [book?.isbn, book?.categories, currency]);
 
     useEffect(() => {
         if (isOpen && book?.isbn) {

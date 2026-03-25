@@ -31,12 +31,12 @@ const Wishlist = () => {
       if (response.ok) {
         const data = await response.json();
         // map backend Wishlist to BookItem format
-        const mapped: BookItem[] = data.map((item: { book_id: string; title: string; author?: string; coverUrl?: string; isbn?: string }) => ({
-          id: item.book_id,
-          title: item.title,
-          author: item.author || 'Unknown Author',
-          coverUrl: item.coverUrl,
-          isLocal: item.book_id.startsWith('local_'),
+        const mapped: BookItem[] = data.map((item: { konyv_id: string; cim: string; szerzo?: string; boritokep_url?: string; isbn?: string }) => ({
+          id: item.konyv_id,
+          title: item.cim,
+          author: item.szerzo || 'Unknown Author',
+          coverUrl: item.boritokep_url,
+          isLocal: item.konyv_id.startsWith('local_'),
           isbn: item.isbn,
         }));
         setWishlistItems(mapped);

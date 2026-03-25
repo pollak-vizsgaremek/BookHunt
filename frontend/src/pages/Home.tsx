@@ -25,7 +25,7 @@ const Home = () => {
     genre: 'All',
     type: 'All',
     year: '',
-    sortBy: 'Relevance'
+    sortBy: 'Popularity'
   });
   const [startIndex, setStartIndex] = useState(0);
 
@@ -39,10 +39,10 @@ const Home = () => {
         const response = await fetch('/api/products');
         if (response.ok) {
           const data = await response.json();
-          const mapped: BookItem[] = data.map((p: any) => ({
+          const mapped: BookItem[] = data.map((p: { termek_id: number; cim: string; szerzok: string[]; tipus: string; isbn_issn: string; boritokep: string }) => ({
             id: `local_${p.termek_id}`,
             title: p.cim,
-            author: p.szerzo,
+            author: p.szerzok && p.szerzok.length > 0 ? p.szerzok.join(', ') : 'Unknown Author',
             type: p.tipus,
             isbn: p.isbn_issn,
             coverUrl: p.boritokep,
@@ -66,7 +66,7 @@ const Home = () => {
         });
         if (res.ok) {
           const data = await res.json();
-          const ids = new Set<string>(data.map((item: any) => item.book_id));
+          const ids = new Set<string>(data.map((item: { konyv_id: string }) => item.konyv_id));
           setWishlistedBookIds(ids);
         }
       } catch (err) {
@@ -120,13 +120,13 @@ const Home = () => {
         if (filters.type === 'Book') url += `&printType=books`;
         if (filters.type === 'E-book') url += `&filter=ebooks`;
         if (filters.sortBy === 'Newest') url += `&orderBy=newest`;
-        else if (filters.sortBy === 'Relevance') url += `&orderBy=relevance`;
+        else if (filters.sortBy === 'Popularity') url += `&orderBy=relevance`;
 
         const response = await fetch(url);
         
         if (response.ok) {
           const data = await response.json();
-          const allMapped: BookItem[] = (data.books || []).map((b: any) => ({
+          const allMapped: BookItem[] = (data.books || []).map((b: { googleId: string; title: string; authors?: string[]; thumbnail?: string; isbn?: string; description?: string; pageCount?: number; publishedDate?: string; categories?: string[]; language?: string }) => ({
             id: b.googleId,
             title: b.title,
             author: b.authors && b.authors.length > 0 ? b.authors.join(', ') : 'Unknown Author',
@@ -207,7 +207,7 @@ const Home = () => {
 
   // Apply custom client-side sorting before rendering
   const getSortedResults = (items: BookItem[]) => {
-      let sorted = [...items];
+      const sorted = [...items];
       if (filters.sortBy === 'A-Z') {
           sorted.sort((a,b) => a.title.localeCompare(b.title));
       } else if (filters.sortBy === 'Z-A') {
@@ -332,7 +332,7 @@ const Home = () => {
               </div>
 
               {searchResults.length > 0 ? (
-                <div className="w-full max-h-[700px] overflow-y-auto custom-scrollbar pr-4 pb-12 shadow-inner rounded-3xl p-2 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5">
+                <div className="w-full max-h-175 overflow-y-auto custom-scrollbar pr-4 pb-12 shadow-inner rounded-3xl p-2 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5">
                     <div className="w-full justify-center grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 relative">
                         {displayedSearchResults.map((product) => (
                             <ProductCard 
@@ -388,7 +388,7 @@ const Home = () => {
                     {displayedLocalMatches.length} {displayedLocalMatches.length === 1 ? 'match' : 'matches'}
                   </span>
                 </div>
-                <div className="w-full max-h-[700px] overflow-y-auto custom-scrollbar pr-4 shadow-inner rounded-3xl p-2 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5">
+                <div className="w-full max-h-175 overflow-y-auto custom-scrollbar pr-4 shadow-inner rounded-3xl p-2 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5">
                     <div className="w-full justify-center grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {displayedLocalMatches.map((product) => (
                             <ProductCard 

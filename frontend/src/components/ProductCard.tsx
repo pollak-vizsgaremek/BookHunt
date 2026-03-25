@@ -66,10 +66,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, onWishlistT
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        bookId: product.id.toString(),
-                        title: product.title,
-                        author: product.author,
-                        coverUrl: product.coverUrl,
+                        konyv_id: product.id.toString(),
+                        cim: product.title,
+                        szerzo: product.author,
+                        boritokep_url: product.coverUrl,
                         isbn: product.isbn || null
                     })
                 });

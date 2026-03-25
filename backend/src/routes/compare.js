@@ -36,40 +36,48 @@ const BOOKSRUN_BUY_URL = 'https://booksrun.com/api/v3/price';
  */
 router.get('/:isbn', async (req, res) => {
   const { isbn } = req.params;
-  const { currency = 'HUF', refresh = 'false' } = req.query;
+  const { currency = 'HUF', refresh = 'false', categories = '' } = req.query;
   if (!isbn) return res.status(400).json({ error: 'ISBN is required' });
+
+  const categoryList = categories.toLowerCase().split(',');
+  const isManga = categoryList.some(c => c.includes('manga'));
+  const isComic = categoryList.some(c => c.includes('comic') || c.includes('graphic novel'));
 
   try {
     let finalResultData = null;
 
     // 1. Check DB Cache
-    const cached = await prisma.cachedPrice.findUnique({ where: { isbn } });
+    const cached = await prisma.gyorsitotarazottAr.findUnique({ where: { isbn } });
     if (cached && refresh !== 'true') {
-      const isFresh = (new Date() - cached.updatedAt) < 60 * 60 * 1000; // 1 hour
+      const isFresh = (new Date() - cached.frissitve) < 60 * 60 * 1000; // 1 hour
       if (isFresh) {
-        finalResultData = cached.data;
+        finalResultData = cached.adatok;
       }
     }
 
     // 2. Fetch external if no valid cache
     if (!finalResultData) {
-      const [
-         booksRunRes, libriData, booklineData, libristoData, 
-         waltsData, amazonData, crData, tbData, bnData, 
-         usdRateRes, eurRateRes
-      ] = await Promise.allSettled([
+      const scraperPromises = [
         withTimeout(axios.get(`${BOOKSRUN_BUY_URL}/buy/${isbn}`, { params: { key: process.env.BOOKSRUN_API_KEY } }), 15000),
         withTimeout(scrapeLibri(isbn), 15000),
         withTimeout(scrapeBookline(isbn), 15000),
         withTimeout(scrapeLibristo(isbn), 15000),
-        withTimeout(scrapeWalts(isbn), 15000),
+        // Only run Walts for comics
+        isComic ? withTimeout(scrapeWalts(isbn), 15000) : Promise.resolve(null),
         withTimeout(scrapeAmazon(isbn), 15000),
-        withTimeout(scrapeCrunchyroll(isbn), 15000),
+        // Only run Crunchyroll for manga
+        isManga ? withTimeout(scrapeCrunchyroll(isbn), 15000) : Promise.resolve(null),
         withTimeout(scrapeThriftBooks(isbn), 15000),
         withTimeout(scrapeBarnesAndNoble(isbn), 15000),
         withTimeout(getUsdToHufRate(), 10000),
         withTimeout(getEurToHufRate(), 10000)
-      ]);
+      ];
+
+      const [
+         booksRunRes, libriData, booklineData, libristoData, 
+         waltsData, amazonData, crData, tbData, bnData, 
+         usdRateRes, eurRateRes
+      ] = await Promise.allSettled(scraperPromises);
 
       const offers = [];
       const rate = usdRateRes.status === 'fulfilled' ? usdRateRes.value : 360; // fallback USD rate
@@ -155,10 +163,10 @@ router.get('/:isbn', async (req, res) => {
         offers
       };
 
-      await prisma.cachedPrice.upsert({
+      await prisma.gyorsitotarazottAr.upsert({
         where: { isbn },
-        update: { data: finalResultData, updatedAt: new Date() },
-        create: { isbn, data: finalResultData }
+        update: { adatok: finalResultData, frissitve: new Date() },
+        create: { isbn, adatok: finalResultData }
       });
     }
 
