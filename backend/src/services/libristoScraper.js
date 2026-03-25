@@ -21,17 +21,25 @@ export const scrapeLibristo = async (isbn) => {
     });
     
     // Navigate to Libristo search page
-    const searchUrl = `https://www.libristo.hu/hu/kereses?q=${isbn}`;
+    const searchUrl = `https://www.libristo.hu/hu/kereses?t=${isbn}`;
     
     // Go to the search URL, wait until the DOM is loaded
     await page.goto(searchUrl, { waitUntil: 'load', timeout: 12000 });
     
     // Cookiebot bypass
     try {
-      await page.waitForSelector('#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll', { timeout: 3000 });
-      await page.click('#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll');
+      await page.waitForFunction(() => {
+        const buttons = Array.from(document.querySelectorAll('button, a'));
+        return buttons.find(b => b.innerText.includes('Értem') || b.innerText.includes('Accept') || b.id === 'CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll');
+      }, { timeout: 5000 });
+      
+      await page.evaluate(() => {
+        const buttons = Array.from(document.querySelectorAll('button, a'));
+        const btn = buttons.find(b => b.innerText.includes('Értem') || b.innerText.includes('Accept') || b.id === 'CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll');
+        if (btn) btn.click();
+      });
       // wait a bit for react rendering
-      await page.waitForTimeout(1000); 
+      await new Promise(resolve => setTimeout(resolve, 1000));
     } catch (e) {
       // Cookiebot not found or already accepted
     }
@@ -39,13 +47,16 @@ export const scrapeLibristo = async (isbn) => {
     // Evaluate page content to find the price and product URL
     const data = await page.evaluate(() => {
       // Find the first product link in search results, if any
-      const productSelector = 'a.product-title, a.book-title, .product a, .item a, .c-product__title';
+      const productSelector = 'a.font-heading, a.product-title, a.book-title, .product a, .item a, .c-product__title';
       const firstProductLink = document.querySelector(productSelector);
       
-      // Look for any price element
-      const priceElement = document.querySelector('.price, .product-price, strong, .c-price');
+      // Look for specific price element from browser investigation
+      const priceElement = document.querySelector('span.text-5xl.font-bold.text-black, span.text-sm.font-bold.text-black, .price, .product-price, .c-price');
       
-      if (!priceElement) return null;
+      if (!priceElement) {
+        // Log all text to help debugging
+        return { error: 'Price element not found', html: document.body.innerText.substring(0, 500) };
+      }
       
       let priceText = priceElement.innerText || priceElement.textContent;
       
@@ -57,7 +68,8 @@ export const scrapeLibristo = async (isbn) => {
       return { priceText, link };
     });
     
-    if (!data || !data.priceText) {
+    if (!data || data.error || !data.priceText) {
+      console.log(`[Libristo Debug] Evaluation failed: ${data?.error || 'No priceText'}`);
       return null;
     }
     

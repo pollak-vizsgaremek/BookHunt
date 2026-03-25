@@ -8,14 +8,14 @@ import { withTimeout } from '../utils/timeout.js';
 export async function checkPriceAlerts(prisma) {
   console.log("Running Price Alerts Scan...");
   try {
-    const wishlists = await prisma.wishlist.findMany({
+    const wishlists = await prisma.kivansaglista.findMany({
       where: { isbn: { not: null } },
       distinct: ['isbn'],
     });
 
     for (const item of wishlists) {
-      const { isbn, last_known_price, title } = item;
-      if (!last_known_price) continue; 
+      const { isbn, utolso_ismert_ar, cim } = item;
+      if (!utolso_ismert_ar) continue; 
 
       const results = await Promise.allSettled([
          withTimeout(scrapeAmazon(isbn), 15000).catch(() => null),
@@ -33,28 +33,28 @@ export async function checkPriceAlerts(prisma) {
 
       // Find lowest price
       const lowestOffer = offers.sort((a, b) => a.price - b.price)[0];
-      const threshold = parseFloat(last_known_price);
+      const threshold = parseFloat(utolso_ismert_ar);
 
       if (lowestOffer.price < threshold) {
          // Notify all users who have this book on wishlist
-         const usersToNotify = await prisma.wishlist.findMany({
+         const usersToNotify = await prisma.kivansaglista.findMany({
             where: { isbn },
             select: { felhasznalo_id: true }
          });
 
          for (const user of usersToNotify) {
-            await prisma.notification.create({
+            await prisma.ertesites.create({
                data: {
                   felhasznalo_id: user.felhasznalo_id,
-                  szoveg: `Price Drop Alert! '${title}' is now ${lowestOffer.price} ${lowestOffer.currency} on ${lowestOffer.store}!`
+                  szoveg: `Price Drop Alert! '${cim}' is now ${lowestOffer.price} ${lowestOffer.currency} on ${lowestOffer.store}!`
                }
             });
          }
 
          // Update threshold
-         await prisma.wishlist.updateMany({
+         await prisma.kivansaglista.updateMany({
             where: { isbn },
-            data: { last_known_price: lowestOffer.price }
+            data: { utolso_ismert_ar: lowestOffer.price }
          });
       }
     }

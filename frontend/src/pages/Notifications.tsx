@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 
 interface AppNotification {
-  notification_id: number;
+  ertesites_id: number;
   szoveg: string;
   olvasott: boolean;
   datum: string;
@@ -37,7 +37,7 @@ const Notifications = () => {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` }
       });
-      setNotifications(prev => prev.map(n => n.notification_id === id ? { ...n, olvasott: true } : n));
+      setNotifications(prev => prev.map(n => n.ertesites_id === id ? { ...n, olvasott: true } : n));
     } catch (e) { console.error(e); }
   };
 
@@ -59,7 +59,7 @@ const Notifications = () => {
           <div className="space-y-4">
             {notifications.map((n) => (
               <motion.div
-                key={n.notification_id}
+                key={n.ertesites_id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className={`p-4 rounded-xl flex items-start justify-between border ${n.olvasott ? 'bg-gray-50 dark:bg-black/10 border-gray-100 dark:border-white/5 opacity-75' : 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800/30'}`}
@@ -70,7 +70,7 @@ const Notifications = () => {
                 </div>
                 {!n.olvasott && (
                   <button 
-                    onClick={() => handleMarkAsRead(n.notification_id)}
+                    onClick={() => handleMarkAsRead(n.ertesites_id)}
                     className="ml-4 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline shrink-0"
                   >
                     Mark read

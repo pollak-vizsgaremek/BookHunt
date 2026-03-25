@@ -5,7 +5,7 @@ export interface FilterOptions {
     genre: string;
     type: 'All' | 'Book' | 'E-book' | 'Manga' | 'Graphic Novel' | 'Audiobook';
     year: string;
-    sortBy: 'Relevance' | 'Newest' | 'A-Z' | 'Z-A' | 'Year (Desc)' | 'Year (Asc)';
+    sortBy: 'Popularity' | 'Newest' | 'A-Z' | 'Z-A' | 'Year (Desc)' | 'Year (Asc)';
 }
 
 interface FilterModalProps {
@@ -40,7 +40,7 @@ const FilterModal = ({ isOpen, onClose, filters, onApply }: FilterModalProps) =>
             genre: 'All',
             type: 'All',
             year: '',
-            sortBy: 'Default (Relevance)' as any
+            sortBy: 'Popularity'
         });
     };
 
@@ -107,7 +107,7 @@ const FilterModal = ({ isOpen, onClose, filters, onApply }: FilterModalProps) =>
                             {['All', 'Book', 'E-book', 'Manga', 'Graphic Novel', 'Audiobook'].map((type) => (
                                 <button
                                     key={type}
-                                    onClick={() => setLocalFilters({ ...localFilters, type: type as any })}
+                                    onClick={() => setLocalFilters({ ...localFilters, type: type as FilterOptions['type'] })}
                                     className={`py-2 px-3 rounded-lg border text-sm font-medium transition-all ${
                                         localFilters.type === type 
                                             ? 'bg-emerald-500 text-white border-emerald-500 shadow-md' 
@@ -138,10 +138,10 @@ const FilterModal = ({ isOpen, onClose, filters, onApply }: FilterModalProps) =>
                             <label className="block text-sm font-semibold text-gray-700 dark:text-[#DFE6E6]/80 mb-2">Order By</label>
                             <select 
                                 value={localFilters.sortBy}
-                                onChange={(e) => setLocalFilters({ ...localFilters, sortBy: e.target.value as any })}
+                                onChange={(e) => setLocalFilters({ ...localFilters, sortBy: e.target.value as FilterOptions['sortBy'] })}
                                 className="w-full bg-gray-100 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-gray-900 dark:text-[#DFE6E6] focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors"
                             >
-                                <option value="Relevance">Relevance</option>
+                                <option value="Popularity">Popularity</option>
                                 <option value="Newest">Newest</option>
                                 <option value="A-Z">A-Z</option>
                                 <option value="Z-A">Z-A</option>

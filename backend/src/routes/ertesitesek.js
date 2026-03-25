@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 router.get("/", authenticate, async (req, res) => {
   try {
     const felhasznalo_id = req.user.userId;
-    const items = await prisma.notification.findMany({
+    const items = await prisma.ertesites.findMany({
       where: { felhasznalo_id },
       orderBy: { datum: 'desc' }
     });
@@ -26,16 +26,16 @@ router.post("/:id/read", authenticate, async (req, res) => {
     const id = parseInt(req.params.id);
     const felhasznalo_id = req.user.userId;
 
-    const existing = await prisma.notification.findFirst({
-      where: { notification_id: id, felhasznalo_id }
+    const existing = await prisma.ertesites.findFirst({
+      where: { ertesites_id: id, felhasznalo_id }
     });
 
     if (!existing) {
       return res.status(404).json({ error: "Notification not found" });
     }
 
-    const updated = await prisma.notification.update({
-      where: { notification_id: id },
+    const updated = await prisma.ertesites.update({
+      where: { ertesites_id: id },
       data: { olvasott: true }
     });
 

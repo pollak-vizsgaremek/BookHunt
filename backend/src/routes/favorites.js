@@ -26,12 +26,6 @@ const prisma = new PrismaClient();
  *     responses:
  *       201:
  *         description: Favorite added
- *       400:
- *         description: Missing field or already a favorite
- *       401:
- *         description: Unauthorized
- *       500:
- *         description: Failed to add favorite
  */
 router.post("/", authenticate, async (req, res) => {
   try {
@@ -72,15 +66,6 @@ router.post("/", authenticate, async (req, res) => {
  *   get:
  *     summary: Get all favorites for the logged-in user
  *     tags: [Favorites]
- *     security:
- *       - BearerAuth: []
- *     responses:
- *       200:
- *         description: List of favorites
- *       401:
- *         description: Unauthorized
- *       500:
- *         description: Failed to fetch favorites
  */
 router.get("/", authenticate, async (req, res) => {
   try {
@@ -88,7 +73,11 @@ router.get("/", authenticate, async (req, res) => {
     const favorites = await prisma.kedvencek.findMany({
       where: { felhasznalo_id },
       include: {
-        Termek: true,
+        Termek: {
+          include: {
+            Szerzok: true
+          }
+        },
       },
     });
     res.json(favorites);
@@ -104,25 +93,6 @@ router.get("/", authenticate, async (req, res) => {
  *   delete:
  *     summary: Delete a favorite by ID
  *     tags: [Favorites]
- *     security:
- *       - BearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Favorite deleted
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden
- *       404:
- *         description: Favorite not found
- *       500:
- *         description: Failed to delete favorite
  */
 router.delete("/:id", authenticate, async (req, res) => {
   try {
@@ -158,25 +128,6 @@ router.delete("/:id", authenticate, async (req, res) => {
  *   get:
  *     summary: Get a favorite by ID
  *     tags: [Favorites]
- *     security:
- *       - BearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Favorite found
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden
- *       404:
- *         description: Favorite not found
- *       500:
- *         description: Failed to fetch favorite
  */
 router.get("/:id", authenticate, async (req, res) => {
   try {
@@ -186,7 +137,11 @@ router.get("/:id", authenticate, async (req, res) => {
     const favorite = await prisma.kedvencek.findUnique({
       where: { kedvencek_id },
       include: {
-        Termek: true,
+        Termek: {
+          include: {
+            Szerzok: true
+          }
+        },
       },
     });
 

@@ -17,13 +17,13 @@ const prisma = new PrismaClient();
  *         application/json:
  *           schema:
  *             type: object
- *             required: [kedvencek_id, webaruhaz_id, last_known_price]
+ *             required: [kedvencek_id, webaruhaz_id, utolso_ismert_ar]
  *             properties:
  *               kedvencek_id:
  *                 type: integer
  *               webaruhaz_id:
  *                 type: integer
- *               last_known_price:
+ *               utolso_ismert_ar:
  *                 type: number
  *     responses:
  *       201:
@@ -35,11 +35,11 @@ const prisma = new PrismaClient();
  */
 router.post("/", async (req, res) => {
   try {
-    const { kedvencek_id, webaruhaz_id, last_known_price } = req.body;
+    const { kedvencek_id, webaruhaz_id, utolso_ismert_ar } = req.body;
 
-    if (!kedvencek_id || !webaruhaz_id || last_known_price === undefined) {
+    if (!kedvencek_id || !webaruhaz_id || utolso_ismert_ar === undefined) {
       return res.status(400).json({
-        error: "kedvencek_id, webaruhaz_id, and last_known_price are required",
+        error: "kedvencek_id, webaruhaz_id, and utolso_ismert_ar are required",
       });
     }
 
@@ -47,7 +47,7 @@ router.post("/", async (req, res) => {
       data: {
         kedvencek_id,
         webaruhaz_id,
-        last_known_price,
+        utolso_ismert_ar,
       },
     });
 
