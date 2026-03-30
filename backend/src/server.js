@@ -20,6 +20,8 @@ import compareRoutes from "./routes/compare.js";
 import kivansaglistaRoutes from "./routes/kivansaglista.js";
 import ertesitesekRoutes from "./routes/ertesitesek.js";
 import { startPriceAlerts } from "./scripts/priceAlertCron.js";
+import { errorHandler } from "./middleware/errorHandler.js";
+import adminRoutes from "./routes/adminRoutes.js";
 
 // Swagger setup
 const swaggerOptions = {
@@ -75,6 +77,7 @@ app.use("/api/reviews", reviewsRoutes);
 app.use("/api/books", booksRoutes);
 app.use("/api/book-prices", bookPricesRoutes);
 app.use("/api/compare", compareRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Root route — server status page
 app.get("/", async (req, res) => {
@@ -105,11 +108,8 @@ app.get("/", async (req, res) => {
   }
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error("Server error:", err);
-  res.status(500).json({ error: "Internal server error" });
-});
+// Global error handler (must be LAST middleware)
+app.use(errorHandler);
 
 // Start server
 app.listen(port, () => {
@@ -120,3 +120,5 @@ app.listen(port, () => {
     `Swagger documentation available at http://localhost:${port}/api-docs`,
   );
 });
+
+export default app;

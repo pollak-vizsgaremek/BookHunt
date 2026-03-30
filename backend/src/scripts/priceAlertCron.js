@@ -1,68 +1,118 @@
-import { scrapeAmazon } from '../services/amazonScraper.js';
-import { scrapeCrunchyroll } from '../services/crunchyrollScraper.js';
-import { scrapeThriftBooks } from '../services/thriftbooksScraper.js';
-import { scrapeWalts } from '../services/waltsScraper.js';
-import { scrapeLibristo } from '../services/libristoScraper.js';
-import { withTimeout } from '../utils/timeout.js';
+/**
+ * priceAlertCron.js
+ *
+ * Háttérfolyamat, ami 12 óránként ellenőrzi az árcsökkentéseket
+ * az összes beállított kívánságlistán.
+ *
+ * FONTOS optimalizáció: Batched (kötegelt) feldolgozás – nem tölti be
+ * egyszerre az összes könyvet memóriába. BATCH_SIZE könyvenként dolgoz,
+ * és csak ISBN-enkénti lekérdezést indít az orchestrátorhoz.
+ */
+
+import { runScrapers } from '../services/scraperOrchestrator.js';
+
+const BATCH_SIZE = 20; // Egyszerre max ennyi egyedi ISBN-t dolgoz fel
 
 export async function checkPriceAlerts(prisma) {
-  console.log("Running Price Alerts Scan...");
+  console.log(`[PriceAlert] Scanning started at ${new Date().toISOString()}`);
+
   try {
-    const wishlists = await prisma.kivansaglista.findMany({
-      where: { isbn: { not: null } },
-      distinct: ['isbn'],
-    });
+    let skip = 0;
+    let processedTotal = 0;
+    let alertsSentTotal = 0;
 
-    for (const item of wishlists) {
-      const { isbn, utolso_ismert_ar, cim } = item;
-      if (!utolso_ismert_ar) continue; 
+    // Lapozva (paginated) dolgozzuk fel a wishlist elemeket
+    while (true) {
+      // Lekérjük a következő köteg egyedi ISBN-t
+      const batch = await prisma.kivansaglista.findMany({
+        where: { isbn: { not: null } },
+        distinct: ['isbn'],
+        select: { isbn: true, cim: true, utolso_ismert_ar: true },
+        skip,
+        take: BATCH_SIZE,
+        orderBy: { kivansaglista_id: 'asc' },
+      });
 
-      const results = await Promise.allSettled([
-         withTimeout(scrapeAmazon(isbn), 15000).catch(() => null),
-         withTimeout(scrapeCrunchyroll(isbn), 15000).catch(() => null),
-         withTimeout(scrapeThriftBooks(isbn), 15000).catch(() => null),
-         withTimeout(scrapeWalts(isbn), 15000).catch(() => null),
-         withTimeout(scrapeLibristo(isbn), 15000).catch(() => null)
-      ]);
+      if (batch.length === 0) break; // Nincs több feldolgozni való
 
-      const offers = results
-        .filter(r => r.status === 'fulfilled' && r.value)
-        .map(r => r.value);
+      console.log(`[PriceAlert] Processing batch: ${skip + 1}–${skip + batch.length}`);
 
-      if (offers.length === 0) continue;
+      // Batch elemeit sorban (nem párhuzamosan!) dolgozzuk fel
+      // hogy ne indítsunk egyidejűleg 20 × 5 Puppeteer-t
+      for (const item of batch) {
+        const { isbn, cim, utolso_ismert_ar } = item;
 
-      // Find lowest price
-      const lowestOffer = offers.sort((a, b) => a.price - b.price)[0];
-      const threshold = parseFloat(utolso_ismert_ar);
+        // Ha nincs referencia-ár, nem tudunk áresést detektálni
+        if (!utolso_ismert_ar) continue;
 
-      if (lowestOffer.price < threshold) {
-         // Notify all users who have this book on wishlist
-         const usersToNotify = await prisma.kivansaglista.findMany({
-            where: { isbn },
-            select: { felhasznalo_id: true }
-         });
+        try {
+          const offers = await runScrapers({ isbn });
 
-         for (const user of usersToNotify) {
-            await prisma.ertesites.create({
-               data: {
-                  felhasznalo_id: user.felhasznalo_id,
-                  szoveg: `Price Drop Alert! '${cim}' is now ${lowestOffer.price} ${lowestOffer.currency} on ${lowestOffer.store}!`
-               }
+          if (offers.length === 0) continue;
+
+          // Legolcsóbb ajánlat (az orchestrátor már rendezi, de biztosra megyünk)
+          const lowestOffer = offers.reduce(
+            (min, o) => (o.price < min.price ? o : min),
+            offers[0]
+          );
+
+          const threshold = parseFloat(utolso_ismert_ar);
+
+          if (lowestOffer.price < threshold) {
+            // Értesítés küldése minden érintett felhasználónak
+            const usersToNotify = await prisma.kivansaglista.findMany({
+              where: { isbn },
+              select: { felhasznalo_id: true },
             });
-         }
 
-         // Update threshold
-         await prisma.kivansaglista.updateMany({
-            where: { isbn },
-            data: { utolso_ismert_ar: lowestOffer.price }
-         });
+            const notifications = usersToNotify.map(user =>
+              prisma.ertesites.create({
+                data: {
+                  felhasznalo_id: user.felhasznalo_id,
+                  szoveg: `Áresés! '${cim}' mostantól ${lowestOffer.price.toLocaleString('hu-HU')} Ft ${lowestOffer.store}-ban!`,
+                },
+              })
+            );
+
+            // Értesítések párhuzamos létrehozása (DB műveletek, nem scrapers)
+            await Promise.allSettled(notifications);
+
+            // Referencia-ár frissítése az új legalacsonyabb árra
+            await prisma.kivansaglista.updateMany({
+              where: { isbn },
+              data: { utolso_ismert_ar: lowestOffer.price },
+            });
+
+            alertsSentTotal += usersToNotify.length;
+            console.log(`[PriceAlert] Price drop detected for "${cim}" (${isbn}): ${threshold} → ${lowestOffer.price} HUF. Notified ${usersToNotify.length} user(s).`);
+          }
+        } catch (itemError) {
+          // Egy könyv hibája nem állítja le a többi feldolgozását
+          console.error(`[PriceAlert] Error processing ISBN ${isbn}:`, itemError.message);
+        }
+
+        processedTotal++;
       }
+
+      skip += batch.length;
+
+      // Ha a batch kisebb volt mint BATCH_SIZE, elértük a végét
+      if (batch.length < BATCH_SIZE) break;
     }
-  } catch (e) { console.error("Cron Error:", e); }
+
+    console.log(`[PriceAlert] Scan complete. Processed: ${processedTotal} unique ISBNs, Alerts sent: ${alertsSentTotal}`);
+  } catch (e) {
+    console.error('[PriceAlert] Fatal cron error:', e);
+  }
 }
 
 export function startPriceAlerts(prisma) {
-   checkPriceAlerts(prisma); 
-   setInterval(() => checkPriceAlerts(prisma), 12 * 60 * 60 * 1000); 
-   console.log("Price Alerts Crontab initialized.");
+  // Nem indítja el azonnal (a szerver indulásakor ne terhelje azonnal a scrapereket)
+  // Első futás 5 perccel a szerver indítása után
+  setTimeout(() => checkPriceAlerts(prisma), 5 * 60 * 1000);
+
+  // Ismétlés: 12 óránként
+  setInterval(() => checkPriceAlerts(prisma), 12 * 60 * 60 * 1000);
+
+  console.log('[PriceAlert] Price alert cron initialized (first run in 5 minutes, then every 12 hours).');
 }

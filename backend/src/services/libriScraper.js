@@ -1,6 +1,5 @@
 import { politeScraper, delay } from './scraper.js';
 import * as cheerio from 'cheerio';
-import fs from 'fs';
 
 export const scrapeLibri = async (isbn) => {
   try {
@@ -40,7 +39,6 @@ export const scrapeLibri = async (isbn) => {
     }
 
     const $ = cheerio.load(response.data);
-    fs.writeFileSync('libri_dump.html', response.data);
     
     // Finds the element containing the price (e.g., "5 841 Ft")
     const priceText = $('.online').text().trim() || $('.price-holder').text().trim() || $('.price').text().trim() || $('.discount-price').text().trim();

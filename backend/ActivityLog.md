@@ -76,14 +76,19 @@
   - Cleaned up database structure and removed unused fields
   - Updated all backend routes and services to match the new schema
 
-
----
-
-## To-Do List
-- Implement user roles and permissions
-- Write unit and integration tests
-- Admin page -> user management, book management, review management, etc.
-- Upgrade blocked scrapers (B&N, ThriftBooks) with stealth plugins or proxies
-- Check if `Tipus` enum is still necessary (currently kept for validation)
-
----
+## 2026.03.30
+- **Security & Stability Refactor**:
+  - Implemented global error handler (`errorHandler.js`) with Prisma-specific error catching.
+  - Fixed major bugs in `auth.js` (`undefined` fields on register and JWT parsing errors).
+  - Switched `403` to `401` in auth middleware for expired/invalid tokens.
+  - Added strict parameter validations across POST/PUT endpoints (e.g., max 2000 chars on reviews).
+- **Backend Optimization**:
+  - Created a centralized `scraperOrchestrator.js` utilizing `Promise.allSettled` for concurrent, safe execution of all scrapers, removing duplicate logic from `compare.js`.
+  - Refactored `priceAlertCron.js` 
+  - Cleaned up leftover blocking `fs.writeFileSync` debug dumps in production scrapers.
+- **New Features**:
+  - **RBAC**: Added `Szerepkor` enum (`USER`, `ADMIN`) to Prisma and baked into JWT payloads. Added `requireAdmin` middleware.
+  - **Admin API**: Implemented double-guarded `adminRoutes.js` (manage users, reviews, products, stats).
+  - **Scraper Stealth**: Rewrote B&N and ThriftBooks scrapers using `puppeteer-extra-plugin-stealth` with randomized User-Agent pools and proper HTTP headers to bypass bot detection.
+  - **Testing Infrastructure**: Configured Native Node ESM Jest and Supertest. Wrote integration tests for auth flow and unit tests for currency utils.
+  - **Architecture Analysis**: Wrote analysis on `Tipus` enum, recommending future migration to an N:M Categories table.

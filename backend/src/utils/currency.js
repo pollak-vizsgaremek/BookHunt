@@ -30,14 +30,14 @@ export async function getEurToHufRate() {
 }
 
 /**
- * Converts a USD amount to HUF using a given exchange rate.
- * Returns null if the input is not a valid number.
+ * Converts a currency amount to HUF using a given exchange rate.
+ * Returns 0 if the input is not a valid number.
  *
- * @param {number|null} usdAmount - The price in USD
- * @param {number} rate - The USD → HUF exchange rate
- * @returns {number|null} The price in HUF, rounded to the nearest forint
+ * @param {number|null} amount - The price in original currency
+ * @param {number} rate - The exchange rate (e.g., USD → HUF)
+ * @returns {number} The price in HUF, rounded to the nearest forint
  */
-export function convertToHuf(usdAmount, rate) {
-  if (usdAmount == null || isNaN(usdAmount)) return null;
-  return Math.round(usdAmount * rate);
+export function convertToHuf(amount, rate) {
+  if (amount == null || isNaN(amount)) return 0;
+  return Math.round(amount * rate);
 }

@@ -1,27 +1,16 @@
 import express from 'express';
-import axios from 'axios';
 import { PrismaClient } from '../../generated/prisma/index.js';
-import { scrapeLibri } from '../services/libriScraper.js';
-import { scrapeBookline } from '../services/booklineScraper.js';
-import { scrapeLibristo } from '../services/libristoScraper.js';
-import { scrapeWalts } from '../services/waltsScraper.js';
-import { scrapeAmazon } from '../services/amazonScraper.js';
-import { scrapeCrunchyroll } from '../services/crunchyrollScraper.js';
-import { scrapeThriftBooks } from '../services/thriftbooksScraper.js';
-import { scrapeBarnesAndNoble } from '../services/barnesAndNobleScraper.js';
-import { getUsdToHufRate, getEurToHufRate, convertToHuf } from '../utils/currency.js';
-import { withTimeout } from '../utils/timeout.js';
+import { runScrapers } from '../services/scraperOrchestrator.js';
+import { getUsdToHufRate } from '../utils/currency.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
-
-const BOOKSRUN_BUY_URL = 'https://booksrun.com/api/v3/price';
 
 /**
  * @swagger
  * /api/compare/{isbn}:
  *   get:
- *     summary: Compare book prices from BooksRun, Libri, and Bookline
+ *     summary: Compare book prices from multiple stores
  *     tags: [Compare]
  *     parameters:
  *       - in: path
@@ -30,14 +19,38 @@ const BOOKSRUN_BUY_URL = 'https://booksrun.com/api/v3/price';
  *         schema:
  *           type: string
  *         description: ISBN of the book
+ *       - in: query
+ *         name: currency
+ *         schema:
+ *           type: string
+ *           enum: [HUF, USD]
+ *         description: Output currency (default HUF)
+ *       - in: query
+ *         name: refresh
+ *         schema:
+ *           type: string
+ *           enum: ['true', 'false']
+ *         description: Force refresh cached data
+ *       - in: query
+ *         name: categories
+ *         schema:
+ *           type: string
+ *         description: Comma-separated category list (e.g. "manga,comic")
  *     responses:
  *       200:
  *         description: Unified array of price offers
+ *       400:
+ *         description: Missing or invalid ISBN
+ *       500:
+ *         description: Failed to fetch price comparisons
  */
 router.get('/:isbn', async (req, res) => {
   const { isbn } = req.params;
   const { currency = 'HUF', refresh = 'false', categories = '' } = req.query;
-  if (!isbn) return res.status(400).json({ error: 'ISBN is required' });
+
+  if (!isbn || isbn.trim().length === 0) {
+    return res.status(400).json({ error: 'ISBN is required' });
+  }
 
   const categoryList = categories.toLowerCase().split(',');
   const isManga = categoryList.some(c => c.includes('manga'));
@@ -46,144 +59,47 @@ router.get('/:isbn', async (req, res) => {
   try {
     let finalResultData = null;
 
-    // 1. Check DB Cache
+    // 1. Ellenőrzés: van érvényes cache-ünk?
     const cached = await prisma.gyorsitotarazottAr.findUnique({ where: { isbn } });
     if (cached && refresh !== 'true') {
-      const isFresh = (new Date() - cached.frissitve) < 60 * 60 * 1000; // 1 hour
+      const isFresh = (new Date() - cached.frissitve) < 60 * 60 * 1000; // 1 óra
       if (isFresh) {
         finalResultData = cached.adatok;
       }
     }
 
-    // 2. Fetch external if no valid cache
+    // 2. Ha nincs érvényes cache: scraperек futtatása az orchestrátoron keresztül
     if (!finalResultData) {
-      const scraperPromises = [
-        withTimeout(axios.get(`${BOOKSRUN_BUY_URL}/buy/${isbn}`, { params: { key: process.env.BOOKSRUN_API_KEY } }), 15000),
-        withTimeout(scrapeLibri(isbn), 15000),
-        withTimeout(scrapeBookline(isbn), 15000),
-        withTimeout(scrapeLibristo(isbn), 15000),
-        // Only run Walts for comics
-        isComic ? withTimeout(scrapeWalts(isbn), 15000) : Promise.resolve(null),
-        withTimeout(scrapeAmazon(isbn), 15000),
-        // Only run Crunchyroll for manga
-        isManga ? withTimeout(scrapeCrunchyroll(isbn), 15000) : Promise.resolve(null),
-        withTimeout(scrapeThriftBooks(isbn), 15000),
-        withTimeout(scrapeBarnesAndNoble(isbn), 15000),
-        withTimeout(getUsdToHufRate(), 10000),
-        withTimeout(getEurToHufRate(), 10000)
-      ];
+      const offers = await runScrapers({ isbn, isManga, isComic });
 
-      const [
-         booksRunRes, libriData, booklineData, libristoData, 
-         waltsData, amazonData, crData, tbData, bnData, 
-         usdRateRes, eurRateRes
-      ] = await Promise.allSettled(scraperPromises);
-
-      const offers = [];
-      const rate = usdRateRes.status === 'fulfilled' ? usdRateRes.value : 360; // fallback USD rate
-      const eurRate = eurRateRes.status === 'fulfilled' ? eurRateRes.value : 400; // fallback EUR rate
-
-      // Parse BooksRun
-      if (booksRunRes.status === 'fulfilled' && booksRunRes.value.data?.result?.status === 'success') {
-        const brData = booksRunRes.value.data.result.text;
-        
-        if (brData?.New?.price) {
-          offers.push({
-            store: 'BooksRun',
-            condition: 'New',
-            price: convertToHuf(brData.New.price, rate),
-            currency: 'HUF',
-            buyUrl: brData.New.cart_url
-          });
-        }
-
-        if (brData?.Used?.Good?.price) {
-          offers.push({
-            store: 'BooksRun',
-            condition: 'Used',
-            price: convertToHuf(brData.Used.Good.price, rate),
-            currency: 'HUF',
-            buyUrl: brData.Used.Good.cart_url
-          });
-        }
-      }
-
-      // Parse Scrapers
-      if (libriData.status === 'fulfilled' && libriData.value) {
-        offers.push(libriData.value);
-      }
-      if (booklineData.status === 'fulfilled' && booklineData.value) {
-        offers.push(booklineData.value);
-      }
-      if (libristoData.status === 'fulfilled' && libristoData.value) {
-        offers.push(libristoData.value);
-      }
-      
-      if (waltsData.status === 'fulfilled' && waltsData.value) {
-        const wData = waltsData.value;
-        if (wData.currency === 'EUR') {
-            wData.price = convertToHuf(wData.price, eurRate);
-            wData.currency = 'HUF';
-        }
-        offers.push(wData);
-      }
-      
-      if (amazonData.status === 'fulfilled' && amazonData.value) {
-        const aData = amazonData.value;
-        if (aData.currency === 'USD') {
-            aData.price = convertToHuf(aData.price, rate);
-            aData.currency = 'HUF';
-        } else if (aData.currency === 'EUR') {
-            aData.price = convertToHuf(aData.price, eurRate);
-            aData.currency = 'HUF';
-        }
-        offers.push(aData);
-      }
-      
-      // Parse New USD Scrapers
-      const usdScrapers = [crData, tbData, bnData];
-      for (const ds of usdScrapers) {
-        if (ds.status === 'fulfilled' && ds.value) {
-          const dData = ds.value;
-          if (dData.currency === 'USD') {
-            dData.price = convertToHuf(dData.price, rate);
-            dData.currency = 'HUF';
-          }
-          offers.push(dData);
-        }
-      }
-
-      // Sort all offers by lowest price first
-      offers.sort((a, b) => a.price - b.price);
-
-      // Save to Cache
       finalResultData = {
         isbn,
         fetchedAt: new Date(),
-        offers
+        offers,
       };
 
+      // Cache mentése / frissítése
       await prisma.gyorsitotarazottAr.upsert({
         where: { isbn },
         update: { adatok: finalResultData, frissitve: new Date() },
-        create: { isbn, adatok: finalResultData }
+        create: { isbn, adatok: finalResultData },
       });
     }
 
-    // 3. Output logic: Check if USD was requested
+    // 3. Kimeneti formátum: USD konverzió ha kell
     if (currency.toUpperCase() === 'USD') {
       const liveUsdRate = await getUsdToHufRate().catch(() => 360);
       const convertedOffers = finalResultData.offers.map(offer => ({
         ...offer,
         price: Number((offer.price / liveUsdRate).toFixed(2)),
-        currency: 'USD'
+        currency: 'USD',
       }));
       return res.json({ ...finalResultData, offers: convertedOffers });
     }
 
     res.json(finalResultData);
   } catch (error) {
-    console.error('Compare route error:', error);
+    console.error(`Compare route error [ISBN: ${isbn}]:`, error);
     res.status(500).json({ error: 'Failed to fetch price comparisons' });
   }
 });

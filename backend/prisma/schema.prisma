@@ -13,6 +13,7 @@ model Felhasznalo {
   jelszo         String
   email          String         @unique
   felhasznalonev String         @unique
+  szerepkor      Szerepkor      @default(USER)
   Keres          Keres[]
   Kedvencek      Kedvencek[]
   Velemenyek     Velemeny[]
@@ -63,6 +64,11 @@ enum Tipus {
   manga
   kepregeny
   hangoskonyv
+}
+
+enum Szerepkor {
+  USER
+  ADMIN
 }
 
 model Keres {

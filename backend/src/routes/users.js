@@ -1,5 +1,6 @@
 import express from "express";
 import { PrismaClient } from "../../generated/prisma/index.js";
+import { authenticate } from "./auth.js";
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -8,15 +9,19 @@ const prisma = new PrismaClient();
  * @swagger
  * /api/users:
  *   get:
- *     summary: Get all users
+ *     summary: Get all users (requires authentication)
  *     tags: [Users]
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: List of all users
+ *       401:
+ *         description: Unauthorized
  *       500:
  *         description: Failed to fetch users
  */
-router.get("/", async (req, res) => {
+router.get("/", authenticate, async (req, res) => {
   try {
     const users = await prisma.felhasznalo.findMany({
       select: {

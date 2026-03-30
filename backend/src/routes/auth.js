@@ -65,11 +65,34 @@ router.post("/register", async (req, res) => {
   try {
     const { username, password, email } = req.body;
 
+    // --- Validáció ---
     if (!username || !password || !email) {
       return res
         .status(400)
         .json({ error: "Username, password and email are required" });
     }
+
+    if (username.length < 3 || username.length > 30) {
+      return res.status(400).json({ error: "Username must be between 3 and 30 characters" });
+    }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      return res.status(400).json({ error: "Username can only contain letters, numbers, and underscores" });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
+
+    // bcrypt truncates at 72 bytes – warn if password is too long
+    if (Buffer.byteLength(password, 'utf8') > 72) {
+      return res.status(400).json({ error: "Password must be 72 characters or fewer" });
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: "Invalid email address" });
+    }
+    // --- Validáció vége ---
 
     const existingUser = await prisma.felhasznalo.findUnique({
       where: { felhasznalonev: username },
@@ -77,6 +100,14 @@ router.post("/register", async (req, res) => {
 
     if (existingUser) {
       return res.status(400).json({ error: "Username already taken" });
+    }
+
+    const existingEmail = await prisma.felhasznalo.findUnique({
+      where: { email },
+    });
+
+    if (existingEmail) {
+      return res.status(400).json({ error: "Email is already registered" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -89,21 +120,20 @@ router.post("/register", async (req, res) => {
       },
     });
 
-    // Create Token
+    // Create Token — szerepkor included so requireAdmin middleware doesn't need extra DB query
     const token = jwt.sign(
-      { userId: user.felhasznalo_id },
+      { userId: user.felhasznalo_id, szerepkor: user.szerepkor },
       process.env.JWT_SECRET || "bookhunt_secret",
-      {
-        expiresIn: "7d", // Token valid for 7 days
-      },
+      { expiresIn: "7d" },
     );
 
     res.status(201).json({
       token,
       user: {
-        id: user.id,
-        username: user.username,
+        id: user.felhasznalo_id,
+        username: user.felhasznalonev,
         email: user.email,
+        szerepkor: user.szerepkor,
       },
     });
   } catch (error) {
@@ -143,11 +173,9 @@ router.post("/login", async (req, res) => {
     }
 
     const token = jwt.sign(
-      { userId: user.felhasznalo_id },
+      { userId: user.felhasznalo_id, szerepkor: user.szerepkor },
       process.env.JWT_SECRET || "bookhunt_secret",
-      {
-        expiresIn: "7d",
-      },
+      { expiresIn: "7d" },
     );
 
     res.json({
@@ -156,6 +184,7 @@ router.post("/login", async (req, res) => {
         id: user.felhasznalo_id,
         username: user.felhasznalonev,
         email: user.email,
+        szerepkor: user.szerepkor,
       },
     });
   } catch (error) {
@@ -224,7 +253,7 @@ router.post("/google", async (req, res) => {
     }
 
     const token = jwt.sign(
-      { userId: user.felhasznalo_id },
+      { userId: user.felhasznalo_id, szerepkor: user.szerepkor },
       process.env.JWT_SECRET || "bookhunt_secret",
       { expiresIn: "7d" },
     );
@@ -235,6 +264,7 @@ router.post("/google", async (req, res) => {
         id: user.felhasznalo_id,
         username: user.felhasznalonev,
         email: user.email,
+        szerepkor: user.szerepkor,
       },
     });
   } catch (error) {
