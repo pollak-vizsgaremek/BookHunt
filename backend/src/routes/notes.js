@@ -126,7 +126,7 @@ router.get("/", async (req, res) => {
  *       500:
  *         description: Failed to update note
  */
-router.put("/:id", async (req, res) => {
+router.put("/:id", authenticate, async (req, res) => {
   try {
     const feljegyzes_id = parseInt(req.params.id);
     const { termek_id, webaruhaz_id } = req.body;
@@ -164,7 +164,7 @@ router.put("/:id", async (req, res) => {
  *       500:
  *         description: Failed to delete note
  */
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", authenticate, async (req, res) => {
   try {
     const feljegyzes_id = parseInt(req.params.id);
 

@@ -209,7 +209,7 @@ const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
                                                                             </span>
                                                                         </td>
                                                                         <td className="px-4 py-3 font-bold text-emerald-600 dark:text-emerald-400">
-                                                                            {offer.price.toLocaleString('hu-HU')} {offer.currency}
+                                                                            {offer.price ? offer.price.toLocaleString('hu-HU') : '---'} {offer.currency}
                                                                         </td>
                                                                         <td className="px-4 py-3 text-right">
                                                                             <a href={offer.buyUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center bg-black hover:bg-gray-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white py-1 px-4 rounded-lg text-xs font-bold transition-all shadow-sm">
