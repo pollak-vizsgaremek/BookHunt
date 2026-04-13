@@ -3,7 +3,7 @@ import Navigation from "../components/Navigation";
 import ProductCard, { type BookItem } from "../components/ProductCard";
 import ScrollFloat from "../components/ScrollFloat";
 import Carousel from "../components/Carousel";
-import Grainient from "../components/Grainient";
+import LightRays from "../components/LightRays";
 import SplitText from "../components/SplitText";
 import BookDetailsModal from "../components/BookDetailsModal";
 import FilterModal, { type FilterOptions } from "../components/FilterModal";
@@ -226,22 +226,24 @@ const Home = () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Absolute Background Grainient */}
-      <div className="absolute inset-0 w-full h-full -z-10 bg-[#f2eadd] dark:bg-black transition-colors duration-500">
-        <div className="hidden dark:block w-full h-full">
-          <Grainient
-            color1="#312f31"
-            color2="#4d4a59"
-            color3="#7a797c"
-            grainAmount={0}
-            noiseScale={3.7}
-            blendAngle={86}
-            timeSpeed={0.55}
-            colorBalance={0.37}
-            warpStrength={2.65}
-            zoom={0.7}
-            rotationAmount={1080}
-          />
+      {/* Absolute Background LightRays */}
+      <div className="fixed inset-0 w-full h-full -z-10 bg-[#f2eadd] dark:bg-[#1a1a1c] transition-colors duration-500">
+        <div className="w-full h-full">
+            <LightRays
+                raysOrigin="top-center"
+                raysColor="#ffffff"
+                raysSpeed={1}
+                lightSpread={1.4}
+                rayLength={3}
+                pulsating={false}
+                fadeDistance={1}
+                saturation={1}
+                followMouse={true}
+                mouseInfluence={0.1}
+                noiseAmount={0}
+                distortion={0}
+                className="absolute inset-0 z-0 pointer-events-none"
+            />
         </div>
       </div>
 
