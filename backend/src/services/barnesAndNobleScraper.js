@@ -1,118 +1,79 @@
-/**
- * barnesAndNobleScraper.js  (Stealth Edition)
- *
- * Probléma az eredetivel: Barnes & Noble felismeri a Headless Chrome-ot
- * (navigator.webdriver, hiányzó Chrome pluginek, stb.) és blokkolja.
- *
- * Megoldás: puppeteer-extra + puppeteer-extra-plugin-stealth
- *   – Automatikusan patcheli a webdriver jelenlétét
- *   – Randomizált User-Agent
- *   – Valódi böngészőre jellemző header fingerprintet állít be
- */
+import { launchStealthBrowser, configurePage, emulateHumanBehavior, emulateHumanScrolling, detectBotBlock } from '../utils/browserUtils.js';
 
-import puppeteerExtra from "puppeteer-extra";
-import StealthPlugin from "puppeteer-extra-plugin-stealth";
-
-// Stealth plugin egyszer inicializálva (singleton)
-puppeteerExtra.use(StealthPlugin());
-
-// Randomizált User-Agent pool — kerüli az egy UA ismételt detectálását
-const USER_AGENTS = [
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.6312.86 Safari/537.36",
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
-];
-
-const getRandomUA = () => USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
-
-export const scrapeBarnesAndNoble = async (isbn) => {
+export const scrapeBarnesAndNoble = async (isbn, signal) => {
   let browser = null;
+
+  const onAbort = async () => {
+    if (browser) await browser.close();
+  };
+
+  if (signal) {
+    if (signal.aborted) throw new Error("Aborted");
+    signal.addEventListener("abort", onAbort, { once: true });
+  }
+
   try {
-    browser = await puppeteerExtra.launch({
-      headless: "new",
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-        "--window-size=1366,768",
-      ],
-    });
-
+    browser = await launchStealthBrowser();
     const page = await browser.newPage();
+    await configurePage(page, 'B&N');
 
-    // Randomizált viewport — valódibb böngészőt imitál
-    await page.setViewport({ width: 1366, height: 768 });
-    await page.setUserAgent(getRandomUA());
-
-    // Valódi böngészőre jellemző extra headerek
-    await page.setExtraHTTPHeaders({
-      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.9",
-      "Accept-Encoding": "gzip, deflate, br",
-      Connection: "keep-alive",
-      "Upgrade-Insecure-Requests": "1",
-      "Sec-Fetch-Site": "none",
-      "Sec-Fetch-Mode": "navigate",
-      "Sec-Fetch-User": "?1",
-      "Sec-Fetch-Dest": "document",
-    });
+    await emulateHumanBehavior(page, 'B&N');
 
     const searchUrl = `https://www.barnesandnoble.com/s/${isbn}`;
-    await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 20000 });
+    await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 12000 });
 
-    // Türelmesebben várjuk a dinamikus tartalmat
+    detectBotBlock(await page.title(), 'Barnes & Noble');
+
     await page
       .waitForSelector(".product-shelf-info, .current-price, .price, .product-list-item", { timeout: 12000 })
-      .catch(() => {}); // Nem fatális, ha a selector nem jelenik meg
+      .catch(() => {});
+
+    await emulateHumanScrolling(page, 'B&N');
 
     const data = await page.evaluate(() => {
-      // Próbáljuk a közvetlen termékoldalt első körben
       const directPrice = document.querySelector(".current-price, .sale-price, span[itemprop='price']");
       if (directPrice) {
-        const link = document.querySelector("link[rel='canonical']");
-        return {
-          priceText: directPrice.innerText || directPrice.getAttribute("content"),
-          link: link ? link.href : window.location.href,
-        };
+        return { priceText: directPrice.innerText, link: window.location.href };
       }
 
-      // Keresési eredmény lista
-      const item = document.querySelector(".product-shelf-info, .product-item, .product-list-item");
-      if (!item) return null;
+      const results = Array.from(document.querySelectorAll(".product-shelf-info, .product-list-item"));
+      const targetResult = results.find((el) => {
+        const text = el.innerText.replace(/-/g, "");
+        return text.includes(isbn);
+      }) || results[0];
 
-      const priceElem = (item.closest?.(".product-shelf") || item).querySelector(
-        ".current-price, .sale-price, .price, span[itemprop='price']"
-      );
-      const linkElem = item.querySelector("a.product-image-link, .product-info-title a, a[href*='/w/']");
+      if (!targetResult) return null;
 
-      return {
-        priceText: priceElem ? priceElem.innerText || priceElem.getAttribute("content") : null,
-        link: linkElem ? linkElem.href : null,
-      };
+      const priceElem = targetResult.querySelector(".current-price, .price");
+      let link = window.location.href;
+      const linkElem = targetResult.querySelector("a");
+      if (linkElem && linkElem.href) {
+        link = linkElem.href;
+      }
+      return { priceText: priceElem ? priceElem.innerText : "", link };
     });
 
     if (!data || !data.priceText) return null;
 
-    const priceMatch = data.priceText.replace(/,/g, "").match(/\d+(\.\d+)?/);
-    if (!priceMatch) return null;
-
-    const price = parseFloat(priceMatch[0]);
+    const { priceText, link } = data;
+    const numMatch = priceText.match(/[\d.]+/);
+    if (!numMatch) return null;
+    
+    const price = parseFloat(numMatch[0]);
     if (isNaN(price) || price === 0) return null;
 
     return {
-      store: "Barnes & Noble",
+      store: "BarnesAndNoble",
       condition: "New",
-      price,
+      price: price,
       currency: "USD",
-      buyUrl: data.link || searchUrl,
+      buyUrl: link,
     };
   } catch (err) {
-    console.error(`[BN Scraper] Error for ISBN ${isbn}:`, err.message);
-    return null;
+    if (signal?.aborted) throw new Error(`BarnesAndNoble scraper aborted for ISBN ${isbn}`);
+    throw new Error(`BarnesAndNoble scraper error for ISBN ${isbn}: ${err.message}`);
   } finally {
+    if (signal) signal.removeEventListener("abort", onAbort);
     if (browser) await browser.close();
   }
 };

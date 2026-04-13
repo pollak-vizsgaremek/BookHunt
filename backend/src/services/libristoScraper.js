@@ -1,107 +1,75 @@
-import puppeteer from 'puppeteer';
-import fs from 'fs';
+import { launchStealthBrowser, configurePage, emulateHumanBehavior, emulateHumanScrolling, detectBotBlock } from '../utils/browserUtils.js';
 
-export const scrapeLibristo = async (isbn) => {
+export const scrapeLibristo = async (isbn, signal) => {
   let browser = null;
+
+  const onAbort = async () => {
+    if (browser) await browser.close();
+  };
+
+  if (signal) {
+    if (signal.aborted) throw new Error('Aborted');
+    signal.addEventListener('abort', onAbort, { once: true });
+  }
   try {
-    browser = await puppeteer.launch({
-      headless: "new",
-      args: [
-        '--no-sandbox', 
-        '--disable-setuid-sandbox', 
-        '--disable-blink-features=AutomationControlled'
-      ]
-    });
-    
+    browser = await launchStealthBrowser();
     const page = await browser.newPage();
-    // Spoof User-Agent to avoid basic bot blocks
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-    await page.setExtraHTTPHeaders({
-       'Accept-Language': 'hu-HU,hu;q=0.9,en-US;q=0.8,en;q=0.7'
-    });
+    await configurePage(page, 'Libristo');
     
-    // Navigate to Libristo search page
+    await emulateHumanBehavior(page, 'Libristo');
+    
     const searchUrl = `https://www.libristo.hu/hu/kereses?t=${isbn}`;
-    
-    // Go to the search URL, wait until the DOM is loaded
     await page.goto(searchUrl, { waitUntil: 'load', timeout: 12000 });
     
-    // Cookiebot bypass
+    detectBotBlock(await page.title(), 'Libristo');
+    
     try {
-      await page.waitForFunction(() => {
-        const buttons = Array.from(document.querySelectorAll('button, a'));
-        return buttons.find(b => b.innerText.includes('Értem') || b.innerText.includes('Accept') || b.id === 'CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll');
-      }, { timeout: 5000 });
-      
-      await page.evaluate(() => {
-        const buttons = Array.from(document.querySelectorAll('button, a'));
-        const btn = buttons.find(b => b.innerText.includes('Értem') || b.innerText.includes('Accept') || b.id === 'CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll');
-        if (btn) btn.click();
-      });
-      // wait a bit for react rendering
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const cookieButton = await page.$('#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll');
+      if (cookieButton) {
+        await cookieButton.click();
+      }
     } catch (e) {
       // Cookiebot not found or already accepted
     }
     
-    // Evaluate page content to find the price and product URL
+    await emulateHumanScrolling(page, 'Libristo');
+    
     const data = await page.evaluate(() => {
-      // Find the first product link in search results, if any
-      const productSelector = 'a.font-heading, a.product-title, a.book-title, .product a, .item a, .c-product__title';
-      const firstProductLink = document.querySelector(productSelector);
+      const targetResult = document.querySelector('.product-box');
+      if (!targetResult) return null;
       
-      // Look for specific price element from browser investigation
-      const priceElement = document.querySelector('span.text-5xl.font-bold.text-black, span.text-sm.font-bold.text-black, .price, .product-price, .c-price');
-      
-      if (!priceElement) {
-        // Log all text to help debugging
-        return { error: 'Price element not found', html: document.body.innerText.substring(0, 500) };
+      const priceElem = targetResult.querySelector('.price span, .price');
+      let link = window.location.href;
+      const linkElem = targetResult.querySelector('a.product-link, a');
+      if (linkElem && linkElem.href) {
+        link = linkElem.href;
       }
-      
-      let priceText = priceElement.innerText || priceElement.textContent;
-      
-      let link = window.location.href; // Default to current URL if it redirected
-      if (firstProductLink && firstProductLink.href) {
-        link = firstProductLink.href;
-      }
-      
-      return { priceText, link };
+      return { priceText: priceElem ? priceElem.textContent.trim() : '', link };
     });
-    
-    if (!data || data.error || !data.priceText) {
-      console.log(`[Libristo Debug] Evaluation failed: ${data?.error || 'No priceText'}`);
-      return null;
-    }
-    
+
+    if (!data || !data.priceText) return null;
+
     const { priceText, link } = data;
-    
-    // Remove spaces, non-breaking spaces, and extract the number
-    const priceMatch = priceText.replace(/\s+/g, '').replace(/&nbsp;/g, '').replace(/Ft/gi, '').match(/\d+/);
-    if (!priceMatch) {
-      return null;
-    }
-    
-    const price = parseInt(priceMatch[0], 10);
-    
-    // Safety check - if price is 0 or NaN, ignore
-    if (isNaN(price) || price === 0) {
-        return null;
-    }
+    const cleanPriceText = priceText.replace(/\s/g, '').replace(/Ft|HUF/gi, '');
+    const numMatch = cleanPriceText.match(/\d+/);
+    if (!numMatch) return null;
+
+    const price = parseInt(numMatch[0], 10);
+    if (isNaN(price) || price === 0) return null;
 
     return {
-      store: 'libristo.hu',
+      store: 'Libristo',
       condition: 'New',
       price: price,
       currency: 'HUF',
       buyUrl: link
     };
-    
+
   } catch (err) {
-    console.error(`Libristo scraper error for ISBN ${isbn} using Puppeteer:`, err.message);
-    return null;
+    if (signal?.aborted) throw new Error(`Libristo scraper aborted for ISBN ${isbn}`);
+    throw new Error(`Libristo scraper error for ISBN ${isbn}: ${err.message}`);
   } finally {
-    if (browser) {
-      await browser.close();
-    }
+    if (signal) signal.removeEventListener('abort', onAbort);
+    if (browser) await browser.close();
   }
 };

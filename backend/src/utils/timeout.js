@@ -1,6 +1,17 @@
-export const withTimeout = (promise, ms) => {
-  const timeout = new Promise((_, reject) => {
-    setTimeout(() => reject(new Error(`Timeout after ${ms}ms`)), ms);
+export const withTimeout = (promiseFn, ms) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    controller.abort(new Error(`Timeout after ${ms}ms`));
+  }, ms);
+
+  const timeoutPromise = new Promise((_, reject) => {
+    controller.signal.addEventListener('abort', () => reject(controller.signal.reason), { once: true });
   });
-  return Promise.race([promise, timeout]);
+
+  return Promise.race([
+    promiseFn(controller.signal),
+    timeoutPromise
+  ]).finally(() => {
+    clearTimeout(timeoutId);
+  });
 };

@@ -92,3 +92,14 @@
   - **Scraper Stealth**: Rewrote B&N and ThriftBooks scrapers using `puppeteer-extra-plugin-stealth` with randomized User-Agent pools and proper HTTP headers to bypass bot detection.
   - **Testing Infrastructure**: Configured Native Node ESM Jest and Supertest. Wrote integration tests for auth flow and unit tests for currency utils.
   - **Architecture Analysis**: Wrote analysis on `Tipus` enum, recommending future migration to an N:M Categories table.
+
+## 2026.04.13
+- **Scraping Pipeline Optimization**:
+  - Refactored `timeout.js` to utilize `AbortController`, forcefully preventing memory leaks and zombie Chromium processes during scraped timeout events.
+  - Updated scraper modules to strictly throw `Error` objects on failure, allowing the orchestrator's `Promise.allSettled` to accurately track and log rejections.
+  - Increased orchestrator global scraper timeout bounds to 25 seconds to accommodate stealth plugin delays.
+- **Stealth & Anti-Bot Infrastructure**:
+  - Created a DRY, centralized `browserUtils.js` to isolate Puppeteer boilerplate logic.
+  - Rolled out `puppeteer-extra-plugin-stealth` across all retail edge cases (`Amazon`, `Libristo`, `Crunchyroll`).
+  - Emulated human interactions globally by introducing randomized navigation delays (jitter) and programmatic DOM scrolling (`window.scrollBy`) to bypass aggressive behavior-based blocking.
+  - Hardened asynchronous loops to securely swallow internally thrown `TargetCloseError` exceptions if scrapers are externally aborted by Node.js.

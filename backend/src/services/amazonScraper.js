@@ -1,36 +1,33 @@
-import puppeteer from 'puppeteer';
+import { launchStealthBrowser, configurePage, emulateHumanBehavior, emulateHumanScrolling, detectBotBlock } from '../utils/browserUtils.js';
 
-export const scrapeAmazon = async (isbn) => {
+export const scrapeAmazon = async (isbn, signal) => {
   let browser = null;
+  
+  const onAbort = async () => {
+    if (browser) await browser.close();
+  };
+  
+  if (signal) {
+    if (signal.aborted) throw new Error('Aborted');
+    signal.addEventListener('abort', onAbort, { once: true });
+  }
+
   try {
-    browser = await puppeteer.launch({
-      headless: "new",
-      args: [
-        '--no-sandbox', 
-        '--disable-setuid-sandbox', 
-        '--disable-blink-features=AutomationControlled'
-      ]
-    });
-    
+    browser = await launchStealthBrowser();
     const page = await browser.newPage();
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-    await page.setExtraHTTPHeaders({
-       'Accept-Language': 'en-US,en;q=0.9'
-    });
+    await configurePage(page, 'Amazon');
+    
+    await emulateHumanBehavior(page, 'Amazon');
     
     const searchUrl = `https://www.amazon.com/s?k=${isbn}`;
-    await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 20000 });
+    await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 12000 });
+    
+    detectBotBlock(await page.title(), 'Amazon');
+    
+    await emulateHumanScrolling(page, 'Amazon');
     
     const data = await page.evaluate(() => {
-      // Avoid sponsored products if possible, look for data-component-type="s-search-result"
-      const results = Array.from(document.querySelectorAll('div[data-component-type="s-search-result"]'));
-      let targetResult = results[0];
-      
-      if (!targetResult) {
-        // Fallback
-        targetResult = document.querySelector('.s-result-item');
-      }
-
+      let targetResult = document.querySelector('div[data-cy="asin-faceout-container"], div[data-cel-widget^="MAIN-SEARCH_RESULTS"], div[data-component-type="s-search-result"], .s-result-item');
       if (!targetResult) return null;
       
       const priceWholeElem = targetResult.querySelector('.a-price-whole');
@@ -39,54 +36,42 @@ export const scrapeAmazon = async (isbn) => {
       
       let priceText = '';
       if (priceWholeElem && priceFractionElem) {
-        priceText = (symbolElem ? symbolElem.innerText : '') + priceWholeElem.innerText + priceFractionElem.innerText;
+        priceText = (symbolElem ? symbolElem.textContent : '') + priceWholeElem.textContent + priceFractionElem.textContent;
       } else {
         const rawPriceElem = targetResult.querySelector('.a-price .a-offscreen');
         if (rawPriceElem) {
-            priceText = rawPriceElem.innerText;
+            priceText = rawPriceElem.textContent;
         }
       }
       
       let link = window.location.href;
-      const linkElem = targetResult.querySelector('a.a-link-normal.s-no-outline');
+      const linkElem = targetResult.querySelector('a.a-link-normal.s-no-outline, h2 a.a-link-normal');
       if (linkElem && linkElem.href) {
         link = linkElem.href;
       }
-      
       return { priceText, link };
     });
     
-    if (!data || !data.priceText) {
-      return null;
-    }
+    if (!data || !data.priceText) return null;
     
     const { priceText, link } = data;
-    
-    // Attempt to parse currency and number
-    // Strip everything except digits and decimal separators
     const numMatch = priceText.match(/[\d,.]+/);
     if (!numMatch) return null;
     
     let priceNumberStr = numMatch[0];
-    
-    // Check symbols:
     let currency = 'USD';
     if (priceText.includes('HUF') || priceText.includes('Ft')) {
         currency = 'HUF';
-        priceNumberStr = priceNumberStr.replace(/,/g, ''); // HUF formatting like 20,031
+        priceNumberStr = priceNumberStr.replace(/,/g, '');
     } else if (priceText.includes('€') || priceText.includes('EUR')) {
         currency = 'EUR';
-        priceNumberStr = priceNumberStr.replace(/,/g, '.'); // Convert european comma
+        priceNumberStr = priceNumberStr.replace(/,/g, '.');
     } else {
-        // Assume USD
         priceNumberStr = priceNumberStr.replace(/,/g, ''); 
     }
     
     const price = parseFloat(priceNumberStr);
-    
-    if (isNaN(price) || price === 0) {
-        return null;
-    }
+    if (isNaN(price) || price === 0) return null;
 
     return {
       store: 'Amazon',
@@ -97,11 +82,10 @@ export const scrapeAmazon = async (isbn) => {
     };
     
   } catch (err) {
-    console.error(`Amazon scraper error for ISBN ${isbn}:`, err.message);
-    return null;
+    if (signal?.aborted) throw new Error(`Amazon scraper aborted for ISBN ${isbn}`);
+    throw new Error(`Amazon scraper error for ISBN ${isbn}: ${err.message}`);
   } finally {
-    if (browser) {
-      await browser.close();
-    }
+    if (signal) signal.removeEventListener('abort', onAbort);
+    if (browser) await browser.close();
   }
 };

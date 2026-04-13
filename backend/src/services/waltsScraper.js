@@ -1,7 +1,7 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 
-export const scrapeWalts = async (isbn) => {
+export const scrapeWalts = async (isbn, signal) => {
   try {
     // Navigate to Walts Comic Shop search page
     const searchUrl = `https://waltscomicshop.com/search?q=${isbn}`;
@@ -11,7 +11,8 @@ export const scrapeWalts = async (isbn) => {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept-Language': 'en-US,en;q=0.9'
       },
-      timeout: 10000
+      timeout: 10000,
+      signal
     });
     
     const $ = cheerio.load(response.data);
@@ -61,7 +62,6 @@ export const scrapeWalts = async (isbn) => {
     if (err.response && err.response.status === 404) {
       return null;
     }
-    console.error(`Walts Comic Shop scraper error for ISBN ${isbn}:`, err.message);
-    return null;
+    throw new Error(`Walts Comic Shop scraper error for ISBN ${isbn}: ${err.message}`);
   }
 };
