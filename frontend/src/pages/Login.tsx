@@ -6,6 +6,7 @@ import Navigation from '../components/Navigation';
 import SpotlightCard from '../components/SpotlightCard';
 import StarBorder from '../components/StarBorder';
 import SplitText from '../components/SplitText';
+import LightRays from '../components/LightRays';
 
 const LoginPage = () => {
     const [formData, setFormData] = useState({
@@ -88,9 +89,28 @@ const LoginPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#f2eadd] dark:bg-[#232327] transition-colors duration-500">
-            <Navigation />
-            <div className="flex min-h-screen items-center justify-center pt-20 p-4">
+        <div className="relative min-h-screen bg-[#f2eadd] dark:bg-[#232327] transition-colors duration-500 overflow-x-hidden">
+            <div className="fixed inset-0 z-0 pointer-events-none">
+                <LightRays
+                    raysOrigin="top-center"
+                    raysColor="#ffffff"
+                    raysSpeed={1}
+                    lightSpread={1.4}
+                    rayLength={3}
+                    pulsating={false}
+                    fadeDistance={1}
+                    saturation={1}
+                    followMouse={true}
+                    mouseInfluence={0.1}
+                    noiseAmount={0}
+                    distortion={0}
+                    className="absolute inset-0 z-0 pointer-events-none"
+                />
+            </div>
+            <div className="relative z-10 w-full">
+                <Navigation />
+            </div>
+            <div className="relative z-10 flex min-h-screen items-center justify-center pt-20 p-4">
                 <SpotlightCard
                     className="w-full max-w-lg aspect-3/4 bg-cover bg-center bg-no-repeat rounded-r-3xl shadow-2xl flex flex-col items-center justify-center py-12 pl-12 pr-20 sm:py-20 sm:pl-20 sm:pr-32"
                     style={{ backgroundImage: "url('/images/book_cover.png')" }}
