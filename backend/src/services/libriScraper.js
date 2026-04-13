@@ -1,7 +1,7 @@
 import { politeScraper, delay } from './scraper.js';
 import * as cheerio from 'cheerio';
 
-export const scrapeLibri = async (isbn) => {
+export const scrapeLibri = async (isbn, signal) => {
   try {
     // Add a randomized polite delay (1-3 seconds)
     await delay(1000 + Math.random() * 2000);
@@ -10,7 +10,7 @@ export const scrapeLibri = async (isbn) => {
     let response;
     
     try {
-      response = await politeScraper.get(url);
+      response = await politeScraper.get(url, { signal });
       // Check for soft 404
       const $check = cheerio.load(response.data);
       if (!$check('.online').text().trim() && !$check('.price-holder').text().trim() && !$check('.price').text().trim()) {
@@ -20,7 +20,7 @@ export const scrapeLibri = async (isbn) => {
       if ((error.response && error.response.status === 404) || error.message === 'Soft 404') {
         // Fallback to library search
         const searchUrl = `https://www.libri.hu/talalati_lista/?text=${isbn}`;
-        const searchResponse = await politeScraper.get(searchUrl);
+        const searchResponse = await politeScraper.get(searchUrl, { signal });
         const $S = cheerio.load(searchResponse.data);
         
         // Find first link going to a book page
@@ -32,7 +32,7 @@ export const scrapeLibri = async (isbn) => {
         if (!firstBookLink) return null;
         
         url = firstBookLink.startsWith('http') ? firstBookLink : `https://www.libri.hu${firstBookLink}`;
-        response = await politeScraper.get(url);
+        response = await politeScraper.get(url, { signal });
       } else {
         throw error;
       }
@@ -65,7 +65,6 @@ export const scrapeLibri = async (isbn) => {
       buyUrl: url
     };
   } catch (error) {
-    console.error(`Libri scraper error for ISBN ${isbn}:`, error.message);
-    return null;
+    throw new Error(`Libri scraper error for ISBN ${isbn}: ${error.message}`);
   }
 };

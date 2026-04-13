@@ -22,7 +22,7 @@ import { getUsdToHufRate, getEurToHufRate, convertToHuf } from '../utils/currenc
 import { withTimeout } from '../utils/timeout.js';
 
 const BOOKSRUN_BUY_URL = 'https://booksrun.com/api/v3/price';
-const DEFAULT_SCRAPER_TIMEOUT_MS = 15000;
+const DEFAULT_SCRAPER_TIMEOUT_MS = 25000;
 const DEFAULT_RATE_TIMEOUT_MS = 10000;
 
 /**
@@ -53,25 +53,26 @@ export async function runScrapers({ isbn, isManga = false, isComic = false, usdR
 
   // Árfolyamok lekérése ha nincsenek megadva
   const ratePromises = [
-    usdRate !== null ? Promise.resolve(usdRate) : withTimeout(getUsdToHufRate(), DEFAULT_RATE_TIMEOUT_MS),
-    eurRate !== null ? Promise.resolve(eurRate) : withTimeout(getEurToHufRate(), DEFAULT_RATE_TIMEOUT_MS),
+    usdRate !== null ? Promise.resolve(usdRate) : withTimeout((signal) => getUsdToHufRate(signal), DEFAULT_RATE_TIMEOUT_MS),
+    eurRate !== null ? Promise.resolve(eurRate) : withTimeout((signal) => getEurToHufRate(signal), DEFAULT_RATE_TIMEOUT_MS),
   ];
 
   const scraperPromises = [
     withTimeout(
-      axios.get(`${BOOKSRUN_BUY_URL}/buy/${isbn}`, {
+      (signal) => axios.get(`${BOOKSRUN_BUY_URL}/buy/${isbn}`, {
         params: { key: process.env.BOOKSRUN_API_KEY },
+        signal
       }),
       DEFAULT_SCRAPER_TIMEOUT_MS
     ),
-    withTimeout(scrapeLibri(isbn), DEFAULT_SCRAPER_TIMEOUT_MS),
-    withTimeout(scrapeBookline(isbn), DEFAULT_SCRAPER_TIMEOUT_MS),
-    withTimeout(scrapeLibristo(isbn), DEFAULT_SCRAPER_TIMEOUT_MS),
-    isComic ? withTimeout(scrapeWalts(isbn), DEFAULT_SCRAPER_TIMEOUT_MS) : Promise.resolve(null),
-    withTimeout(scrapeAmazon(isbn), DEFAULT_SCRAPER_TIMEOUT_MS),
-    isManga ? withTimeout(scrapeCrunchyroll(isbn), DEFAULT_SCRAPER_TIMEOUT_MS) : Promise.resolve(null),
-    withTimeout(scrapeThriftBooks(isbn), DEFAULT_SCRAPER_TIMEOUT_MS),
-    withTimeout(scrapeBarnesAndNoble(isbn), DEFAULT_SCRAPER_TIMEOUT_MS),
+    withTimeout((signal) => scrapeLibri(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
+    withTimeout((signal) => scrapeBookline(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
+    withTimeout((signal) => scrapeLibristo(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
+    isComic ? withTimeout((signal) => scrapeWalts(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS) : Promise.resolve(null),
+    withTimeout((signal) => scrapeAmazon(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
+    isManga ? withTimeout((signal) => scrapeCrunchyroll(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS) : Promise.resolve(null),
+    withTimeout((signal) => scrapeThriftBooks(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
+    withTimeout((signal) => scrapeBarnesAndNoble(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
     ...ratePromises,
   ];
 

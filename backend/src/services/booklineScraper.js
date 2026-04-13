@@ -1,14 +1,14 @@
 import { politeScraper, delay } from './scraper.js';
 import * as cheerio from 'cheerio';
 
-export const scrapeBookline = async (isbn) => {
+export const scrapeBookline = async (isbn, signal) => {
   try {
     // Add a randomized polite delay (1-3 seconds)
     await delay(1000 + Math.random() * 2000);
     
     // Bookline handles ISBN routing best via search, which auto-redirects to product if exact match
     const searchUrl = `https://bookline.hu/search/search.action?searchfield=${isbn}`;
-    const response = await politeScraper.get(searchUrl);
+    const response = await politeScraper.get(searchUrl, { signal });
     
     const $ = cheerio.load(response.data);
     
@@ -38,7 +38,6 @@ export const scrapeBookline = async (isbn) => {
       buyUrl: finalUrl
     };
   } catch (error) {
-    console.error(`Bookline scraper error for ISBN ${isbn}:`, error.message);
-    return null;
+    throw new Error(`Bookline scraper error for ISBN ${isbn}: ${error.message}`);
   }
 };

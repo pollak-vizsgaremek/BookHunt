@@ -3,3 +3,10 @@ node_modules
 .env
 
 /generated/prisma
+
+# Temporary Debug & Logging Artifacts
+*.log
+*-debug.png
+*_dump.html
+*-result.html
+*-results.json
