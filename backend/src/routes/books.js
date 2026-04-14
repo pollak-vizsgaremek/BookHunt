@@ -74,6 +74,8 @@ router.get("/search", async (req, res) => {
         language: info.language || null,
         isbn: info.industryIdentifiers?.[0]?.identifier || null,
         previewLink: info.previewLink || null,
+        ratingsCount: info.ratingsCount || 0,
+        averageRating: info.averageRating || 0,
       };
     });
 

@@ -13,7 +13,10 @@ import Notifications from './pages/Notifications';
 import { useNavigate } from "react-router";
 // ===============================
 
+import ClickSpark from "./components/ClickSpark";
+
 function FloatingWishlistButton() {
+// ... existing code was not touched inside FloatingWishlistButton
   const navigate = useNavigate();
   return (
     <button
@@ -31,6 +34,14 @@ function FloatingWishlistButton() {
 function App() {
   return (
     <>
+      <ClickSpark 
+        sparkColor="#8ce99a" 
+        sparkSize={10} 
+        sparkRadius={15} 
+        sparkCount={8} 
+        duration={400} 
+        extraScale={1} 
+      />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<LoginPage />} />

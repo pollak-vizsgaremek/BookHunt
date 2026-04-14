@@ -126,7 +126,7 @@ const Home = () => {
         
         if (response.ok) {
           const data = await response.json();
-          const allMapped: BookItem[] = (data.books || []).map((b: { googleId: string; title: string; authors?: string[]; thumbnail?: string; isbn?: string; description?: string; pageCount?: number; publishedDate?: string; categories?: string[]; language?: string }) => ({
+          const allMapped: BookItem[] = (data.books || []).map((b: { googleId: string; title: string; authors?: string[]; thumbnail?: string; isbn?: string; description?: string; pageCount?: number; publishedDate?: string; categories?: string[]; language?: string; ratingsCount?: number; averageRating?: number }) => ({
             id: b.googleId,
             title: b.title,
             author: b.authors && b.authors.length > 0 ? b.authors.join(', ') : 'Unknown Author',
@@ -140,6 +140,8 @@ const Home = () => {
             categories: b.categories,
             language: b.language,
             isLocal: false,
+            ratingsCount: b.ratingsCount || 0,
+            averageRating: b.averageRating || 0,
           }));
 
           // Only show books that have an ISBN — required for price lookup
@@ -208,7 +210,12 @@ const Home = () => {
   // Apply custom client-side sorting before rendering
   const getSortedResults = (items: BookItem[]) => {
       const sorted = [...items];
-      if (filters.sortBy === 'A-Z') {
+      if (filters.sortBy === 'Popularity') {
+          // Google Books API is fetched using &orderBy=relevance.
+          // This allows Google's natural underlying Engine to dictate the "popularity" order.
+          // Client-side sorting using meta fields destroys their natural keyword/author matching relevance.
+          return sorted;
+      } else if (filters.sortBy === 'A-Z') {
           sorted.sort((a,b) => a.title.localeCompare(b.title));
       } else if (filters.sortBy === 'Z-A') {
           sorted.sort((a,b) => b.title.localeCompare(a.title));
