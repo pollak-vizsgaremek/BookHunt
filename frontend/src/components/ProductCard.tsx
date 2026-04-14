@@ -14,6 +14,8 @@ export interface BookItem {
     categories?: string[];
     language?: string;
     isLocal?: boolean;
+    ratingsCount?: number;
+    averageRating?: number;
 }
 
 interface ProductCardProps {
