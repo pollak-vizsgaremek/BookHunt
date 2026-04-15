@@ -1,6 +1,7 @@
 import express from "express";
 import { PrismaClient } from "../../generated/prisma/index.js";
 import { authenticate } from "./auth.js";
+import { authenticatedReadLimiter } from "../middleware/rateLimiter.js";
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -21,7 +22,7 @@ const prisma = new PrismaClient();
  *       500:
  *         description: Failed to fetch users
  */
-router.get("/", authenticate, async (req, res) => {
+router.get("/", authenticatedReadLimiter, authenticate, async (req, res) => {
   try {
     const users = await prisma.felhasznalo.findMany({
       select: {

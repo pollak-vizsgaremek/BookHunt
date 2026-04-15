@@ -33,12 +33,20 @@ const BOOKSRUN_BUY_URL = "https://booksrun.com/api/v3/price";
  *       500:
  *         description: Failed to fetch from BooksRun
  */
+// Allowlist pattern: ISBN-10 (9 digits + digit or X) or ISBN-13 (13 digits)
+const ISBN_PATTERN = /^(?:\d{9}[\dX]|\d{13})$/;
+
 router.get("/buy/:isbn", async (req, res) => {
   const { isbn } = req.params;
   const { currency = "USD" } = req.query;
 
   if (!isbn) {
     return res.status(400).json({ error: "ISBN is required." });
+  }
+
+  // SSRF prevention: reject any value that is not a valid ISBN-10 or ISBN-13
+  if (!ISBN_PATTERN.test(isbn)) {
+    return res.status(400).json({ error: "Invalid ISBN format. Must be a 10 or 13 digit ISBN." });
   }
 
   try {

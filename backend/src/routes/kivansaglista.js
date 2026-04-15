@@ -1,12 +1,13 @@
 import express from "express";
 import { PrismaClient } from "../../generated/prisma/index.js";
 import { authenticate } from "./auth.js";
+import { authenticatedReadLimiter, authenticatedLimiter } from "../middleware/rateLimiter.js";
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
 // Add a book to wishlist
-router.post("/", authenticate, async (req, res) => {
+router.post("/", authenticatedLimiter, authenticate, async (req, res) => {
   try {
     const { konyv_id, cim, szerzo, boritokep_url, isbn, utolso_ismert_ar } = req.body;
     const felhasznalo_id = req.user.userId;
@@ -45,7 +46,7 @@ router.post("/", authenticate, async (req, res) => {
 });
 
 // Get all wishlisted books for user
-router.get("/", authenticate, async (req, res) => {
+router.get("/", authenticatedReadLimiter, authenticate, async (req, res) => {
   try {
     const felhasznalo_id = req.user.userId;
     const items = await prisma.kivansaglista.findMany({
@@ -60,7 +61,7 @@ router.get("/", authenticate, async (req, res) => {
 });
 
 // Remove a book from wishlist
-router.delete("/:bookId", authenticate, async (req, res) => {
+router.delete("/:bookId", authenticatedLimiter, authenticate, async (req, res) => {
   try {
     const felhasznalo_id = req.user.userId;
     const konyv_id = req.params.bookId;

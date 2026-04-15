@@ -1,6 +1,7 @@
 import express from "express";
 import { PrismaClient } from "../../generated/prisma/index.js";
 import { authenticate } from "./auth.js";
+import { authenticatedLimiter } from "../middleware/rateLimiter.js";
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -126,7 +127,7 @@ router.get("/", async (req, res) => {
  *       500:
  *         description: Failed to update note
  */
-router.put("/:id", authenticate, async (req, res) => {
+router.put("/:id", authenticatedLimiter, authenticate, async (req, res) => {
   try {
     const feljegyzes_id = parseInt(req.params.id);
     const { termek_id, webaruhaz_id } = req.body;
@@ -164,7 +165,7 @@ router.put("/:id", authenticate, async (req, res) => {
  *       500:
  *         description: Failed to delete note
  */
-router.delete("/:id", authenticate, async (req, res) => {
+router.delete("/:id", authenticatedLimiter, authenticate, async (req, res) => {
   try {
     const feljegyzes_id = parseInt(req.params.id);
 
