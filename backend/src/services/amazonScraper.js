@@ -20,54 +20,104 @@ export const scrapeAmazon = async (isbn, signal) => {
     await emulateHumanBehavior(page, 'Amazon');
     
     const searchUrl = `https://www.amazon.com/s?k=${isbn}`;
-    await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 12000 });
     
-    detectBotBlock(await page.title(), 'Amazon');
+    let pageResponse;
+    try {
+      pageResponse = await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 15000 });
+    } catch (navErr) {
+      throw Object.assign(new Error(`Amazon navigation failed: ${navErr.message}`), { scraperStatus: 'Error' });
+    }
+
+    // Detect hard HTTP error codes (rate-limit, server error, etc.)
+    if (pageResponse) {
+      const httpStatus = pageResponse.status();
+      if (httpStatus === 503 || httpStatus === 429 || httpStatus === 451) {
+        throw Object.assign(
+          new Error(`Amazon returned HTTP ${httpStatus} for ISBN ${isbn}`),
+          { scraperStatus: 'Error' }
+        );
+      }
+    }
+    
+    const pageTitle = await page.title();
+    detectBotBlock(pageTitle, 'Amazon');
+    
+    // If Amazon is showing a CAPTCHA / robot check page
+    if (pageTitle.toLowerCase().includes('robot') || pageTitle.toLowerCase().includes('captcha')) {
+      throw Object.assign(new Error('Amazon bot-block detected'), { scraperStatus: 'Error' });
+    }
     
     await emulateHumanScrolling(page, 'Amazon');
     
     const data = await page.evaluate(() => {
-      let targetResult = document.querySelector('div[data-cy="asin-faceout-container"], div[data-cel-widget^="MAIN-SEARCH_RESULTS"], div[data-component-type="s-search-result"], .s-result-item');
-      if (!targetResult) return null;
-      
-      const priceWholeElem = targetResult.querySelector('.a-price-whole');
+      // Modern Amazon search result containers (multiple selectors for resilience)
+      const containers = [
+        ...document.querySelectorAll('[data-asin]:not([data-asin=""])'),
+        ...document.querySelectorAll('[data-component-type="s-search-result"]'),
+        ...document.querySelectorAll('div[data-cy="asin-faceout-container"]'),
+        ...document.querySelectorAll('.s-result-item[data-index]'),
+      ];
+
+      // Filter to first real product container
+      const targetResult = containers.find(el => {
+        const asin = el.getAttribute('data-asin');
+        return asin && asin.length > 0 && !el.classList.contains('AdHolder');
+      }) || containers[0];
+
+      if (!targetResult) return { notFound: true };
+
+      // Check availability — "Currently unavailable" signals "Not Found"
+      const wholeText = (targetResult.innerText || '').toLowerCase();
+      if (wholeText.includes('currently unavailable') || wholeText.includes('not available')) {
+        return { notFound: true };
+      }
+
+      // Price extraction — try structured elements first, then offscreen
+      const priceWholeElem   = targetResult.querySelector('.a-price-whole');
       const priceFractionElem = targetResult.querySelector('.a-price-fraction');
-      const symbolElem = targetResult.querySelector('.a-price-symbol');
-      
+      const symbolElem       = targetResult.querySelector('.a-price-symbol');
+      const offscreenElem    = targetResult.querySelector('.a-price .a-offscreen');
+
       let priceText = '';
       if (priceWholeElem && priceFractionElem) {
-        priceText = (symbolElem ? symbolElem.textContent : '') + priceWholeElem.textContent + priceFractionElem.textContent;
-      } else {
-        const rawPriceElem = targetResult.querySelector('.a-price .a-offscreen');
-        if (rawPriceElem) {
-            priceText = rawPriceElem.textContent;
-        }
+        priceText = (symbolElem ? symbolElem.textContent : '') +
+                    priceWholeElem.textContent +
+                    priceFractionElem.textContent;
+      } else if (offscreenElem) {
+        priceText = offscreenElem.textContent;
       }
-      
+
+      // Link extraction
       let link = window.location.href;
-      const linkElem = targetResult.querySelector('a.a-link-normal.s-no-outline, h2 a.a-link-normal');
-      if (linkElem && linkElem.href) {
-        link = linkElem.href;
-      }
+      const linkElem = targetResult.querySelector(
+        'h2 a.a-link-normal, a.a-link-normal.s-no-outline, a[data-asin]'
+      );
+      if (linkElem && linkElem.href) link = linkElem.href;
+
       return { priceText, link };
     });
     
-    if (!data || !data.priceText) return null;
+    // Book not listed on Amazon for this ISBN
+    if (!data || data.notFound || !data.priceText) {
+      return Object.assign(new Error(`Amazon: item not found for ISBN ${isbn}`), { scraperStatus: 'Not Found' });
+    }
     
     const { priceText, link } = data;
     const numMatch = priceText.match(/[\d,.]+/);
-    if (!numMatch) return null;
+    if (!numMatch) {
+      return Object.assign(new Error(`Amazon: could not parse price for ISBN ${isbn}`), { scraperStatus: 'Not Found' });
+    }
     
     let priceNumberStr = numMatch[0];
     let currency = 'USD';
     if (priceText.includes('HUF') || priceText.includes('Ft')) {
-        currency = 'HUF';
-        priceNumberStr = priceNumberStr.replace(/,/g, '');
+      currency = 'HUF';
+      priceNumberStr = priceNumberStr.replace(/,/g, '');
     } else if (priceText.includes('€') || priceText.includes('EUR')) {
-        currency = 'EUR';
-        priceNumberStr = priceNumberStr.replace(/,/g, '.');
+      currency = 'EUR';
+      priceNumberStr = priceNumberStr.replace(/,/g, '.');
     } else {
-        priceNumberStr = priceNumberStr.replace(/,/g, ''); 
+      priceNumberStr = priceNumberStr.replace(/,/g, '');
     }
     
     const price = parseFloat(priceNumberStr);
@@ -76,14 +126,18 @@ export const scrapeAmazon = async (isbn, signal) => {
     return {
       store: 'Amazon',
       condition: 'New',
-      price: price,
-      currency: currency,
-      buyUrl: link
+      price,
+      currency,
+      buyUrl: link,
+      status: 'Found',
     };
     
   } catch (err) {
     if (signal?.aborted) throw new Error(`Amazon scraper aborted for ISBN ${isbn}`);
-    throw new Error(`Amazon scraper error for ISBN ${isbn}: ${err.message}`);
+    // Re-attach scraperStatus if already set, otherwise generic error
+    const statusErr = new Error(`Amazon scraper error for ISBN ${isbn}: ${err.message}`);
+    statusErr.scraperStatus = err.scraperStatus || 'Error';
+    throw statusErr;
   } finally {
     if (signal) signal.removeEventListener('abort', onAbort);
     if (browser) await browser.close();

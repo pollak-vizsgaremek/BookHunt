@@ -3,41 +3,66 @@ import * as cheerio from 'cheerio';
 
 export const scrapeBookline = async (isbn, signal) => {
   try {
-    // Add a randomized polite delay (1-3 seconds)
+    // Polite random delay (1–3 s)
     await delay(1000 + Math.random() * 2000);
-    
-    // Bookline handles ISBN routing best via search, which auto-redirects to product if exact match
+
+    // Bookline auto-redirects to the product page if ISBN matches exactly
     const searchUrl = `https://bookline.hu/search/search.action?searchfield=${isbn}`;
-    const response = await politeScraper.get(searchUrl, { signal });
-    
+    let response;
+    try {
+      response = await politeScraper.get(searchUrl, { signal });
+    } catch (httpErr) {
+      if (httpErr.response && httpErr.response.status >= 500) {
+        const err = new Error(`Bookline server error: HTTP ${httpErr.response.status}`);
+        err.scraperStatus = 'Error';
+        throw err;
+      }
+      throw httpErr;
+    }
+
     const $ = cheerio.load(response.data);
-    
-    // Check if we hit a product page by looking for the price
-    const priceText = $('.o-product-prices .price').first().text().trim() || $('.price').first().text().trim();
-    
-    if (!priceText) {
-      return null;
-    }
-    
-    // Extract the number ignoring spaces and formatting
-    const priceMatch = priceText.replace(/\s+/g, '').match(/\d+/);
-    if (!priceMatch) {
-      return null;
-    }
-    
+
+    // Detect "no results" / soft-404 page
+    const pageText = $('body').text().toLowerCase();
+    const noResults =
+      pageText.includes('nem található') ||
+      pageText.includes('nincs találat') ||
+      pageText.includes('0 találat') ||
+      $('.empty-resultset, .no-results, .search-norslt').length > 0;
+
+    if (noResults) return null;
+
+    // Extended price selector chain
+    const priceText =
+      $('.o-product-prices .price').first().text().trim() ||
+      $('.product-detail-price').first().text().trim() ||
+      $('.price-box__price').first().text().trim() ||
+      $('.price').first().text().trim();
+
+    if (!priceText) return null;
+
+    // Strip whitespace and extract leading digit sequence (handles "5 841 Ft")
+    const cleaned = priceText.replace(/\s+/g, '').replace(/Ft|HUF/gi, '');
+    const priceMatch = cleaned.match(/\d+/);
+    if (!priceMatch) return null;
+
     const price = parseInt(priceMatch[0], 10);
-    
-    // The final URL after potential redirects
+    if (isNaN(price) || price === 0) return null;
+
+    // Final URL after potential redirect
     const finalUrl = response.request?.res?.responseUrl || searchUrl;
-    
+
     return {
       store: 'bookline.hu',
       condition: 'New',
-      price: price,
+      price,
       currency: 'HUF',
-      buyUrl: finalUrl
+      buyUrl: finalUrl,
+      status: 'Found',
     };
   } catch (error) {
-    throw new Error(`Bookline scraper error for ISBN ${isbn}: ${error.message}`);
+    const wrapped = new Error(`Bookline scraper error for ISBN ${isbn}: ${error.message}`);
+    wrapped.scraperStatus = error.scraperStatus || 'Error';
+    throw wrapped;
   }
 };

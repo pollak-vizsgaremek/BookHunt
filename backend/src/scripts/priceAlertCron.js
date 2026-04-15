@@ -30,7 +30,7 @@ export async function checkPriceAlerts(prisma) {
         select: { isbn: true, cim: true, utolso_ismert_ar: true },
         skip,
         take: BATCH_SIZE,
-        orderBy: { kivansaglista_id: 'asc' },
+        orderBy: { id: 'asc' },
       });
 
       if (batch.length === 0) break; // Nincs több feldolgozni való
@@ -46,9 +46,9 @@ export async function checkPriceAlerts(prisma) {
         if (!utolso_ismert_ar) continue;
 
         try {
-          const offers = await runScrapers({ isbn });
+          const { offers } = await runScrapers({ isbn });
 
-          if (offers.length === 0) continue;
+          if (!Array.isArray(offers) || offers.length === 0) continue;
 
           // Legolcsóbb ajánlat (az orchestrátor már rendezi, de biztosra megyünk)
           const lowestOffer = offers.reduce(
