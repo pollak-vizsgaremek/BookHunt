@@ -2,6 +2,7 @@ import express from 'express';
 import { PrismaClient } from '../../generated/prisma/index.js';
 import { runScrapers } from '../services/scraperOrchestrator.js';
 import { getUsdToHufRate } from '../utils/currency.js';
+import { normalizeAndValidateIsbn } from '../utils/isbn.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -70,6 +71,13 @@ router.get('/:isbn', async (req, res) => {
     return res.status(400).json({ error: 'ISBN is required' });
   }
 
+  let safeIsbn;
+  try {
+    safeIsbn = normalizeAndValidateIsbn(isbn);
+  } catch {
+    return res.status(400).json({ error: 'Invalid ISBN format' });
+  }
+
   const categoryList = categories.toLowerCase().split(',');
   const isManga = categoryList.some(c => c.includes('manga'));
   const isComic = categoryList.some(c => c.includes('comic') || c.includes('graphic novel'));
@@ -78,7 +86,7 @@ router.get('/:isbn', async (req, res) => {
     let finalResultData = null;
 
     // 1. Ellenőrzés: van érvényes cache-ünk?
-    const cached = await prisma.gyorsitotarazottAr.findUnique({ where: { isbn } });
+    const cached = await prisma.gyorsitotarazottAr.findUnique({ where: { isbn: safeIsbn } });
     if (cached && refresh !== 'true') {
       const isFresh = (new Date() - cached.frissitve) < 60 * 60 * 1000; // 1 óra
       if (isFresh) {
@@ -88,13 +96,13 @@ router.get('/:isbn', async (req, res) => {
 
     // 2. Ha nincs érvényes cache: scraperек futtatása az orchestrátoron keresztül
     if (!finalResultData) {
-      const { offers, allRows } = await runScrapers({ isbn, isManga, isComic });
+      const { offers, allRows } = await runScrapers({ isbn: safeIsbn, isManga, isComic });
 
       const safeOffers  = sanitizeRows(offers);
       const safeAllRows = sanitizeRows(allRows);
 
       finalResultData = {
-        isbn,
+        isbn: safeIsbn,
         fetchedAt: new Date().toISOString(), // ISO string — always JSON-safe
         offers:  safeOffers,
         allRows: safeAllRows,
@@ -102,9 +110,9 @@ router.get('/:isbn', async (req, res) => {
 
       // Cache mentése / frissítése
       await prisma.gyorsitotarazottAr.upsert({
-        where: { isbn },
+        where: { isbn: safeIsbn },
         update: { adatok: finalResultData, frissitve: new Date() },
-        create: { isbn, adatok: finalResultData },
+        create: { isbn: safeIsbn, adatok: finalResultData },
       });
     }
 
@@ -123,7 +131,7 @@ router.get('/:isbn', async (req, res) => {
   } catch (error) {
     // Log only the message — logging the raw error object risks a circular-reference
     // stack overflow when Puppeteer/Axios errors carry browser process references.
-    console.error(`Compare route error [ISBN: ${isbn}]: ${error?.message ?? error}`);
+    console.error(`Compare route error [ISBN: ${safeIsbn ?? 'invalid'}]: ${error?.message ?? error}`);
     res.status(500).json({ error: 'Failed to fetch price comparisons' });
   }
 });

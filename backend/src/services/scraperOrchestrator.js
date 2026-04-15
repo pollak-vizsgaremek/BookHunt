@@ -26,6 +26,7 @@ import { scrapeThriftBooks } from './thriftbooksScraper.js';
 import { scrapeBarnesAndNoble } from './barnesAndNobleScraper.js';
 import { getUsdToHufRate, getEurToHufRate, convertToHuf } from '../utils/currency.js';
 import { withTimeout } from '../utils/timeout.js';
+import { normalizeAndValidateIsbn } from '../utils/isbn.js';
 
 const BOOKSRUN_BUY_URL = 'https://booksrun.com/api/v3/price';
 const DEFAULT_SCRAPER_TIMEOUT_MS = 25000;
@@ -88,18 +89,19 @@ function extractOffer(status, value, reason, storeName) {
  *   offers   — csak az érvényes (price > 0) ajánlatok, ár szerint rendezve
  *   allRows  — minden scraper eredménye (Found + Not Found + Error), a frontendnek
  */
-// Allowlist pattern: ISBN-10 (9 digits + digit or X) or ISBN-13 (13 digits)
-const ISBN_PATTERN = /^(?:\d{9}[\dX]|\d{13})$/;
-
 export async function runScrapers({ isbn, isManga = false, isComic = false, usdRate = null, eurRate = null }) {
   if (!isbn) {
     throw new Error('scraperOrchestrator: isbn is required');
   }
 
-  // SSRF prevention: reject any value that is not a valid ISBN-10 or ISBN-13
-  if (!ISBN_PATTERN.test(isbn)) {
+  let safeIsbn;
+  try {
+    safeIsbn = normalizeAndValidateIsbn(isbn);
+  } catch {
     throw new Error('scraperOrchestrator: invalid ISBN format');
   }
+
+  const booksRunBuyUrl = new URL(`${BOOKSRUN_BUY_URL.replace(/\/+$/, '')}/buy/${encodeURIComponent(safeIsbn)}`).toString();
 
   // --- Árfolyamok ---
   const ratePromises = [
@@ -115,7 +117,7 @@ export async function runScrapers({ isbn, isManga = false, isComic = false, usdR
   const scraperPromises = [
     // BooksRun API — minden kategóriánál fut
     withTimeout(
-      (signal) => axios.get(`${BOOKSRUN_BUY_URL}/buy/${isbn}`, {
+      (signal) => axios.get(booksRunBuyUrl, {
         params: { key: process.env.BOOKSRUN_API_KEY },
         signal,
       }),
@@ -125,40 +127,40 @@ export async function runScrapers({ isbn, isManga = false, isComic = false, usdR
     // Libri — kihagyva manga esetén
     isManga
       ? Promise.resolve(null)
-      : withTimeout((signal) => scrapeLibri(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
+      : withTimeout((signal) => scrapeLibri(safeIsbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
 
     // Bookline — kihagyva manga esetén
     isManga
       ? Promise.resolve(null)
-      : withTimeout((signal) => scrapeBookline(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
+      : withTimeout((signal) => scrapeBookline(safeIsbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
 
     // Libristo — kihagyva manga esetén
     isManga
       ? Promise.resolve(null)
-      : withTimeout((signal) => scrapeLibristo(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
+      : withTimeout((signal) => scrapeLibristo(safeIsbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
 
     // Walts — futtatva mangánál ÉS kepregénynél
     (isComic || isManga)
-      ? withTimeout((signal) => scrapeWalts(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS)
+      ? withTimeout((signal) => scrapeWalts(safeIsbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS)
       : Promise.resolve(null),
 
     // Amazon — minden kategóriánál fut
-    withTimeout((signal) => scrapeAmazon(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
+    withTimeout((signal) => scrapeAmazon(safeIsbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
 
     // Crunchyroll — csak mangánál (nem könyvnél, nem képregénynél)
     isManga
-      ? withTimeout((signal) => scrapeCrunchyroll(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS)
+      ? withTimeout((signal) => scrapeCrunchyroll(safeIsbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS)
       : Promise.resolve(null),
 
     // ThriftBooks — kihagyva manga esetén
     isManga
       ? Promise.resolve(null)
-      : withTimeout((signal) => scrapeThriftBooks(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
+      : withTimeout((signal) => scrapeThriftBooks(safeIsbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
 
     // Barnes & Noble — kihagyva manga esetén
     isManga
       ? Promise.resolve(null)
-      : withTimeout((signal) => scrapeBarnesAndNoble(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
+      : withTimeout((signal) => scrapeBarnesAndNoble(safeIsbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
 
     ...ratePromises,
   ];
@@ -176,7 +178,7 @@ export async function runScrapers({ isbn, isManga = false, isComic = false, usdR
   scraperNames.forEach((name, i) => {
     if (results[i].status === 'rejected') {
       // Pass user-controlled values (isbn) as separate arguments, not embedded in the format string
-      console.warn('[Orchestrator]', name, 'scraper failed for ISBN', isbn + ':', results[i].reason?.message || results[i].reason);
+      console.warn('[Orchestrator]', name, 'scraper failed for ISBN', safeIsbn + ':', results[i].reason?.message || results[i].reason);
     }
   });
 
