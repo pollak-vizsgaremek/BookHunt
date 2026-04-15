@@ -1,12 +1,13 @@
 import express from "express";
 import { PrismaClient } from "../../generated/prisma/index.js";
 import { authenticate } from "./auth.js";
+import { authenticatedReadLimiter, authenticatedLimiter } from "../middleware/rateLimiter.js";
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
 // Get all notifications for the authenticated user
-router.get("/", authenticate, async (req, res) => {
+router.get("/", authenticatedReadLimiter, authenticate, async (req, res) => {
   try {
     const felhasznalo_id = req.user.userId;
     const items = await prisma.ertesites.findMany({
@@ -21,7 +22,7 @@ router.get("/", authenticate, async (req, res) => {
 });
 
 // Mark a notification as read
-router.post("/:id/read", authenticate, async (req, res) => {
+router.post("/:id/read", authenticatedLimiter, authenticate, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const felhasznalo_id = req.user.userId;

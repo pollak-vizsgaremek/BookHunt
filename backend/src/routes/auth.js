@@ -89,7 +89,18 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ error: "Password must be 72 characters or fewer" });
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    // ReDoS-safe email validation using linear-time string methods instead of
+    // a complex regex with overlapping character classes.
+    const atIndex = email.indexOf('@');
+    const isValidEmail =
+      email.length <= 254 &&
+      atIndex > 0 &&
+      atIndex === email.lastIndexOf('@') &&
+      email.indexOf('.', atIndex + 1) > atIndex + 1 &&
+      !email.includes(' ') &&
+      !email.startsWith('.') &&
+      !email.endsWith('.');
+    if (!isValidEmail) {
       return res.status(400).json({ error: "Invalid email address" });
     }
     // --- Validáció vége ---

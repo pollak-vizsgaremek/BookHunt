@@ -60,6 +60,7 @@ export const errorHandler = (err, req, res, next) => {
   }
 
   // Ismeretlen hiba – ne szivárogjon ki belső info
-  console.error(`[${new Date().toISOString()}] Unhandled error on ${req.method} ${req.path}:`, err);
+  // Pass user-influenced values (method, path) as separate arguments, not embedded in a format string
+  console.error('[Unhandled Error]', new Date().toISOString(), req.method, req.path, err);
   res.status(500).json({ error: "Internal server error" });
 };

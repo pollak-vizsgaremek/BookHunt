@@ -88,9 +88,17 @@ function extractOffer(status, value, reason, storeName) {
  *   offers   — csak az érvényes (price > 0) ajánlatok, ár szerint rendezve
  *   allRows  — minden scraper eredménye (Found + Not Found + Error), a frontendnek
  */
+// Allowlist pattern: ISBN-10 (9 digits + digit or X) or ISBN-13 (13 digits)
+const ISBN_PATTERN = /^(?:\d{9}[\dX]|\d{13})$/;
+
 export async function runScrapers({ isbn, isManga = false, isComic = false, usdRate = null, eurRate = null }) {
   if (!isbn) {
     throw new Error('scraperOrchestrator: isbn is required');
+  }
+
+  // SSRF prevention: reject any value that is not a valid ISBN-10 or ISBN-13
+  if (!ISBN_PATTERN.test(isbn)) {
+    throw new Error('scraperOrchestrator: invalid ISBN format');
   }
 
   // --- Árfolyamok ---
@@ -167,7 +175,8 @@ export async function runScrapers({ isbn, isManga = false, isComic = false, usdR
   const scraperNames = ['BooksRun', 'Libri', 'Bookline', 'Libristo', 'Walts', 'Amazon', 'Crunchyroll', 'ThriftBooks', 'BarnesAndNoble'];
   scraperNames.forEach((name, i) => {
     if (results[i].status === 'rejected') {
-      console.warn(`[Orchestrator] ${name} scraper failed for ISBN ${isbn}:`, results[i].reason?.message || results[i].reason);
+      // Pass user-controlled values (isbn) as separate arguments, not embedded in the format string
+      console.warn('[Orchestrator]', name, 'scraper failed for ISBN', isbn + ':', results[i].reason?.message || results[i].reason);
     }
   });
 
