@@ -53,10 +53,20 @@ router.post("/", authenticate, async (req, res) => {
         .json({ error: "termek_id and csillag are required" });
     }
 
+    if (typeof termek_id !== "number" || !Number.isInteger(termek_id)) {
+      return res.status(400).json({ error: "termek_id must be an integer" });
+    }
+
     if (csillag < 1 || csillag > 5 || !Number.isInteger(csillag)) {
       return res
         .status(400)
         .json({ error: "csillag must be an integer between 1 and 5" });
+    }
+
+    if (szoveg !== undefined && typeof szoveg === "string" && szoveg.length > 2000) {
+      return res
+        .status(400)
+        .json({ error: "Review text must not exceed 2000 characters" });
     }
 
     const existing = await prisma.velemeny.findUnique({
