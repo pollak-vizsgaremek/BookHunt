@@ -77,29 +77,26 @@
   - Updated all backend routes and services to match the new schema
 
 ## 2026.03.30
-- **Security & Stability Refactor**:
-  - Implemented global error handler (`errorHandler.js`) with Prisma-specific error catching.
-  - Fixed major bugs in `auth.js` (`undefined` fields on register and JWT parsing errors).
-  - Switched `403` to `401` in auth middleware for expired/invalid tokens.
-  - Added strict parameter validations across POST/PUT endpoints (e.g., max 2000 chars on reviews).
-- **Backend Optimization**:
-  - Created a centralized `scraperOrchestrator.js` utilizing `Promise.allSettled` for concurrent, safe execution of all scrapers, removing duplicate logic from `compare.js`.
-  - Refactored `priceAlertCron.js` 
-  - Cleaned up leftover blocking `fs.writeFileSync` debug dumps in production scrapers.
-- **New Features**:
-  - **RBAC**: Added `Szerepkor` enum (`USER`, `ADMIN`) to Prisma and baked into JWT payloads. Added `requireAdmin` middleware.
-  - **Admin API**: Implemented double-guarded `adminRoutes.js` (manage users, reviews, products, stats).
-  - **Scraper Stealth**: Rewrote B&N and ThriftBooks scrapers using `puppeteer-extra-plugin-stealth` with randomized User-Agent pools and proper HTTP headers to bypass bot detection.
-  - **Testing Infrastructure**: Configured Native Node ESM Jest and Supertest. Wrote integration tests for auth flow and unit tests for currency utils.
-  - **Architecture Analysis**: Wrote analysis on `Tipus` enum, recommending future migration to an N:M Categories table.
+- **Security & Stability**: Global error handler (`errorHandler.js`), auth bug fixes (`undefined` fields, JWT errors), `403→401` for invalid tokens, strict POST/PUT validation (max 2000 chars on reviews)
+- **Backend Optimization**: Centralized `scraperOrchestrator.js` with `Promise.allSettled`; refactored `priceAlertCron.js`; removed blocking `fs.writeFileSync` debug dumps
+- **RBAC**: `Szerepkor` enum (`USER`/`ADMIN`) in Prisma + JWT; `requireAdmin` middleware; double-guarded `adminRoutes.js`
+- **Scraper Stealth**: B&N + ThriftBooks rewritten with `puppeteer-extra-plugin-stealth`, randomized UA pools
+- **Testing**: Native Node ESM Jest + Supertest; auth integration tests + currency unit tests
+- **Architecture**: Analysis on `Tipus` enum → recommended N:M Categories table migration
 
 ## 2026.04.13
-- **Scraping Pipeline Optimization**:
-  - Refactored `timeout.js` to utilize `AbortController`, forcefully preventing memory leaks and zombie Chromium processes during scraped timeout events.
-  - Updated scraper modules to strictly throw `Error` objects on failure, allowing the orchestrator's `Promise.allSettled` to accurately track and log rejections.
-  - Increased orchestrator global scraper timeout bounds to 25 seconds to accommodate stealth plugin delays.
-- **Stealth & Anti-Bot Infrastructure**:
-  - Created a DRY, centralized `browserUtils.js` to isolate Puppeteer boilerplate logic.
-  - Rolled out `puppeteer-extra-plugin-stealth` across all retail edge cases (`Amazon`, `Libristo`, `Crunchyroll`).
-  - Emulated human interactions globally by introducing randomized navigation delays (jitter) and programmatic DOM scrolling (`window.scrollBy`) to bypass aggressive behavior-based blocking.
-  - Hardened asynchronous loops to securely swallow internally thrown `TargetCloseError` exceptions if scrapers are externally aborted by Node.js.
+- **Pipeline**: `timeout.js` refactored to `AbortController` (prevents memory leaks / zombie Chromium); scrapers throw proper `Error` objects; orchestrator timeout raised to 25s
+- **Stealth**: Centralized `browserUtils.js` for Puppeteer boilerplate; stealth plugin rolled out to `Amazon`, `Libristo`, `Crunchyroll`; randomized jitter + `window.scrollBy` human emulation; `TargetCloseError` swallowed on abort
+
+## 2026.04.15
+- **Scraper Overhaul**: Updated selectors + error handling across all scrapers; 3–5 CSS selector fallback chains; typed statuses (`scraperStatus: 'Error'` on 5xx/bot-block, `null` + `'Not Found'` when unlisted); soft-404 via body text ("nincs találat", "no results found")
+- **Orchestrator**: Returns `offers` + `allRows`; `extractOffer()` normalises results to `'Found'`/`'Not Found'`/`'Error'`; **MANGA gate** — only `Walts`, `Amazon`, `Crunchyroll` run for MANGA items
+- **Prices Table UX**: Status-aware price column (green / grey "Scraper operational" / amber "Webshop Server Error"); sort: Found↑ → Not Found → Error; buy button hidden for non-Found; spinner replaced with skeleton table
+- **Seeding**: `prisma/seed.js` rewritten — 15 real-ISBN items (9 books + 6 manga), `connectOrCreate` for `Szerzok`, runs scrapers + caches to `GyorsitotarazottAr`; fixed `szerzo` direct-field bug
+- **Notification Polling**: 2s startup grace period before first poll; `AbortController` cleanup on unmount; backs off to 5-min interval after 3 failures
+- **Hotfixes**:
+  - `priceAlertCron.js`: `orderBy` → `id`; destructure `{ offers }`; `Array.isArray` guard
+  - `compare.js`: `sanitizeRows()` strips non-primitive fields before Prisma JSON save; catch logs `error.message` only (no circular refs)
+  - `browserUtils.js` stealth: 5-UA pool (Chrome 122–124 + Firefox 125), matched `sec-ch-ua` headers, randomised viewport, `navigator.webdriver = false`
+  - **Libri 403**: switched to stealth Puppeteer (was plain Axios); fallback logic preserved
+  - **B&N 403**: Google `Referer` header; tries `/w/?ean={isbn}` first; 3s back-off retry

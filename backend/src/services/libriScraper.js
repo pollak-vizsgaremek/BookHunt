@@ -1,70 +1,148 @@
-import { politeScraper, delay } from './scraper.js';
-import * as cheerio from 'cheerio';
+import { launchStealthBrowser, configurePage, emulateHumanBehavior, emulateHumanScrolling, detectBotBlock } from '../utils/browserUtils.js';
 
+/**
+ * libriScraper.js
+ *
+ * Switched from plain Axios to the stealth Puppeteer browser to avoid Libri's
+ * 403 Forbidden bot-detection (which flags the static Axios user-agent).
+ * Keeps the same ISBN → product URL logic (direct URL first, search fallback).
+ */
 export const scrapeLibri = async (isbn, signal) => {
+  let browser = null;
+
+  const onAbort = async () => {
+    if (browser) await browser.close();
+  };
+
+  if (signal) {
+    if (signal.aborted) throw new Error('Aborted');
+    signal.addEventListener('abort', onAbort, { once: true });
+  }
+
   try {
-    // Add a randomized polite delay (1-3 seconds)
-    await delay(1000 + Math.random() * 2000);
-    
-    let url = `https://www.libri.hu/konyv/isbn/${isbn}.html`;
-    let response;
-    
+    browser = await launchStealthBrowser();
+    const page = await browser.newPage();
+    await configurePage(page, 'Libri');
+    await emulateHumanBehavior(page, 'Libri');
+
+    // ---- Step 1: Try direct ISBN URL ----
+    const directUrl = `https://www.libri.hu/konyv/isbn/${isbn}.html`;
+    let pageResponse;
     try {
-      response = await politeScraper.get(url, { signal });
-      // Check for soft 404
-      const $check = cheerio.load(response.data);
-      if (!$check('.online').text().trim() && !$check('.price-holder').text().trim() && !$check('.price').text().trim()) {
-        throw new Error('Soft 404');
-      }
-    } catch (error) {
-      if ((error.response && error.response.status === 404) || error.message === 'Soft 404') {
-        // Fallback to library search
-        const searchUrl = `https://www.libri.hu/talalati_lista/?text=${isbn}`;
-        const searchResponse = await politeScraper.get(searchUrl, { signal });
-        const $S = cheerio.load(searchResponse.data);
-        
-        // Find first link going to a book page
-        const firstBookLink = $S('a').filter((i, el) => {
-          const href = $S(el).attr('href');
-          return href && href.includes('/konyv/') && !href.includes('talalati_lista');
-        }).first().attr('href');
-        
-        if (!firstBookLink) return null;
-        
-        url = firstBookLink.startsWith('http') ? firstBookLink : `https://www.libri.hu${firstBookLink}`;
-        response = await politeScraper.get(url, { signal });
-      } else {
-        throw error;
+      pageResponse = await page.goto(directUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
+    } catch (navErr) {
+      throw Object.assign(new Error(`Libri navigation failed: ${navErr.message}`), { scraperStatus: 'Error' });
+    }
+
+    if (pageResponse) {
+      const httpStatus = pageResponse.status();
+      if (httpStatus >= 500 || httpStatus === 429) {
+        throw Object.assign(new Error(`Libri server error: HTTP ${httpStatus}`), { scraperStatus: 'Error' });
       }
     }
 
-    const $ = cheerio.load(response.data);
-    
-    // Finds the element containing the price (e.g., "5 841 Ft")
-    const priceText = $('.online').text().trim() || $('.price-holder').text().trim() || $('.price').text().trim() || $('.discount-price').text().trim();
-    
+    detectBotBlock(await page.title(), 'Libri');
+    await emulateHumanScrolling(page, 'Libri');
+
+    // ---- Step 2: Try to read price from current page ----
+    let finalUrl = directUrl;
+    let priceText = await page.evaluate(() => {
+      // Detect soft-404 / "not found" page
+      const bodyText = (document.body.innerText || '').toLowerCase();
+      if (bodyText.includes('nem található') || bodyText.includes('az oldal nem létezik')) {
+        return null; // signals soft-404
+      }
+      const selectors = [
+        '.online',
+        '.price-block__price',
+        '.webshop-price',
+        '.book-price',
+        '.price-holder',
+        '.discount-price',
+        '.price',
+      ];
+      for (const sel of selectors) {
+        const el = document.querySelector(sel);
+        if (el && el.textContent.trim()) return el.textContent.trim();
+      }
+      return null;
+    });
+
+    // ---- Step 3: Fallback to search if direct URL gave nothing ----
     if (!priceText) {
-      console.log(`[Libri Debug] No priceText found on URL: ${url}`);
+      const searchUrl = `https://www.libri.hu/talalati_lista/?text=${isbn}`;
+      let searchResponse;
+      try {
+        searchResponse = await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
+      } catch (navErr) {
+        throw Object.assign(new Error(`Libri search navigation failed: ${navErr.message}`), { scraperStatus: 'Error' });
+      }
+      if (searchResponse) {
+        const httpStatus = searchResponse.status();
+        if (httpStatus >= 500) {
+          throw Object.assign(new Error(`Libri search server error: HTTP ${httpStatus}`), { scraperStatus: 'Error' });
+        }
+      }
+      detectBotBlock(await page.title(), 'Libri');
+
+      // Find first book link and navigate to it
+      const firstBookHref = await page.evaluate(() => {
+        // Detect no-results page
+        const bodyText = (document.body.innerText || '').toLowerCase();
+        if (bodyText.includes('nincs találat') || bodyText.includes('0 találat')) return '__not_found__';
+        const links = Array.from(document.querySelectorAll('a[href*="/konyv/"]'));
+        const bookLink = links.find(a => !a.href.includes('talalati_lista'));
+        return bookLink ? bookLink.href : null;
+      });
+
+      if (!firstBookHref || firstBookHref === '__not_found__') return null;
+
+      finalUrl = firstBookHref;
+      await page.goto(finalUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
+      await emulateHumanScrolling(page, 'Libri');
+
+      priceText = await page.evaluate(() => {
+        const selectors = ['.online', '.price-block__price', '.webshop-price', '.book-price', '.price-holder', '.discount-price', '.price'];
+        for (const sel of selectors) {
+          const el = document.querySelector(sel);
+          if (el && el.textContent.trim()) return el.textContent.trim();
+        }
+        return null;
+      });
+    }
+
+    if (!priceText) {
+      console.log(`[Libri Debug] No priceText found on URL: ${finalUrl}`);
       return null;
     }
-    
-    // Remove spaces and extract the number (e.g. "5 841 Ft" -> "5841")
-    const priceMatch = priceText.replace(/\s+/g, '').match(/\d+/);
+
+    // Parse Hungarian price — strip whitespace, "Ft"/"HUF", then extract digits
+    const cleaned = priceText.replace(/\s+/g, '').replace(/Ft|HUF/gi, '');
+    const priceMatch = cleaned.match(/\d+/);
     if (!priceMatch) {
       console.log(`[Libri Debug] Regex failed on priceText: ${priceText}`);
       return null;
     }
-    
+
     const price = parseInt(priceMatch[0], 10);
-    
+    if (isNaN(price) || price === 0) return null;
+
     return {
-      store: 'libri.hu',
+      store:     'libri.hu',
       condition: 'New',
-      price: price,
-      currency: 'HUF',
-      buyUrl: url
+      price,
+      currency:  'HUF',
+      buyUrl:    finalUrl,
+      status:    'Found',
     };
-  } catch (error) {
-    throw new Error(`Libri scraper error for ISBN ${isbn}: ${error.message}`);
+
+  } catch (err) {
+    if (signal?.aborted) throw new Error(`Libri scraper aborted for ISBN ${isbn}`);
+    const wrapped = new Error(`Libri scraper error for ISBN ${isbn}: ${err.message}`);
+    wrapped.scraperStatus = err.scraperStatus || 'Error';
+    throw wrapped;
+  } finally {
+    if (signal) signal.removeEventListener('abort', onAbort);
+    if (browser) await browser.close();
   }
 };

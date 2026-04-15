@@ -7,6 +7,24 @@ const router = express.Router();
 const prisma = new PrismaClient();
 
 /**
+ * Strips any non-primitive / circular-reference-prone fields from an offer/row array
+ * before it is passed to Prisma JSON columns or res.json().
+ * This prevents 'Maximum call stack size exceeded' when raw Puppeteer/Axios error
+ * objects accidentally propagate into the cache payload.
+ */
+function sanitizeRows(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(item => ({
+    store:     typeof item.store     === 'string' ? item.store     : String(item.store ?? ''),
+    condition: typeof item.condition === 'string' ? item.condition : undefined,
+    price:     typeof item.price     === 'number' ? item.price     : undefined,
+    currency:  typeof item.currency  === 'string' ? item.currency  : undefined,
+    buyUrl:    typeof item.buyUrl    === 'string' ? item.buyUrl    : undefined,
+    status:    typeof item.status    === 'string' ? item.status    : undefined,
+  }));
+}
+
+/**
  * @swagger
  * /api/compare/{isbn}:
  *   get:
@@ -70,12 +88,16 @@ router.get('/:isbn', async (req, res) => {
 
     // 2. Ha nincs érvényes cache: scraperек futtatása az orchestrátoron keresztül
     if (!finalResultData) {
-      const offers = await runScrapers({ isbn, isManga, isComic });
+      const { offers, allRows } = await runScrapers({ isbn, isManga, isComic });
+
+      const safeOffers  = sanitizeRows(offers);
+      const safeAllRows = sanitizeRows(allRows);
 
       finalResultData = {
         isbn,
-        fetchedAt: new Date(),
-        offers,
+        fetchedAt: new Date().toISOString(), // ISO string — always JSON-safe
+        offers:  safeOffers,
+        allRows: safeAllRows,
       };
 
       // Cache mentése / frissítése
@@ -99,7 +121,9 @@ router.get('/:isbn', async (req, res) => {
 
     res.json(finalResultData);
   } catch (error) {
-    console.error(`Compare route error [ISBN: ${isbn}]:`, error);
+    // Log only the message — logging the raw error object risks a circular-reference
+    // stack overflow when Puppeteer/Axios errors carry browser process references.
+    console.error(`Compare route error [ISBN: ${isbn}]: ${error?.message ?? error}`);
     res.status(500).json({ error: 'Failed to fetch price comparisons' });
   }
 });

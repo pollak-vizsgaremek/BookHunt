@@ -4,9 +4,15 @@
  * Központi orchestrátor, ami az összes scrapért párhuzamosan futtatja
  * Promise.allSettled-del, így egy sikertelen scraper nem állítja le a többit.
  *
+ * Logika:
+ *  - Ha item.category === 'MANGA': csak a Walts, Amazon és Crunchyroll scrapereket futtatja.
+ *    A Libri, Bookline, Libristo, ThriftBooks és Barnes & Noble scrapereket kihagyja.
+ *  - Minden scraper statuszt ad vissza: 'Found' | 'Not Found' | 'Error'
+ *    a frontend táblában való megjelenítéshez.
+ *
  * Használat:
  *   import { runScrapers } from '../services/scraperOrchestrator.js';
- *   const offers = await runScrapers({ isbn, isManga: false, isComic: false, usdRate: 360, eurRate: 400 });
+ *   const { offers, allRows } = await runScrapers({ isbn, isManga, isComic, usdRate, eurRate });
  */
 
 import axios from 'axios';
@@ -28,51 +34,124 @@ const DEFAULT_RATE_TIMEOUT_MS = 10000;
 /**
  * Egységes ajánlat-formátum, amit minden scraper visszaad:
  * @typedef {Object} Offer
- * @property {string} store       - A webshop neve (pl. "libri.hu")
- * @property {string} condition   - "New" | "Used"
- * @property {number} price       - Ár HUF-ban
- * @property {string} currency    - Mindig "HUF" (az orchestrátor konvertálja)
- * @property {string|null} buyUrl - Vásárlási link
+ * @property {string} store        - A webshop neve (pl. "libri.hu")
+ * @property {string} [condition]  - "New" | "Used"
+ * @property {number} [price]      - Ár HUF-ban (csak ha status === 'Found')
+ * @property {string} [currency]   - Mindig "HUF" az orchestrátor után
+ * @property {string|null} [buyUrl]- Vásárlási link
+ * @property {'Found'|'Not Found'|'Error'} status - Scraper eredmény státusza
  */
+
+/**
+ * Egy scraper Promise.allSettled eredményéből kinyeri az ajánlatot
+ * és normalizálja a státuszt: 'Found' | 'Not Found' | 'Error'.
+ *
+ * @param {'fulfilled'|'rejected'} status
+ * @param {*} value  - ha fulfilled
+ * @param {*} reason - ha rejected (Error objektum, scraperStatus mezővel)
+ * @param {string} storeName - megjelenítési név ha null értéket kaptunk
+ * @returns {Offer|null}
+ */
+function extractOffer(status, value, reason, storeName) {
+  if (status === 'fulfilled') {
+    if (value === null || value === undefined) {
+      // Scraper returned null → item simply not found
+      return { store: storeName, status: 'Not Found' };
+    }
+    // Some scrapers throw an Error object as their "not found" signal
+    if (value instanceof Error) {
+      const s = value.scraperStatus || 'Not Found';
+      return { store: storeName, status: s };
+    }
+    // Normal successful offer — ensure status field is present
+    return { ...value, status: value.status || 'Found' };
+  }
+
+  // Rejected
+  if (reason) {
+    const scraperStatus = reason.scraperStatus || 'Error';
+    return { store: storeName, status: scraperStatus };
+  }
+  return { store: storeName, status: 'Error' };
+}
 
 /**
  * Futtatja az összes releváns scrapért egy adott ISBN-re párhuzamosan.
  *
  * @param {Object} params
- * @param {string} params.isbn        - A könyv ISBN száma
- * @param {boolean} [params.isManga]  - Ha igaz, a Crunchyroll scrapért is futtatja
- * @param {boolean} [params.isComic]  - Ha igaz, a Walts scrapért is futtatja
- * @param {number} [params.usdRate]   - USD→HUF árfolyam (ha ismert, nem kér le újat)
- * @param {number} [params.eurRate]   - EUR→HUF árfolyam (ha ismert, nem kér le újat)
- * @returns {Promise<Offer[]>}        - Érvényes ajánlatok tömbje, ár szerint rendezve
+ * @param {string}  params.isbn        - A könyv ISBN száma
+ * @param {boolean} [params.isManga]   - Ha igaz, manga-specifikus scrapereket futtat
+ * @param {boolean} [params.isComic]   - Ha igaz, Walts scrapért is futtatja
+ * @param {number}  [params.usdRate]   - USD→HUF árfolyam (opcionális)
+ * @param {number}  [params.eurRate]   - EUR→HUF árfolyam (opcionális)
+ * @returns {Promise<{ offers: Offer[], allRows: Offer[] }>}
+ *   offers   — csak az érvényes (price > 0) ajánlatok, ár szerint rendezve
+ *   allRows  — minden scraper eredménye (Found + Not Found + Error), a frontendnek
  */
 export async function runScrapers({ isbn, isManga = false, isComic = false, usdRate = null, eurRate = null }) {
   if (!isbn) {
     throw new Error('scraperOrchestrator: isbn is required');
   }
 
-  // Árfolyamok lekérése ha nincsenek megadva
+  // --- Árfolyamok ---
   const ratePromises = [
     usdRate !== null ? Promise.resolve(usdRate) : withTimeout((signal) => getUsdToHufRate(signal), DEFAULT_RATE_TIMEOUT_MS),
     eurRate !== null ? Promise.resolve(eurRate) : withTimeout((signal) => getEurToHufRate(signal), DEFAULT_RATE_TIMEOUT_MS),
   ];
 
+  // --- Kategória-alapú scraper szűrés (Task C) ---
+  // Ha MANGA: csak Walts, Amazon, Crunchyroll fut.
+  // Ha COMIC (de nem manga): csak Walts fut a speciálisak közül.
+  // Egyébként (könyv): Libri, Bookline, Libristo, ThriftBooks, BN futnak; Walts/Crunchyroll nem.
+
   const scraperPromises = [
+    // BooksRun API — minden kategóriánál fut
     withTimeout(
       (signal) => axios.get(`${BOOKSRUN_BUY_URL}/buy/${isbn}`, {
         params: { key: process.env.BOOKSRUN_API_KEY },
-        signal
+        signal,
       }),
       DEFAULT_SCRAPER_TIMEOUT_MS
     ),
-    withTimeout((signal) => scrapeLibri(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
-    withTimeout((signal) => scrapeBookline(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
-    withTimeout((signal) => scrapeLibristo(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
-    isComic ? withTimeout((signal) => scrapeWalts(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS) : Promise.resolve(null),
+
+    // Libri — kihagyva manga esetén
+    isManga
+      ? Promise.resolve(null)
+      : withTimeout((signal) => scrapeLibri(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
+
+    // Bookline — kihagyva manga esetén
+    isManga
+      ? Promise.resolve(null)
+      : withTimeout((signal) => scrapeBookline(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
+
+    // Libristo — kihagyva manga esetén
+    isManga
+      ? Promise.resolve(null)
+      : withTimeout((signal) => scrapeLibristo(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
+
+    // Walts — futtatva mangánál ÉS kepregénynél
+    (isComic || isManga)
+      ? withTimeout((signal) => scrapeWalts(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS)
+      : Promise.resolve(null),
+
+    // Amazon — minden kategóriánál fut
     withTimeout((signal) => scrapeAmazon(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
-    isManga ? withTimeout((signal) => scrapeCrunchyroll(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS) : Promise.resolve(null),
-    withTimeout((signal) => scrapeThriftBooks(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
-    withTimeout((signal) => scrapeBarnesAndNoble(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
+
+    // Crunchyroll — csak mangánál (nem könyvnél, nem képregénynél)
+    isManga
+      ? withTimeout((signal) => scrapeCrunchyroll(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS)
+      : Promise.resolve(null),
+
+    // ThriftBooks — kihagyva manga esetén
+    isManga
+      ? Promise.resolve(null)
+      : withTimeout((signal) => scrapeThriftBooks(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
+
+    // Barnes & Noble — kihagyva manga esetén
+    isManga
+      ? Promise.resolve(null)
+      : withTimeout((signal) => scrapeBarnesAndNoble(isbn, signal), DEFAULT_SCRAPER_TIMEOUT_MS),
+
     ...ratePromises,
   ];
 
@@ -84,7 +163,7 @@ export async function runScrapers({ isbn, isManga = false, isComic = false, usdR
     usdRateRes, eurRateRes,
   ] = results;
 
-  // Logolás: melyik scraper sikerült / bukott
+  // Logolás
   const scraperNames = ['BooksRun', 'Libri', 'Bookline', 'Libristo', 'Walts', 'Amazon', 'Crunchyroll', 'ThriftBooks', 'BarnesAndNoble'];
   scraperNames.forEach((name, i) => {
     if (results[i].status === 'rejected') {
@@ -96,69 +175,132 @@ export async function runScrapers({ isbn, isManga = false, isComic = false, usdR
   const resolvedEurRate = eurRateRes.status === 'fulfilled' ? eurRateRes.value : 400;
 
   const offers = [];
+  const allRows = []; // includes Not Found + Error rows for frontend display
 
   // ---- BooksRun (API) ----
   if (booksRunRes.status === 'fulfilled' && booksRunRes.value?.data?.result?.status === 'success') {
     const brData = booksRunRes.value.data.result.text;
     if (brData?.New?.price) {
-      offers.push({
+      const row = {
         store: 'BooksRun',
         condition: 'New',
         price: convertToHuf(brData.New.price, resolvedUsdRate),
         currency: 'HUF',
         buyUrl: brData.New.cart_url || null,
-      });
+        status: 'Found',
+      };
+      offers.push(row);
+      allRows.push(row);
     }
     if (brData?.Used?.Good?.price) {
-      offers.push({
+      const row = {
         store: 'BooksRun',
         condition: 'Used',
         price: convertToHuf(brData.Used.Good.price, resolvedUsdRate),
         currency: 'HUF',
         buyUrl: brData.Used.Good.cart_url || null,
-      });
+        status: 'Found',
+      };
+      offers.push(row);
+      allRows.push(row);
     }
+  } else if (!isManga) {
+    // Only show BooksRun status row for non-manga (it's an English-book API)
+    const booksRunRow = extractOffer(booksRunRes.status, booksRunRes.value, booksRunRes.reason, 'BooksRun');
+    if (booksRunRow) allRows.push(booksRunRow);
   }
 
-  // ---- HUF scrapers (Libri, Bookline) ----
-  for (const res of [libriRes, booklineRes, libristoRes]) {
-    if (res.status === 'fulfilled' && res.value) {
-      offers.push(res.value);
+  // ---- HUF scrapers (Libri, Bookline, Libristo) — skipped for manga ----
+  const hufScrapers = [
+    { res: libriRes, name: 'libri.hu' },
+    { res: booklineRes, name: 'bookline.hu' },
+    { res: libristoRes, name: 'Libristo' },
+  ];
+
+  for (const { res, name } of hufScrapers) {
+    if (isManga) {
+      // Skipped intentionally — do not add a status row for skipped scrapers
+      continue;
+    }
+    const row = extractOffer(res.status, res.value, res.reason, name);
+    if (row) {
+      allRows.push(row);
+      if (row.status === 'Found' && typeof row.price === 'number' && row.price > 0) {
+        offers.push(row);
+      }
     }
   }
 
   // ---- Walts (EUR) ----
-  if (waltsRes.status === 'fulfilled' && waltsRes.value) {
-    const w = { ...waltsRes.value };
-    if (w.currency === 'EUR') {
-      w.price = convertToHuf(w.price, resolvedEurRate);
-      w.currency = 'HUF';
-    }
-    offers.push(w);
-  }
-
-  // ---- Amazon (USD or EUR) ----
-  if (amazonRes.status === 'fulfilled' && amazonRes.value) {
-    const a = { ...amazonRes.value };
-    if (a.currency === 'USD') {
-      a.price = convertToHuf(a.price, resolvedUsdRate);
-      a.currency = 'HUF';
-    } else if (a.currency === 'EUR') {
-      a.price = convertToHuf(a.price, resolvedEurRate);
-      a.currency = 'HUF';
-    }
-    offers.push(a);
-  }
-
-  // ---- USD scrapers (Crunchyroll, ThriftBooks, Barnes & Noble) ----
-  for (const res of [crunchyrollRes, thriftRes, bnRes]) {
-    if (res.status === 'fulfilled' && res.value) {
-      const d = { ...res.value };
-      if (d.currency === 'USD') {
-        d.price = convertToHuf(d.price, resolvedUsdRate);
-        d.currency = 'HUF';
+  if (!isManga && !isComic) {
+    // Not run for books — skip status row
+  } else {
+    const waltsRow = extractOffer(waltsRes.status, waltsRes.value, waltsRes.reason, 'Walts Comic Shop');
+    if (waltsRow) {
+      allRows.push(waltsRow);
+      if (waltsRow.status === 'Found' && waltsRow.price) {
+        const w = { ...waltsRow };
+        if (w.currency === 'EUR') {
+          w.price = convertToHuf(w.price, resolvedEurRate);
+          w.currency = 'HUF';
+        }
+        offers.push(w);
       }
-      offers.push(d);
+    }
+  }
+
+  // ---- Amazon (USD or EUR) — always runs ----
+  const amazonRow = extractOffer(amazonRes.status, amazonRes.value, amazonRes.reason, 'Amazon');
+  if (amazonRow) {
+    allRows.push(amazonRow);
+    if (amazonRow.status === 'Found' && amazonRow.price) {
+      const a = { ...amazonRow };
+      if (a.currency === 'USD') {
+        a.price = convertToHuf(a.price, resolvedUsdRate);
+        a.currency = 'HUF';
+      } else if (a.currency === 'EUR') {
+        a.price = convertToHuf(a.price, resolvedEurRate);
+        a.currency = 'HUF';
+      }
+      offers.push(a);
+    }
+  }
+
+  // ---- Crunchyroll (USD, manga only) ----
+  if (isManga) {
+    const crunchyRow = extractOffer(crunchyrollRes.status, crunchyrollRes.value, crunchyrollRes.reason, 'Crunchyroll');
+    if (crunchyRow) {
+      allRows.push(crunchyRow);
+      if (crunchyRow.status === 'Found' && crunchyRow.price) {
+        const c = { ...crunchyRow };
+        if (c.currency === 'USD') {
+          c.price = convertToHuf(c.price, resolvedUsdRate);
+          c.currency = 'HUF';
+        }
+        offers.push(c);
+      }
+    }
+  }
+
+  // ---- ThriftBooks + Barnes & Noble (USD) — skipped for manga ----
+  const usdScrapers = [
+    { res: thriftRes, name: 'ThriftBooks' },
+    { res: bnRes, name: 'BarnesAndNoble' },
+  ];
+
+  for (const { res, name } of usdScrapers) {
+    if (isManga) continue;
+    const row = extractOffer(res.status, res.value, res.reason, name);
+    if (row) {
+      allRows.push(row);
+      if (row.status === 'Found' && row.price) {
+        const d = { ...row };
+        if (d.currency === 'USD') {
+          d.price = convertToHuf(d.price, resolvedUsdRate);
+          d.currency = 'HUF';
+        }
+        offers.push(d);
+      }
     }
   }
 
@@ -166,5 +308,8 @@ export async function runScrapers({ isbn, isManga = false, isComic = false, usdR
   const validOffers = offers.filter(o => typeof o.price === 'number' && o.price > 0);
   validOffers.sort((a, b) => a.price - b.price);
 
-  return validOffers;
+  return {
+    offers: validOffers,  // backward-compatible: sorted valid offers
+    allRows,              // all rows including Not Found / Error for the frontend table
+  };
 }

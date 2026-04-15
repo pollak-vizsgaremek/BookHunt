@@ -13,21 +13,48 @@ const Navigation = () => {
 
   useEffect(() => {
     if (!user) return;
+
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+    let initialDelayId: ReturnType<typeof setTimeout> | null = null;
+    let consecutiveFailures = 0;
+    const controller = new AbortController();
+
     const fetchUnread = async () => {
       try {
         const token = localStorage.getItem("token");
         const res = await fetch("/api/notifications", {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
         });
         if (res.ok) {
           const data = await res.json();
           setUnreadCount(data.filter((n: { olvasott: boolean }) => !n.olvasott).length);
+          consecutiveFailures = 0; // reset on success
         }
-      } catch (e) { console.error(e); }
+      } catch (e: unknown) {
+        // Ignore AbortError (component unmounted) and network errors (backend not ready)
+        if (e instanceof Error && e.name === 'AbortError') return;
+        consecutiveFailures += 1;
+        // After 3+ failures, extend polling interval to 5 min to reduce noise
+        if (consecutiveFailures >= 3 && intervalId) {
+          clearInterval(intervalId);
+          intervalId = setInterval(fetchUnread, 5 * 60 * 1000);
+        }
+        // ECONNREFUSED / network errors are silently ignored (backend may still be booting)
+      }
     };
-    fetchUnread();
-    const interval = setInterval(fetchUnread, 60000); 
-    return () => clearInterval(interval);
+
+    // Small initial delay so the backend has time to start up before the first poll
+    initialDelayId = setTimeout(() => {
+      fetchUnread();
+      intervalId = setInterval(fetchUnread, 60_000);
+    }, 2000);
+
+    return () => {
+      controller.abort();
+      if (initialDelayId) clearTimeout(initialDelayId);
+      if (intervalId) clearInterval(intervalId);
+    };
   }, [user]);
 
   const routes = [
