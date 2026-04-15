@@ -14,6 +14,14 @@ import searchesRoutes from "./routes/searches.js";
 import notesRoutes from "./routes/notes.js";
 import pricesRoutes from "./routes/prices.js";
 import reviewsRoutes from "./routes/reviews.js";
+import booksRoutes from "./routes/books.js";
+import bookPricesRoutes from "./routes/bookPrices.js";
+import compareRoutes from "./routes/compare.js";
+import kivansaglistaRoutes from "./routes/kivansaglista.js";
+import ertesitesekRoutes from "./routes/ertesitesek.js";
+import { startPriceAlerts } from "./scripts/priceAlertCron.js";
+import { errorHandler } from "./middleware/errorHandler.js";
+import adminRoutes from "./routes/adminRoutes.js";
 
 // Swagger setup
 const swaggerOptions = {
@@ -56,6 +64,8 @@ app.use(express.json());
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);
+app.use("/api/wishlist", kivansaglistaRoutes);
+app.use("/api/notifications", ertesitesekRoutes);
 app.use("/api", webshopsRoutes);
 app.use("/api", productsRoutes);
 app.use("/api/price-history", priceHistoryRoutes);
@@ -64,6 +74,10 @@ app.use("/api/searches", searchesRoutes);
 app.use("/api/notes", notesRoutes);
 app.use("/api/prices", pricesRoutes);
 app.use("/api/reviews", reviewsRoutes);
+app.use("/api/books", booksRoutes);
+app.use("/api/book-prices", bookPricesRoutes);
+app.use("/api/compare", compareRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Root route — server status page
 app.get("/", async (req, res) => {
@@ -94,17 +108,17 @@ app.get("/", async (req, res) => {
   }
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error("Server error:", err);
-  res.status(500).json({ error: "Internal server error" });
-});
+// Global error handler (must be LAST middleware)
+app.use(errorHandler);
 
 // Start server
 app.listen(port, () => {
   console.log(`BookHunt server running on http://localhost:${port}`);
+  startPriceAlerts(prisma);
   console.log(`API endpoints available at http://localhost:${port}/api`);
   console.log(
     `Swagger documentation available at http://localhost:${port}/api-docs`,
   );
 });
+
+export default app;

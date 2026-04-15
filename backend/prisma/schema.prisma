@@ -9,13 +9,16 @@ datasource db {
 }
 
 model Felhasznalo {
-  felhasznalo_id Int         @id @default(autoincrement())
+  felhasznalo_id Int            @id @default(autoincrement())
   jelszo         String
-  email          String      @unique
-  felhasznalonev String      @unique
+  email          String         @unique
+  felhasznalonev String         @unique
+  szerepkor      Szerepkor      @default(USER)
   Keres          Keres[]
   Kedvencek      Kedvencek[]
   Velemenyek     Velemeny[]
+  Kivansaglista  Kivansaglista[]
+  Ertesites      Ertesites[]
 
   @@index([email], name: "idx_email")
   @@index([felhasznalonev], name: "idx_felhasznalonev")
@@ -36,16 +39,23 @@ model Termek {
   termek_id  Int          @id @default(autoincrement())
   cim        String       @db.VarChar(500)
   tipus      Tipus
-  szerzo     String?      @db.VarChar(255)
   isbn_issn  String?      @db.VarChar(20)
   boritokep  String?      @db.VarChar(500)
   Kedvencek  Kedvencek[]
   Feljegyzes Feljegyzes[]
   Velemenyek Velemeny[]
+  Szerzok    Szerzo[]
 
   @@index([tipus], name: "idx_tipus")
-  @@index([szerzo], name: "idx_szerzo")
   @@index([isbn_issn], name: "idx_isbn_issn")
+}
+
+model Szerzo {
+  szerzo_id Int      @id @default(autoincrement())
+  nev       String   @unique @db.VarChar(255)
+  Termekek  Termek[]
+
+  @@index([nev], name: "idx_szerzo_nev")
 }
 
 enum Tipus {
@@ -54,6 +64,11 @@ enum Tipus {
   manga
   kepregeny
   hangoskonyv
+}
+
+enum Szerepkor {
+  USER
+  ADMIN
 }
 
 model Keres {
@@ -100,7 +115,7 @@ model Arak {
   arak_id          Int     @id @default(autoincrement())
   kedvencek_id     Int
   webaruhaz_id     Int
-  last_known_price Decimal @db.Decimal(10, 2)
+  utolso_ismert_ar Decimal @db.Decimal(10, 2)
 
   Kedvencek Kedvencek @relation(fields: [kedvencek_id], references: [kedvencek_id], onDelete: Cascade, onUpdate: Cascade)
   WebAruhaz WebAruhaz @relation(fields: [webaruhaz_id], references: [webaruhaz_id], onDelete: Cascade, onUpdate: Cascade)
@@ -135,4 +150,38 @@ model Velemeny {
   @@unique([felhasznalo_id, termek_id], name: "unique_velemeny")
   @@index([termek_id], name: "idx_termek")
   @@index([felhasznalo_id], name: "idx_felhasznalo")
+}
+
+model GyorsitotarazottAr {
+  isbn      String   @id @db.VarChar(20)
+  adatok    Json
+  frissitve DateTime @default(now()) @updatedAt
+}
+
+model Kivansaglista {
+  id               Int      @id @default(autoincrement())
+  felhasznalo_id   Int
+  konyv_id         String   @db.VarChar(255)
+  cim              String   @db.VarChar(500)
+  szerzo           String?  @db.VarChar(255)
+  boritokep_url    String?  @db.VarChar(500)
+  isbn             String?  @db.VarChar(20)
+  utolso_ismert_ar Decimal? @db.Decimal(10, 2)
+  letrehozva       DateTime @default(now())
+  
+  Felhasznalo      Felhasznalo @relation(fields: [felhasznalo_id], references: [felhasznalo_id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([felhasznalo_id, konyv_id], name: "unique_wishlist")
+  @@index([felhasznalo_id], name: "idx_wishlist_felhasznalo")
+}
+
+model Ertesites {
+  ertesites_id   Int      @id @default(autoincrement())
+  felhasznalo_id Int
+  szoveg         String   @db.Text
+  olvasott       Boolean  @default(false)
+  datum          DateTime @default(now())
+
+  Felhasznalo    Felhasznalo @relation(fields: [felhasznalo_id], references: [felhasznalo_id], onDelete: Cascade, onUpdate: Cascade)
+  @@index([felhasznalo_id], name: "idx_notification_felhasznalo")
 }

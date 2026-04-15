@@ -20,36 +20,43 @@ const prisma = new PrismaClient();
  *             properties:
  *               cim:
  *                 type: string
- *                 description: Title
  *               tipus:
  *                 type: string
- *                 description: Type (book, magazine, etc.)
  *               szerzo:
  *                 type: string
- *                 description: Author
+ *                 description: Author name or comma-separated names
  *               isbn_issn:
  *                 type: string
  *               boritokep:
  *                 type: string
- *                 description: Cover image URL
  *     responses:
  *       201:
  *         description: Product added successfully
- *       500:
- *         description: Product creation failed
  */
 router.post("/product", async (req, res) => {
   try {
     const { cim, tipus, szerzo, isbn_issn, boritokep } = req.body;
 
+    const szerzoList = szerzo 
+      ? (Array.isArray(szerzo) ? szerzo : szerzo.split(',').map(s => s.trim())) 
+      : [];
+
     const product = await prisma.termek.create({
       data: {
         cim,
         tipus,
-        szerzo,
         isbn_issn,
         boritokep,
+        Szerzok: {
+          connectOrCreate: szerzoList.map(name => ({
+            where: { nev: name },
+            create: { nev: name }
+          }))
+        }
       },
+      include: {
+        Szerzok: true
+      }
     });
 
     res.status(201).json({
@@ -58,7 +65,7 @@ router.post("/product", async (req, res) => {
         id: product.termek_id,
         cim: product.cim,
         tipus: product.tipus,
-        szerzo: product.szerzo,
+        szerzok: product.Szerzok.map(s => s.nev),
         isbn_issn: product.isbn_issn,
         boritokep: product.boritokep,
       },
@@ -75,25 +82,25 @@ router.post("/product", async (req, res) => {
  *   get:
  *     summary: Get all products
  *     tags: [Products]
- *     responses:
- *       200:
- *         description: List of all products
- *       500:
- *         description: Failed to fetch products
  */
 router.get("/products", async (req, res) => {
   try {
     const products = await prisma.termek.findMany({
-      select: {
-        termek_id: true,
-        cim: true,
-        tipus: true,
-        szerzo: true,
-        isbn_issn: true,
-        boritokep: true,
-      },
+      include: {
+        Szerzok: true
+      }
     });
-    res.json(products);
+    
+    const formattedProducts = products.map(p => ({
+      termek_id: p.termek_id,
+      cim: p.cim,
+      tipus: p.tipus,
+      szerzok: p.Szerzok.map(s => s.nev),
+      isbn_issn: p.isbn_issn,
+      boritokep: p.boritokep,
+    }));
+
+    res.json(formattedProducts);
   } catch (error) {
     console.error("Error fetching products:", error);
     res.status(500).json({ error: "Failed to fetch products" });
@@ -106,40 +113,31 @@ router.get("/products", async (req, res) => {
  *   get:
  *     summary: Get a product by ID
  *     tags: [Products]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Product found
- *       404:
- *         description: Product not found
- *       500:
- *         description: Failed to fetch product
  */
 router.get("/:id", async (req, res) => {
   try {
     const termek_id = parseInt(req.params.id);
     const product = await prisma.termek.findUnique({
       where: { termek_id },
-      select: {
-        termek_id: true,
-        cim: true,
-        tipus: true,
-        szerzo: true,
-        isbn_issn: true,
-        boritokep: true,
-      },
+      include: {
+        Szerzok: true
+      }
     });
 
     if (!product) {
       return res.status(404).json({ error: "Product not found" });
     }
 
-    res.json(product);
+    const formattedProduct = {
+      termek_id: product.termek_id,
+      cim: product.cim,
+      tipus: product.tipus,
+      szerzok: product.Szerzok.map(s => s.nev),
+      isbn_issn: product.isbn_issn,
+      boritokep: product.boritokep,
+    };
+
+    res.json(formattedProduct);
   } catch (error) {
     console.error("Error fetching product:", error);
     res.status(500).json({ error: "Failed to fetch product" });
