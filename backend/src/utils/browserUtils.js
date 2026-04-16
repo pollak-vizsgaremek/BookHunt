@@ -1,7 +1,11 @@
 import puppeteerExtra from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { acquireBrowserSlot, releaseBrowserSlot } from './browserSemaphore.js';
 
 puppeteerExtra.use(StealthPlugin());
+
+// Re-export so every scraper can release its slot through a single import
+export { releaseBrowserSlot };
 
 // ---------------------------------------------------------------------------
 // Rotating User-Agent pool — different Chrome versions & one Firefox
@@ -44,19 +48,39 @@ function pickRandomAgent() {
 // ---------------------------------------------------------------------------
 
 export const launchStealthBrowser = async () => {
-  console.log('[BrowserUtils] Launching stealth browser...');
-  return await puppeteerExtra.launch({
-    headless: 'new',
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-blink-features=AutomationControlled',
-      '--disable-infobars',
-      '--disable-dev-shm-usage',
-      '--disable-features=VizDisplayCompositor',
-      '--window-size=1366,768',
-    ],
-  });
+  // Wait for a free slot before spawning a new Chromium process.
+  // This prevents RAM exhaustion when multiple scrapers run in parallel.
+  await acquireBrowserSlot();
+
+  const memMB = (process.memoryUsage().rss / 1024 / 1024).toFixed(0);
+  console.log(`[BrowserUtils] Launching stealth browser (slot acquired). Process RSS: ${memMB} MB`);
+
+  try {
+    const browser = await puppeteerExtra.launch({
+      // Use boolean `true` instead of the string 'new' — universally compatible
+      // across all puppeteer-extra versions and Chromium builds.
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-blink-features=AutomationControlled',
+        '--disable-infobars',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',                       // essential for stable headless
+        '--disable-features=VizDisplayCompositor',
+        '--window-size=1366,768',
+      ],
+    });
+    console.log(`[BrowserUtils] Browser ready, PID: ${browser.process()?.pid}`);
+    return browser;
+  } catch (err) {
+    // Release the slot immediately — no browser was actually created
+    releaseBrowserSlot();
+    console.error(`[BrowserUtils] CRITICAL: Chromium launch failed (RSS ${memMB} MB): ${err.message}`);
+    const launchErr = new Error(`Browser launch failed: ${err.message}`);
+    launchErr.scraperStatus = 'Error';
+    throw launchErr;
+  }
 };
 
 export const configurePage = async (page, source = 'Unknown') => {
