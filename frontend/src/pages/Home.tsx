@@ -7,6 +7,8 @@ import LightRays from "../components/LightRays";
 import SplitText from "../components/SplitText";
 import BookDetailsModal from "../components/BookDetailsModal";
 import FilterModal, { type FilterOptions } from "../components/FilterModal";
+import CountUp from "../components/CountUp";
+import DailyFeaturedBooks from "../components/DailyFeaturedBooks";
 
 const Home = () => {
   const [localProducts, setLocalProducts] = useState<BookItem[]>([]);
@@ -272,6 +274,21 @@ const Home = () => {
             </p>
           </div>
 
+          <div className="text-2xl md:text-3xl font-medium text-gray-800 dark:text-[#DFE6E6]/90 mt-8 mb-4">
+            With BookHunt you can search over
+            <br />
+            <CountUp
+              from={0}
+              to={40000000}
+              separator=","
+              direction="up"
+              duration={1.5}
+              className="text-5xl md:text-6xl font-extrabold text-emerald-500 drop-shadow-md inline-block my-4"
+            />
+            <br />
+            Books!
+          </div>
+
           <Carousel />
 
           {/* Premium Search Bar */}
@@ -317,6 +334,9 @@ const Home = () => {
             </div>
           </div>
         </div>
+
+        {/* Daily Featured Gallery */}
+        <DailyFeaturedBooks />
 
         {/* Product Grid or Custom Content */}
         {loading || (isSearching && startIndex === 0) ? (

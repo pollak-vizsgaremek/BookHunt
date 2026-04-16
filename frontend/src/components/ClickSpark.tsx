@@ -18,8 +18,8 @@ interface Spark {
 
 const ClickSpark = ({
   sparkColor = "#a3e635",
-  sparkSize = 5,
-  sparkRadius = 10,
+  sparkSize = 2,
+  sparkRadius = 3,
   sparkCount = 8,
   duration = 400,
   extraScale = 1,
@@ -117,7 +117,7 @@ const SparkInstance = ({
             style={{
               position: "absolute",
               width: size,
-              height: 2, // Default line thickness is small
+              height: 3, // Thicker line for more rounded appearance
               backgroundColor: color,
               transformOrigin: "left center",
               rotate: angle,
