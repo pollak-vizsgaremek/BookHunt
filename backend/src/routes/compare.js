@@ -7,12 +7,6 @@ import { normalizeAndValidateIsbn } from '../utils/isbn.js';
 const router = express.Router();
 const prisma = new PrismaClient();
 
-/**
- * Strips any non-primitive / circular-reference-prone fields from an offer/row array
- * before it is passed to Prisma JSON columns or res.json().
- * This prevents 'Maximum call stack size exceeded' when raw Puppeteer/Axios error
- * objects accidentally propagate into the cache payload.
- */
 function sanitizeRows(arr) {
   if (!Array.isArray(arr)) return [];
   return arr.map(item => ({
@@ -25,49 +19,28 @@ function sanitizeRows(arr) {
   }));
 }
 
-/**
- * @swagger
- * /api/compare/{isbn}:
- *   get:
- *     summary: Compare book prices from multiple stores
- *     tags: [Compare]
- *     parameters:
- *       - in: path
- *         name: isbn
- *         required: true
- *         schema:
- *           type: string
- *         description: ISBN of the book
- *       - in: query
- *         name: currency
- *         schema:
- *           type: string
- *           enum: [HUF, USD]
- *         description: Output currency (default HUF)
- *       - in: query
- *         name: refresh
- *         schema:
- *           type: string
- *           enum: ['true', 'false']
- *         description: Force refresh cached data
- *       - in: query
- *         name: categories
- *         schema:
- *           type: string
- *         description: Comma-separated category list (e.g. "manga,comic")
- *     responses:
- *       200:
- *         description: Unified array of price offers
- *       400:
- *         description: Missing or invalid ISBN
- *       500:
- *         description: Failed to fetch price comparisons
- */
+function sanitizeOffer(item) {
+  return {
+    store:     typeof item.store     === 'string' ? item.store     : String(item.store ?? ''),
+    condition: typeof item.condition === 'string' ? item.condition : undefined,
+    price:     typeof item.price     === 'number' ? item.price     : undefined,
+    currency:  typeof item.currency  === 'string' ? item.currency  : undefined,
+    buyUrl:    typeof item.buyUrl    === 'string' ? item.buyUrl    : undefined,
+    status:    typeof item.status    === 'string' ? item.status    : undefined,
+  };
+}
+
 router.get('/:isbn', async (req, res) => {
   const { isbn } = req.params;
-  const { currency = 'HUF', refresh = 'false', categories = '' } = req.query;
+  const { currency = 'HUF', refresh = 'false', categories = '', stream = 'false' } = req.query;
 
   if (!isbn || isbn.trim().length === 0) {
+    if (stream === 'true') {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.flushHeaders();
+      res.write(`event: ERROR\ndata: ${JSON.stringify({ error: 'ISBN is required' })}\n\n`);
+      return res.end();
+    }
     return res.status(400).json({ error: 'ISBN is required' });
   }
 
@@ -75,6 +48,12 @@ router.get('/:isbn', async (req, res) => {
   try {
     safeIsbn = normalizeAndValidateIsbn(isbn);
   } catch {
+    if (stream === 'true') {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.flushHeaders();
+      res.write(`event: ERROR\ndata: ${JSON.stringify({ error: 'Invalid ISBN format' })}\n\n`);
+      return res.end();
+    }
     return res.status(400).json({ error: 'Invalid ISBN format' });
   }
 
@@ -82,57 +61,124 @@ router.get('/:isbn', async (req, res) => {
   const isManga = categoryList.some(c => c.includes('manga'));
   const isComic = categoryList.some(c => c.includes('comic') || c.includes('graphic novel'));
 
-  try {
-    let finalResultData = null;
+  const isStream = stream === 'true';
 
-    // 1. Ellenőrzés: van érvényes cache-ünk?
+  if (isStream) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+  }
+
+  try {
     const cached = await prisma.gyorsitotarazottAr.findUnique({ where: { isbn: safeIsbn } });
-    if (cached && refresh !== 'true') {
-      const isFresh = (new Date() - cached.frissitve) < 60 * 60 * 1000; // 1 óra
-      if (isFresh) {
-        finalResultData = cached.adatok;
+    const isFresh = cached && refresh !== 'true' && (new Date() - cached.frissitve) < 60 * 60 * 1000;
+
+    const liveUsdRate = currency.toUpperCase() === 'USD' ? await getUsdToHufRate().catch(() => 360) : null;
+
+    if (isFresh) {
+      if (isStream) {
+        // Init event based on cache mapping
+        res.write(`event: INIT\ndata: ${JSON.stringify(cached.adatok.allRows.map(r => ({ store: r.store, status: 'Loading' })))}\n\n`);
+        
+        let offers = cached.adatok.offers;
+        let allRows = cached.adatok.allRows;
+
+        if (currency.toUpperCase() === 'USD' && liveUsdRate) {
+           offers = offers.map(o => ({...o, price: Number((o.price / liveUsdRate).toFixed(2)), currency: 'USD'}));
+           allRows = allRows.map(o => o.price ? {...o, price: Number((o.price / liveUsdRate).toFixed(2)), currency: 'USD'} : o);
+        }
+
+        for (const row of allRows) {
+            res.write(`event: UPDATE\ndata: ${JSON.stringify(row)}\n\n`);
+        }
+        res.write(`event: DONE\ndata: ${JSON.stringify({ offers, allRows })}\n\n`);
+        res.end();
+        return;
+      } else {
+        let result = cached.adatok;
+        if (currency.toUpperCase() === 'USD' && liveUsdRate) {
+           const convertedOffers = result.offers.map(o => ({...o, price: Number((o.price / liveUsdRate).toFixed(2)), currency: 'USD'}));
+           result = { ...result, offers: convertedOffers };
+        }
+        return res.json(result);
       }
     }
 
-    // 2. Ha nincs érvényes cache: scraperек futtatása az orchestrátoron keresztül
-    if (!finalResultData) {
-      const { offers, allRows } = await runScrapers({ isbn: safeIsbn, isManga, isComic });
-
-      const safeOffers  = sanitizeRows(offers);
-      const safeAllRows = sanitizeRows(allRows);
-
-      finalResultData = {
-        isbn: safeIsbn,
-        fetchedAt: new Date().toISOString(), // ISO string — always JSON-safe
-        offers:  safeOffers,
-        allRows: safeAllRows,
-      };
-
-      // Cache mentése / frissítése
-      await prisma.gyorsitotarazottAr.upsert({
-        where: { isbn: safeIsbn },
-        update: { adatok: finalResultData, frissitve: new Date() },
-        create: { isbn: safeIsbn, adatok: finalResultData },
-      });
+    if (isStream) {
+      const expectedStores = [{ store: 'BooksRun', status: 'Loading' }];
+      if (isManga) {
+         expectedStores.push({ store: 'Walts Comic Shop', status: 'Loading' });
+         expectedStores.push({ store: 'Amazon', status: 'Loading' });
+         expectedStores.push({ store: 'Crunchyroll', status: 'Loading' });
+      } else {
+         if (isComic) expectedStores.push({ store: 'Walts Comic Shop', status: 'Loading' });
+         expectedStores.push({ store: 'libri.hu', status: 'Loading' });
+         expectedStores.push({ store: 'bookline.hu', status: 'Loading' });
+         expectedStores.push({ store: 'Libristo', status: 'Loading' });
+         expectedStores.push({ store: 'Amazon', status: 'Loading' });
+         expectedStores.push({ store: 'ThriftBooks', status: 'Loading' });
+         expectedStores.push({ store: 'BarnesAndNoble', status: 'Loading' });
+      }
+      res.write(`event: INIT\ndata: ${JSON.stringify(expectedStores)}\n\n`);
     }
 
-    // 3. Kimeneti formátum: USD konverzió ha kell
-    if (currency.toUpperCase() === 'USD') {
-      const liveUsdRate = await getUsdToHufRate().catch(() => 360);
-      const convertedOffers = finalResultData.offers.map(offer => ({
-        ...offer,
-        price: Number((offer.price / liveUsdRate).toFixed(2)),
-        currency: 'USD',
-      }));
-      return res.json({ ...finalResultData, offers: convertedOffers });
+    const { offers, allRows } = await runScrapers({
+      isbn: safeIsbn,
+      isManga,
+      isComic,
+      onProgress: isStream ? (row) => {
+         let outRow = sanitizeOffer(row);
+         if (currency.toUpperCase() === 'USD' && liveUsdRate && outRow.price) {
+             outRow.price = Number((outRow.price / liveUsdRate).toFixed(2));
+             outRow.currency = 'USD';
+         }
+         res.write(`event: UPDATE\ndata: ${JSON.stringify(outRow)}\n\n`);
+      } : null
+    });
+
+    const safeOffers  = sanitizeRows(offers);
+    const safeAllRows = sanitizeRows(allRows);
+
+    const finalResultData = {
+      isbn: safeIsbn,
+      fetchedAt: new Date().toISOString(),
+      offers: safeOffers,
+      allRows: safeAllRows,
+    };
+
+    await prisma.gyorsitotarazottAr.upsert({
+      where: { isbn: safeIsbn },
+      update: { adatok: finalResultData, frissitve: new Date() },
+      create: { isbn: safeIsbn, adatok: finalResultData },
+    });
+
+    if (isStream) {
+      let outOffers = safeOffers;
+      let outAllRows = safeAllRows;
+      if (currency.toUpperCase() === 'USD' && liveUsdRate) {
+          outOffers = safeOffers.map(o => ({...o, price: Number((o.price / liveUsdRate).toFixed(2)), currency: 'USD'}));
+          outAllRows = safeAllRows.map(o => o.price ? {...o, price: Number((o.price / liveUsdRate).toFixed(2)), currency: 'USD'} : o);
+      }
+      res.write(`event: DONE\ndata: ${JSON.stringify({ offers: outOffers, allRows: outAllRows })}\n\n`);
+      res.end();
+    } else {
+      let result = finalResultData;
+      if (currency.toUpperCase() === 'USD' && liveUsdRate) {
+          const convertedOffers = safeOffers.map(o => ({...o, price: Number((o.price / liveUsdRate).toFixed(2)), currency: 'USD'}));
+          result = { ...result, offers: convertedOffers };
+      }
+      res.json(result);
     }
 
-    res.json(finalResultData);
   } catch (error) {
-    // Log only the message — logging the raw error object risks a circular-reference
-    // stack overflow when Puppeteer/Axios errors carry browser process references.
     console.error(`Compare route error [ISBN: ${safeIsbn ?? 'invalid'}]: ${error?.message ?? error}`);
-    res.status(500).json({ error: 'Failed to fetch price comparisons' });
+    if (isStream) {
+      res.write(`event: ERROR\ndata: ${JSON.stringify({ error: 'Failed to fetch price comparisons' })}\n\n`);
+      res.end();
+    } else {
+      res.status(500).json({ error: 'Failed to fetch price comparisons' });
+    }
   }
 });
 

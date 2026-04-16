@@ -87,11 +87,12 @@ API dokumentáció: `http://localhost:5000/api-docs`
   - Kategória-optimalizálás: manga elemek esetén csak manga-specifikus scraperek futnak
   - Árak státuszkijelzése a táblában: `Found` / `Not Found` / `Webshop Server Error`
   - Skeleton loader az árkérés közben
+  - Valós idejű kiíratás
 - **Ár riasztások**: Kívánságlistához rendelt küszöbértékek, háttér Cron scanner, értesítési badge a navigációban
   - Cron fix: `orderBy` mező (`kivansaglista_id` → `id`) és helyes `{ offers }` destructuring javítva
 - **Stabilitás**: `sanitizeRows()` segédfüggvény a `compare.js`-ben megelőzi a `RangeError: Maximum call stack size exceeded` hibát, ha Puppeteer körkörös referenciákat tartalmazó hiba-objektumok kerülnek JSON-ba
 - RBAC: `USER` / `ADMIN` szerepkörök, `requireAdmin` middleware, Admin API (felhasználó- és tartalomkezelés)
-- Frontend React + TypeScript-tel:
+  - Frontend React + TypeScript-tel:
   - Főoldal animált carousellel és keresővel
   - Bejelentkezés és regisztrációs oldalak
   - Felhasználói profil oldal modállal
