@@ -1,4 +1,4 @@
-import { launchStealthBrowser, configurePage, emulateHumanBehavior, emulateHumanScrolling, detectBotBlock } from '../utils/browserUtils.js';
+import { launchStealthBrowser, configurePage, emulateHumanBehavior, emulateHumanScrolling, detectBotBlock, releaseBrowserSlot } from '../utils/browserUtils.js';
 
 export const scrapeThriftBooks = async (isbn, signal) => {
   let browser = null;
@@ -119,6 +119,9 @@ export const scrapeThriftBooks = async (isbn, signal) => {
     throw wrapped;
   } finally {
     if (signal) signal.removeEventListener('abort', onAbort);
-    if (browser) await browser.close();
+    if (browser) {
+      await browser.close().catch(() => {});
+      releaseBrowserSlot();
+    }
   }
 };
