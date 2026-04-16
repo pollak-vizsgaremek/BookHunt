@@ -1,4 +1,4 @@
-import { launchStealthBrowser, configurePage, emulateHumanBehavior, emulateHumanScrolling, detectBotBlock } from '../utils/browserUtils.js';
+import { launchStealthBrowser, configurePage, emulateHumanBehavior, emulateHumanScrolling, detectBotBlock, releaseBrowserSlot } from '../utils/browserUtils.js';
 
 export const scrapeAmazon = async (isbn, signal) => {
   let browser = null;
@@ -23,7 +23,7 @@ export const scrapeAmazon = async (isbn, signal) => {
     
     let pageResponse;
     try {
-      pageResponse = await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 15000 });
+    pageResponse = await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 12000 });
     } catch (navErr) {
       throw Object.assign(new Error(`Amazon navigation failed: ${navErr.message}`), { scraperStatus: 'Error' });
     }
@@ -140,6 +140,9 @@ export const scrapeAmazon = async (isbn, signal) => {
     throw statusErr;
   } finally {
     if (signal) signal.removeEventListener('abort', onAbort);
-    if (browser) await browser.close();
+    if (browser) {
+      await browser.close().catch(() => {});
+      releaseBrowserSlot();
+    }
   }
 };

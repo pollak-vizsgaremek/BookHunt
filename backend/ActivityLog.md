@@ -100,3 +100,7 @@
   - `browserUtils.js` stealth: 5-UA pool (Chrome 122–124 + Firefox 125), matched `sec-ch-ua` headers, randomised viewport, `navigator.webdriver = false`
   - **Libri 403**: switched to stealth Puppeteer (was plain Axios); fallback logic preserved
   - **B&N 403**: Google `Referer` header; tries `/w/?ean={isbn}` first; 3s back-off retry
+
+## 2026.04.16
+- **Libri Scraper Fix**: Fixed a bug where missing books automatically inherited a false 4190 Ft catalog price from Libri's main menu, correcting the cached frontend rendering.
+- The Skeleton Loader now updates in real time, so the user won't think the scraper is slow

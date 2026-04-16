@@ -1,4 +1,4 @@
-import { launchStealthBrowser, configurePage, emulateHumanBehavior, emulateHumanScrolling, detectBotBlock } from '../utils/browserUtils.js';
+import { launchStealthBrowser, configurePage, emulateHumanBehavior, emulateHumanScrolling, detectBotBlock, releaseBrowserSlot } from '../utils/browserUtils.js';
 
 /**
  * libriScraper.js
@@ -45,28 +45,33 @@ export const scrapeLibri = async (isbn, signal) => {
     await emulateHumanScrolling(page, 'Libri');
 
     // ---- Step 2: Try to read price from current page ----
-    let finalUrl = directUrl;
-    let priceText = await page.evaluate(() => {
-      // Detect soft-404 / "not found" page
-      const bodyText = (document.body.innerText || '').toLowerCase();
-      if (bodyText.includes('nem található') || bodyText.includes('az oldal nem létezik')) {
-        return null; // signals soft-404
-      }
-      const selectors = [
-        '.online',
-        '.price-block__price',
-        '.webshop-price',
-        '.book-price',
-        '.price-holder',
-        '.discount-price',
-        '.price',
-      ];
-      for (const sel of selectors) {
-        const el = document.querySelector(sel);
-        if (el && el.textContent.trim()) return el.textContent.trim();
-      }
-      return null;
-    });
+    let finalUrl = page.url();
+    let priceText = null;
+
+    // Only attempt to parse price if we are on a valid book product page
+    if (finalUrl.includes('/konyv/') && finalUrl.endsWith('.html')) {
+      priceText = await page.evaluate(() => {
+        // Detect soft-404 / "not found" page
+        const bodyText = (document.body.innerText || '').toLowerCase();
+        if (bodyText.includes('nem található') || bodyText.includes('az oldal nem létezik')) {
+          return null; // signals soft-404
+        }
+        const selectors = [
+          '.online',
+          '.price-block__price',
+          '.webshop-price',
+          '.book-price',
+          '.price-holder',
+          '.discount-price',
+          '.price',
+        ];
+        for (const sel of selectors) {
+          const el = document.querySelector(sel);
+          if (el && el.textContent.trim()) return el.textContent.trim();
+        }
+        return null;
+      });
+    }
 
     // ---- Step 3: Fallback to search if direct URL gave nothing ----
     if (!priceText) {
@@ -90,8 +95,14 @@ export const scrapeLibri = async (isbn, signal) => {
         // Detect no-results page
         const bodyText = (document.body.innerText || '').toLowerCase();
         if (bodyText.includes('nincs találat') || bodyText.includes('0 találat')) return '__not_found__';
+        
+        // Find a valid product link, avoiding category or search pages
         const links = Array.from(document.querySelectorAll('a[href*="/konyv/"]'));
-        const bookLink = links.find(a => !a.href.includes('talalati_lista'));
+        const bookLink = links.find(a => 
+          !a.href.includes('talalati_lista') && 
+          a.href.endsWith('.html') &&
+          a.pathname.length > 15 // Avoid simple `/konyv/.html` if any
+        );
         return bookLink ? bookLink.href : null;
       });
 
@@ -143,6 +154,9 @@ export const scrapeLibri = async (isbn, signal) => {
     throw wrapped;
   } finally {
     if (signal) signal.removeEventListener('abort', onAbort);
-    if (browser) await browser.close();
+    if (browser) {
+      await browser.close().catch(() => {});
+      releaseBrowserSlot();
+    }
   }
 };
