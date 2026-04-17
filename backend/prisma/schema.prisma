@@ -13,6 +13,7 @@ model Felhasznalo {
   jelszo         String
   email          String         @unique
   felhasznalonev String         @unique
+  profilkep      String?        @db.VarChar(500)
   szerepkor      Szerepkor      @default(USER)
   Keres          Keres[]
   Kedvencek      Kedvencek[]

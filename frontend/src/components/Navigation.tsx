@@ -123,7 +123,7 @@ const Navigation = () => {
                 className="flex items-center gap-3 cursor-pointer outline-none group"
               >
                 <span className="text-gray-900 dark:text-white font-medium text-lg hidden lg:block group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{user.username}</span>
-                <img src="/images/profile_icon.png" alt="Profile" className="w-10 h-10 md:w-11 md:h-11 rounded-full group-hover:opacity-80 transition-opacity drop-shadow-sm border border-black/10 dark:border-white/10" />
+                <img src={user.profilkep || "/images/profile_icon.png"} alt="Profile" className="w-10 h-10 md:w-11 md:h-11 rounded-full object-cover group-hover:opacity-80 transition-opacity drop-shadow-sm border border-black/10 dark:border-white/10" />
               </button>
             </div>
           ) : (

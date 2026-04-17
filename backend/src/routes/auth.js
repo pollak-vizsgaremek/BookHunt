@@ -145,6 +145,7 @@ router.post("/register", async (req, res) => {
         username: user.felhasznalonev,
         email: user.email,
         szerepkor: user.szerepkor,
+        profilkep: user.profilkep,
       },
     });
   } catch (error) {
@@ -196,6 +197,7 @@ router.post("/login", async (req, res) => {
         username: user.felhasznalonev,
         email: user.email,
         szerepkor: user.szerepkor,
+        profilkep: user.profilkep,
       },
     });
   } catch (error) {
@@ -225,7 +227,7 @@ router.post("/google", async (req, res) => {
       return res.status(400).json({ error: "Invalid Google token payload" });
     }
 
-    const { email, name } = payload;
+    const { email, name, picture } = payload;
     if (!email) {
       return res.status(400).json({ error: "Email not provided by Google" });
     }
@@ -259,7 +261,13 @@ router.post("/google", async (req, res) => {
           felhasznalonev: username,
           jelszo: randomPassword,
           email,
+          profilkep: picture || null,
         },
+      });
+    } else if (!user.profilkep && picture) {
+      user = await prisma.felhasznalo.update({
+        where: { email },
+        data: { profilkep: picture }
       });
     }
 
@@ -276,6 +284,7 @@ router.post("/google", async (req, res) => {
         username: user.felhasznalonev,
         email: user.email,
         szerepkor: user.szerepkor,
+        profilkep: user.profilkep,
       },
     });
   } catch (error) {
@@ -283,7 +292,7 @@ router.post("/google", async (req, res) => {
     if (error.message && (error.message.includes("DATABASE_URL") || error.message.includes("Can't reach database server"))) {
       return res.status(503).json({ error: "Database connection failed. Please ensure your local database is running and DATABASE_URL is set in .env." });
     }
-    res.status(500).json({ error: "Google authentication failed" });
+    res.status(500).json({ error: "Google authentication failed", details: error.message || error.toString() });
   }
 });
 
@@ -313,6 +322,7 @@ router.get("/me", async (req, res) => {
         id: user.felhasznalo_id,
         username: user.felhasznalonev,
         email: user.email,
+        profilkep: user.profilkep,
       },
     });
   } catch (error) {

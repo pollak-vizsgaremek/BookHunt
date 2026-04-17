@@ -69,7 +69,7 @@ const LoginPage = () => {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || 'Google login failed');
+                throw new Error((data.error ? data.error + (data.details ? ": " + data.details : "") : null) || 'Google login failed');
             }
 
             localStorage.setItem('token', data.token);
