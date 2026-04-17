@@ -14,6 +14,7 @@ const LoginPage = () => {
         password: '',
     });
     const [error, setError] = useState('');
+    const [banInfo, setBanInfo] = useState<{ reason: string; until: string } | null>(null);
     const navigate = useNavigate();
 
     const userStr = localStorage.getItem('user');
@@ -32,6 +33,7 @@ const LoginPage = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        setBanInfo(null);
 
         try {
             const response = await fetch('/api/auth/login', {
@@ -43,6 +45,10 @@ const LoginPage = () => {
             const data = await response.json();
 
             if (!response.ok) {
+                if (response.status === 403 && data.error === "Banned") {
+                    setBanInfo({ reason: data.reason, until: data.until });
+                    throw new Error("Access Denied");
+                }
                 throw new Error(data.error || 'Login failed');
             }
 
@@ -59,6 +65,8 @@ const LoginPage = () => {
     };
 
     const handleGoogleSuccess = async (credentialResponse: any) => {
+        setError('');
+        setBanInfo(null);
         try {
             const response = await fetch('/api/auth/google', {
                 method: 'POST',
@@ -69,6 +77,10 @@ const LoginPage = () => {
             const data = await response.json();
 
             if (!response.ok) {
+                if (response.status === 403 && data.error === "Banned") {
+                    setBanInfo({ reason: data.reason, until: data.until });
+                    throw new Error("Access Denied");
+                }
                 throw new Error((data.error ? data.error + (data.details ? ": " + data.details : "") : null) || 'Google login failed');
             }
 
@@ -86,6 +98,22 @@ const LoginPage = () => {
 
     const handleGoogleError = () => {
         setError('Google login failed. Please try again.');
+    };
+
+    const formatTimeLeft = (until: string) => {
+        const diff = new Date(until).getTime() - new Date().getTime();
+        if (diff <= 0) return "Refreshing...";
+        
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+        const minutes = Math.floor((diff / (1000 * 60)) % 60);
+        
+        const parts = [];
+        if (days > 0) parts.push(`${days}d`);
+        if (hours > 0) parts.push(`${hours}h`);
+        if (minutes > 0) parts.push(`${minutes}m`);
+        
+        return parts.join(" ") || "< 1m";
     };
 
     return (
@@ -147,7 +175,23 @@ const LoginPage = () => {
                             </div>
                         ) : (
                             <>
-                                {error && (
+                                {banInfo ? (
+                                    <div className="bg-red-500/20 border-2 border-red-500/50 text-white px-6 py-6 rounded-3xl backdrop-blur-xl shadow-2xl space-y-3 relative overflow-hidden group" role="alert">
+                                        <div className="absolute top-0 right-0 p-3 opacity-20 transform group-hover:rotate-12 transition-transform">
+                                            <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clipRule="evenodd" /></svg>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <h3 className="text-xl font-black uppercase tracking-tight">Access Restricted</h3>
+                                        </div>
+                                        <p className="text-sm font-medium text-red-100/80 leading-relaxed italic border-l-4 border-red-500/50 pl-3">
+                                            "{banInfo.reason}"
+                                        </p>
+                                        <div className="flex items-center justify-between pt-2 border-t border-red-500/20">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-red-200/50">Time Remaining</span>
+                                            <span className="text-lg font-mono font-black text-red-400">{formatTimeLeft(banInfo.until)}</span>
+                                        </div>
+                                    </div>
+                                ) : error && (
                                     <div className="bg-red-500/20 border border-red-400/50 text-red-100 px-4 py-3 rounded backdrop-blur-sm text-sm text-center" role="alert">
                                         <span>{error}</span>
                                     </div>

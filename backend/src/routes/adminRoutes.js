@@ -73,7 +73,9 @@ router.get("/users", ...adminGuard, async (req, res) => {
           felhasznalonev: true,
           email: true,
           szerepkor: true,
-          // jelszo SOHA nem kerül a válaszba
+          profilkep: true,
+          tiltva_eddig: true,
+          tiltas_oka: true,
         },
       }),
       prisma.felhasznalo.count(),
@@ -89,6 +91,87 @@ router.get("/users", ...adminGuard, async (req, res) => {
   } catch (error) {
     console.error("[Admin] Error fetching users:", error);
     res.status(500).json({ error: "Failed to fetch users" });
+  }
+});
+
+/**
+ * @swagger
+ * /api/admin/users/{id}/ban:
+ *   post:
+ *     summary: Ban a user for a specific duration (Admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
+ */
+router.post("/users/:id/ban", ...adminGuard, async (req, res) => {
+  try {
+    const felhasznalo_id = parseInt(req.params.id);
+    const { days, hours, minutes, reason } = req.body;
+
+    if (isNaN(felhasznalo_id)) return res.status(400).json({ error: "Invalid user ID" });
+    if (felhasznalo_id === req.user.userId) return res.status(400).json({ error: "You cannot ban yourself" });
+
+    // Check if target is an admin
+    const targetUser = await prisma.felhasznalo.findUnique({ where: { felhasznalo_id }, select: { szerepkor: true } });
+    if (targetUser?.szerepkor === 'ADMIN') {
+      return res.status(400).json({ error: "Administrator accounts cannot be banned." });
+    }
+
+    const banUntil = new Date();
+    banUntil.setDate(banUntil.getDate() + (parseInt(days) || 0));
+    banUntil.setHours(banUntil.getHours() + (parseInt(hours) || 0));
+    banUntil.setMinutes(banUntil.getMinutes() + (parseInt(minutes) || 0));
+
+    const updated = await prisma.felhasznalo.update({
+      where: { felhasznalo_id },
+      data: {
+        tiltva_eddig: banUntil,
+        tiltas_oka: reason || "No reason provided",
+      },
+    });
+
+    res.json({ message: "User banned successfully", until: banUntil, user: updated });
+  } catch (error) {
+    console.error("[Admin] Ban error:", error);
+    res.status(500).json({ error: "Failed to ban user" });
+  }
+});
+
+/**
+ * @swagger
+ * /api/admin/users/message:
+ *   post:
+ *     summary: Send a message to a user or all users (Admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
+ */
+router.post("/users/message", ...adminGuard, async (req, res) => {
+  try {
+    const { userId, message, broadcast } = req.body;
+
+    if (broadcast) {
+      const users = await prisma.felhasznalo.findMany({ select: { felhasznalo_id: true } });
+      await prisma.ertesites.createMany({
+        data: users.map(u => ({
+          felhasznalo_id: u.felhasznalo_id,
+          szoveg: "ADMIN: " + message,
+        })),
+      });
+    } else {
+      if (!userId) return res.status(400).json({ error: "userId is required for individual messages" });
+      await prisma.ertesites.create({
+        data: {
+          felhasznalo_id: parseInt(userId),
+          szoveg: "ADMIN: " + message,
+        },
+      });
+    }
+
+    res.json({ message: "Message sent successfully" });
+  } catch (error) {
+    console.error("[Admin] Messaging error:", error);
+    res.status(500).json({ error: "Failed to send message" });
   }
 });
 
@@ -210,9 +293,14 @@ router.delete("/users/:id", ...adminGuard, async (req, res) => {
       return res.status(400).json({ error: "Invalid user ID" });
     }
 
-    // Biztonsági zár: admin nem törölheti önmagát
+    // Biztonsági zár: admin nem törölheti önmagát vagy más admint
     if (felhasznalo_id === req.user.userId) {
       return res.status(400).json({ error: "Administrators cannot delete their own account" });
+    }
+
+    const targetUser = await prisma.felhasznalo.findUnique({ where: { felhasznalo_id }, select: { szerepkor: true } });
+    if (targetUser?.szerepkor === 'ADMIN') {
+      return res.status(400).json({ error: "Administrator accounts cannot be deleted." });
     }
 
     await prisma.felhasznalo.delete({ where: { felhasznalo_id } });

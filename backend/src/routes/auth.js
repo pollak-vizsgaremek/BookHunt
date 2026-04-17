@@ -184,6 +184,15 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ error: "Invalid credentials" });
     }
 
+    // --- Ban Check ---
+    if (user.tiltva_eddig && user.tiltva_eddig > new Date()) {
+      return res.status(403).json({
+        error: "Banned",
+        reason: user.tiltas_oka,
+        until: user.tiltva_eddig
+      });
+    }
+
     const token = jwt.sign(
       { userId: user.felhasznalo_id, szerepkor: user.szerepkor },
       process.env.JWT_SECRET || "bookhunt_secret",
@@ -271,6 +280,15 @@ router.post("/google", async (req, res) => {
       });
     }
 
+    // --- Ban Check ---
+    if (user.tiltva_eddig && user.tiltva_eddig > new Date()) {
+      return res.status(403).json({
+        error: "Banned",
+        reason: user.tiltas_oka,
+        until: user.tiltva_eddig
+      });
+    }
+
     const token = jwt.sign(
       { userId: user.felhasznalo_id, szerepkor: user.szerepkor },
       process.env.JWT_SECRET || "bookhunt_secret",
@@ -346,7 +364,10 @@ export const authenticate = (req, res, next) => {
       token,
       process.env.JWT_SECRET || "bookhunt_secret",
     );
-    req.user = { userId: decoded.userId };
+    req.user = { 
+      userId: decoded.userId,
+      szerepkor: decoded.szerepkor 
+    };
     next();
   } catch (error) {
     if (error.name === "TokenExpiredError") {
