@@ -323,6 +323,7 @@ router.get("/me", async (req, res) => {
         username: user.felhasznalonev,
         email: user.email,
         profilkep: user.profilkep,
+        szerepkor: user.szerepkor,
       },
     });
   } catch (error) {
