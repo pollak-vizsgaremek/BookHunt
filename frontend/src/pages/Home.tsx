@@ -82,6 +82,8 @@ const Home = () => {
 
   // Effect to handle search logic
   useEffect(() => {
+    let ignore = false;
+    
     if (!searchQuery.trim() && filters.genre === 'All') {
       setSearchResults([]);
       return;
@@ -91,12 +93,6 @@ const Home = () => {
       const isNewQuery = 
           lastFetchRef.current.q !== searchQuery || 
           JSON.stringify(lastFetchRef.current.filters) !== JSON.stringify(filters);
-
-      if (isNewQuery) {
-          setStartIndex(0);
-      }
-
-      const activeStartIndex = isNewQuery ? 0 : startIndex;
 
       setIsSearching(true);
       try {
@@ -109,13 +105,13 @@ const Home = () => {
         
         // At least one valid query string or subject needed
         if (!qParams && filters.genre === 'All') {
-            setSearchResults([]);
-            setIsSearching(false);
+            if (!ignore) setSearchResults([]);
+            if (!ignore) setIsSearching(false);
             return;
         }
 
         // Fetch a few extra results so we have enough after ISBN filtering
-        let url = `/api/books/search?maxResults=20&startIndex=${activeStartIndex}`;
+        let url = `/api/books/search?maxResults=20&startIndex=${startIndex}`;
         
         if (qParams) url += `&q=${encodeURIComponent(qParams)}`;
         if (filters.genre !== 'All') url += `&subject=${encodeURIComponent(filters.genre)}`;
@@ -125,6 +121,7 @@ const Home = () => {
         else if (filters.sortBy === 'Popularity') url += `&orderBy=relevance`;
 
         const response = await fetch(url);
+        if (ignore) return;
         
         if (response.ok) {
           const data = await response.json();
@@ -166,9 +163,9 @@ const Home = () => {
           lastFetchRef.current = { q: searchQuery, filters };
         }
       } catch (error) {
-        console.error("Failed to fetch search results", error);
+        if (!ignore) console.error("Failed to fetch search results", error);
       } finally {
-        setIsSearching(false);
+        if (!ignore) setIsSearching(false);
       }
     }, isNewQuery() ? 600 : 0); // debounce only on typing, not on load more
 
@@ -177,7 +174,10 @@ const Home = () => {
                JSON.stringify(lastFetchRef.current.filters) !== JSON.stringify(filters);
     }
 
-    return () => clearTimeout(timer);
+    return () => {
+        clearTimeout(timer);
+        ignore = true;
+    };
   }, [searchQuery, filters, startIndex]);
 
   const handleBookClick = (book: BookItem) => {
@@ -301,7 +301,7 @@ const Home = () => {
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => { setSearchQuery(e.target.value); setStartIndex(0); }}
               placeholder="Search by title, author, or ISBN in Google Books..."
               className="block flex-1 pl-4 pr-12 py-4 bg-transparent text-lg text-gray-900 dark:text-[#DFE6E6] placeholder-gray-500 dark:placeholder-[#DFE6E6]/40 focus:outline-none"
             />
@@ -310,7 +310,7 @@ const Home = () => {
             <div className="absolute right-2 flex items-center gap-1">
                 {searchQuery && (
                 <button
-                    onClick={() => { setSearchQuery(""); setFilters({ ...filters, genre: 'All' }); }}
+                    onClick={() => { setSearchQuery(""); setFilters({ ...filters, genre: 'All' }); setStartIndex(0); }}
                     className="p-2 text-gray-500 hover:text-gray-900 dark:text-[#DFE6E6]/50 dark:hover:text-white transition-colors focus:outline-none"
                     title="Clear search"
                 >
@@ -335,16 +335,16 @@ const Home = () => {
           </div>
         </div>
 
-        {/* Daily Featured Gallery */}
-        <DailyFeaturedBooks />
-
         {/* Product Grid or Custom Content */}
         {loading || (isSearching && startIndex === 0) ? (
-          <div className="flex justify-center items-center py-20 w-full flex-col gap-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black/50 dark:border-white/50"></div>
-            <p className="text-gray-500">
-                {isSearching ? "Searching Google Books library..." : "Loading collections..."}
-            </p>
+          <div className="w-full flex flex-col items-center">
+            <div className="flex justify-center items-center py-20 w-full flex-col gap-4">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black/50 dark:border-white/50"></div>
+              <p className="text-gray-500">
+                  {isSearching ? "Searching Google Books library..." : "Loading collections..."}
+              </p>
+            </div>
+            <DailyFeaturedBooks />
           </div>
         ) : showResults ? (
           <div className="w-full flex flex-col gap-12">
@@ -361,7 +361,7 @@ const Home = () => {
               </div>
 
               {searchResults.length > 0 ? (
-                <div className="w-full max-h-175 overflow-y-auto custom-scrollbar pr-4 pb-12 shadow-inner rounded-3xl p-2 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5">
+                <div className="w-full pb-12 pt-2">
                     <div className="w-full justify-center grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 relative">
                         {displayedSearchResults.map((product) => (
                             <ProductCard 
@@ -417,7 +417,7 @@ const Home = () => {
                     {displayedLocalMatches.length} {displayedLocalMatches.length === 1 ? 'match' : 'matches'}
                   </span>
                 </div>
-                <div className="w-full max-h-175 overflow-y-auto custom-scrollbar pr-4 shadow-inner rounded-3xl p-2 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5">
+                <div className="w-full pt-2">
                     <div className="w-full justify-center grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {displayedLocalMatches.map((product) => (
                             <ProductCard 
@@ -431,9 +431,17 @@ const Home = () => {
                 </div>
               </div>
             )}
+            
+            <div className="mt-8 w-full">
+                <DailyFeaturedBooks />
+            </div>
           </div>
         ) : (
-          <div className="w-full py-32 flex flex-col items-center justify-center space-y-32">
+          <div className="w-full flex flex-col items-center">
+            <div className="w-full mb-8 mt-4">
+                <DailyFeaturedBooks />
+            </div>
+            <div className="w-full py-16 flex flex-col items-center justify-center space-y-32">
             <ScrollFloat text="Join the BookHunt" textClassName="text-6xl md:text-8xl font-black text-gray-900 dark:text-[#DFE6E6] tracking-tighter drop-shadow-2xl" />
 
             {/* Display default local products if any exist since we removed the direct rendering of all local products above. Let's just show a few */}
@@ -464,6 +472,7 @@ const Home = () => {
               <ScrollFloat text="Keep exploring, keep hunting" textClassName="text-4xl md:text-5xl font-bold text-gray-600 dark:text-[#DFE6E6]/50" />
             </div>
           </div>
+          </div>
         )}
 
       </div>
@@ -478,7 +487,7 @@ const Home = () => {
         isOpen={isFilterModalOpen}
         onClose={() => setIsFilterModalOpen(false)}
         filters={filters}
-        onApply={(newFilters) => setFilters(newFilters)}
+        onApply={(newFilters) => { setFilters(newFilters); setStartIndex(0); }}
       />
     </div>
   );

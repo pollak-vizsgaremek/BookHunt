@@ -65,9 +65,11 @@ const DailyFeaturedBooks: React.FC = () => {
     }, []);
 
     const getDefaultBooks = () => [
-        { image: 'https://picsum.photos/seed/1/800/600?grayscale', text: 'Bridge' },
-        { image: 'https://picsum.photos/seed/2/800/600?grayscale', text: 'Desk Setup' },
-        { image: 'https://picsum.photos/seed/3/800/600?grayscale', text: 'Waterfall' },
+        { image: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=600&auto=format&fit=crop', text: 'Stunning Fiction' },
+        { image: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?q=80&w=600&auto=format&fit=crop', text: 'Classic Literature' },
+        { image: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?q=80&w=600&auto=format&fit=crop', text: 'Modern Design' },
+        { image: 'https://images.unsplash.com/photo-1629196918663-e3c631fb17ff?q=80&w=600&auto=format&fit=crop', text: 'Epic Fantasy' },
+        { image: 'https://images.unsplash.com/photo-1535905557558-afc4877a26fc?q=80&w=600&auto=format&fit=crop', text: 'Mystery Tales' },
     ];
 
     if (loading) {
@@ -102,17 +104,19 @@ const DailyFeaturedBooks: React.FC = () => {
                 </div>
             </div>
 
-            <div className="w-full h-[500px] relative overflow-hidden">
+            <div 
+                className="w-full h-[500px] relative overflow-hidden"
+                style={{ 
+                    maskImage: 'linear-gradient(to right, transparent, black 15%, black 85%, transparent)', 
+                    WebkitMaskImage: 'linear-gradient(to right, transparent, black 15%, black 85%, transparent)' 
+                }}
+            >
                 <CircularGallery 
                     items={featuredBooks} 
                     bend={0} 
                     textColor="#ffffff" 
                     borderRadius={0.05}
                 />
-                
-                {/* Visual fading overlays at the edges for dramatic effect */}
-                <div className="absolute inset-y-0 left-0 w-16 md:w-32 bg-gradient-to-r from-[#eaddcc] dark:from-[#151515] to-transparent pointer-events-none z-10"></div>
-                <div className="absolute inset-y-0 right-0 w-16 md:w-32 bg-gradient-to-l from-[#eaddcc] dark:from-[#151515] to-transparent pointer-events-none z-10"></div>
             </div>
         </div>
     );
