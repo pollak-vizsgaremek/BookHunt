@@ -15,6 +15,8 @@ model Felhasznalo {
   felhasznalonev String         @unique
   profilkep      String?        @db.VarChar(500)
   szerepkor      Szerepkor      @default(USER)
+  tiltva_eddig   DateTime?
+  tiltas_oka     String?        @db.Text
   Keres          Keres[]
   Kedvencek      Kedvencek[]
   Velemenyek     Velemeny[]
@@ -28,6 +30,7 @@ model Felhasznalo {
 
   @@index([email], name: "idx_email")
   @@index([felhasznalonev], name: "idx_felhasznalonev")
+  @@index([tiltva_eddig], name: "idx_tiltva_eddig")
 }
 
 model WebAruhaz {
