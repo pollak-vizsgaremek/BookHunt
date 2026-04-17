@@ -21,6 +21,11 @@ model Felhasznalo {
   Kivansaglista  Kivansaglista[]
   Ertesites      Ertesites[]
 
+  ForumBejegyzes   ForumBejegyzes[]
+  ForumHozzaszolas ForumHozzaszolas[]
+  ForumSzavazat    ForumSzavazat[]
+  ForumReakcio     ForumReakcio[]
+
   @@index([email], name: "idx_email")
   @@index([felhasznalonev], name: "idx_felhasznalonev")
 }
@@ -185,4 +190,63 @@ model Ertesites {
 
   Felhasznalo    Felhasznalo @relation(fields: [felhasznalo_id], references: [felhasznalo_id], onDelete: Cascade, onUpdate: Cascade)
   @@index([felhasznalo_id], name: "idx_notification_felhasznalo")
+}
+
+model ForumBejegyzes {
+  id              Int      @id @default(autoincrement())
+  felhasznalo_id  Int
+  konyv_id        String   @db.VarChar(255)
+  konyv_cim       String   @db.VarChar(500)
+  konyv_boritokep String?  @db.VarChar(500)
+  cim             String   @db.VarChar(255)
+  tartalom        String   @db.Text
+  ertekeles       Int
+  up_szavazatok   Int      @default(0)
+  down_szavazatok Int      @default(0)
+  letrehozva      DateTime @default(now())
+
+  Felhasznalo      Felhasznalo @relation(fields: [felhasznalo_id], references: [felhasznalo_id], onDelete: Cascade)
+  Hozzaszolasok    ForumHozzaszolas[]
+  Szavazatok       ForumSzavazat[]
+  Reakciok         ForumReakcio[]
+
+  @@index([felhasznalo_id], name: "idx_forum_felhasznalo")
+}
+
+model ForumHozzaszolas {
+  id              Int      @id @default(autoincrement())
+  bejegyzes_id    Int
+  felhasznalo_id  Int
+  tartalom        String   @db.Text
+  letrehozva      DateTime @default(now())
+
+  Bejegyzes       ForumBejegyzes @relation(fields: [bejegyzes_id], references: [id], onDelete: Cascade)
+  Felhasznalo     Felhasznalo    @relation(fields: [felhasznalo_id], references: [felhasznalo_id], onDelete: Cascade)
+
+  @@index([bejegyzes_id], name: "idx_hozzaszolas_bejegyzes")
+  @@index([felhasznalo_id], name: "idx_hozzaszolas_felhasznalo")
+}
+
+model ForumSzavazat {
+  id              Int      @id @default(autoincrement())
+  bejegyzes_id    Int
+  felhasznalo_id  Int
+  ertek           Int      // 1: up, -1: down
+
+  Bejegyzes       ForumBejegyzes @relation(fields: [bejegyzes_id], references: [id], onDelete: Cascade)
+  Felhasznalo     Felhasznalo    @relation(fields: [felhasznalo_id], references: [felhasznalo_id], onDelete: Cascade)
+
+  @@unique([bejegyzes_id, felhasznalo_id], name: "unique_forum_szavazat")
+}
+
+model ForumReakcio {
+  id              Int      @id @default(autoincrement())
+  bejegyzes_id    Int
+  felhasznalo_id  Int
+  emoji           String   @db.VarChar(10)
+
+  Bejegyzes       ForumBejegyzes @relation(fields: [bejegyzes_id], references: [id], onDelete: Cascade)
+  Felhasznalo     Felhasznalo    @relation(fields: [felhasznalo_id], references: [felhasznalo_id], onDelete: Cascade)
+
+  @@index([bejegyzes_id], name: "idx_reakcio_bejegyzes")
 }
