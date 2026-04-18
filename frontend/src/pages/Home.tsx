@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Navigation from "../components/Navigation";
 import ProductCard, { type BookItem } from "../components/ProductCard";
 import ScrollFloat from "../components/ScrollFloat";
@@ -30,6 +30,9 @@ const Home = () => {
     sortBy: 'Popularity'
   });
   const [startIndex, setStartIndex] = useState(0);
+  
+  const [showLoginAlert, setShowLoginAlert] = useState(false);
+  const [isExitingAlert, setIsExitingAlert] = useState(false);
 
   // Keep track of previous query params to know if we are appending or resetting
   const lastFetchRef = useRef({ q: '', filters: filters });
@@ -61,7 +64,11 @@ const Home = () => {
 
     const fetchWishlistIds = async () => {
       const token = localStorage.getItem('token');
-      if (!token) return;
+      if (!token) {
+        const dismissed = sessionStorage.getItem('loginAlertDismissed');
+        if (!dismissed) setShowLoginAlert(true);
+        return;
+      }
       try {
         const res = await fetch('/api/wishlist', {
           headers: { 'Authorization': `Bearer ${token}` }
@@ -180,10 +187,10 @@ const Home = () => {
     };
   }, [searchQuery, filters, startIndex]);
 
-  const handleBookClick = (book: BookItem) => {
+  const handleBookClick = useCallback((book: BookItem) => {
     setSelectedBook(book);
     setIsModalOpen(true);
-  };
+  }, []);
 
   // Map filter display names to DB Prisma enum values
   const TYPE_TO_DB: Record<string, string> = {
@@ -259,6 +266,42 @@ const Home = () => {
       <Navigation />
 
       <div className="pt-24 pb-12 px-4 max-w-7xl mx-auto flex flex-col items-center">
+        {showLoginAlert && (
+          <div className={`w-full max-w-4xl mb-8 relative transition-all duration-500 transform ${
+            isExitingAlert 
+              ? "opacity-0 -translate-y-8 pointer-events-none scale-95" 
+              : "animate-in fade-in slide-in-from-top-4"
+          }`}>
+            <div className="bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/20 dark:border-emerald-500/40 backdrop-blur-md rounded-2xl p-6 pr-14 shadow-lg shadow-emerald-500/5 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 blur-3xl -mr-16 -mt-16 group-hover:bg-emerald-500/20 transition-all duration-700" />
+              <div className="flex items-start gap-4 relative z-10">
+                <div className="bg-emerald-500/20 dark:bg-emerald-500/40 p-2.5 rounded-xl text-emerald-600 dark:text-emerald-400">
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-emerald-800 dark:text-emerald-300 mb-1">Join the Hunt!</h3>
+                  <p className="text-emerald-700/80 dark:text-emerald-100/70 leading-relaxed font-medium">
+                    Unlock every feature on BookHunt by simply logging in! Gain access to wishlists, price tracker notifications, forum discussions and more!
+                  </p>
+                </div>
+                <button 
+                  onClick={() => {
+                    setIsExitingAlert(true);
+                    sessionStorage.setItem('loginAlertDismissed', 'true');
+                    setTimeout(() => setShowLoginAlert(false), 500);
+                  }}
+                  className="absolute top-2 right-2 p-2 rounded-xl text-emerald-800/40 dark:text-emerald-300/40 hover:text-emerald-800 dark:hover:text-emerald-300 hover:bg-emerald-500/10 transition-all"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Header Hero Section */}
         <div className="w-full max-w-4xl mb-20 text-center space-y-20 mt-16">
@@ -344,7 +387,7 @@ const Home = () => {
                   {isSearching ? "Searching Google Books library..." : "Loading collections..."}
               </p>
             </div>
-            <DailyFeaturedBooks />
+            <DailyFeaturedBooks onBookClick={handleBookClick} />
           </div>
         ) : showResults ? (
           <div className="w-full flex flex-col gap-12">
@@ -433,13 +476,13 @@ const Home = () => {
             )}
             
             <div className="mt-8 w-full">
-                <DailyFeaturedBooks />
+                <DailyFeaturedBooks onBookClick={handleBookClick} />
             </div>
           </div>
         ) : (
           <div className="w-full flex flex-col items-center">
             <div className="w-full mb-8 mt-4">
-                <DailyFeaturedBooks />
+                <DailyFeaturedBooks onBookClick={handleBookClick} />
             </div>
             <div className="w-full py-16 flex flex-col items-center justify-center space-y-32">
             <ScrollFloat text="Join the BookHunt" textClassName="text-6xl md:text-8xl font-black text-gray-900 dark:text-[#DFE6E6] tracking-tighter drop-shadow-2xl" />

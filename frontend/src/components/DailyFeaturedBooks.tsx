@@ -1,10 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import CircularGallery from './CircularGallery';
 import type { BookItem } from './ProductCard'; // if needed, we define our own type interface or fetch directly
 
-const DailyFeaturedBooks: React.FC = () => {
+interface DailyFeaturedBooksProps {
+    onBookClick?: (book: BookItem) => void;
+}
+
+const DailyFeaturedBooks: React.FC<DailyFeaturedBooksProps> = ({ onBookClick }) => {
     const [timeLeft, setTimeLeft] = useState<string>('');
-    const [featuredBooks, setFeaturedBooks] = useState<{ image: string; text: string }[]>([]);
+    const [featuredBooks, setFeaturedBooks] = useState<{ image: string; text: string; book: BookItem }[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -39,17 +43,42 @@ const DailyFeaturedBooks: React.FC = () => {
                 const response = await fetch(url);
                 if (response.ok) {
                     const data = await response.json();
-                    const books = (data.books || [])
-                        .filter((b: any) => b.thumbnail && b.title)
-                        .map((b: any) => {
+                    // Filter unique books by ID to prevent "repeats same 2 books" issue
+                    const seenIds = new Set();
+                    const uniqueBooks = (data.books || [])
+                        .filter((b: any) => {
+                            if (!b.googleId || !b.thumbnail || !b.title || seenIds.has(b.googleId)) return false;
+                            seenIds.add(b.googleId);
+                            return true;
+                        });
+
+                    const mapped = uniqueBooks.map((b: any) => {
                             const originalImg = b.thumbnail.replace('http:', 'https:').replace('&zoom=1', '&zoom=3').replace('&edge=curl', '');
+                            
+                            const bookItem: BookItem = {
+                                id: b.googleId,
+                                title: b.title,
+                                author: b.authors && b.authors.length > 0 ? b.authors.join(', ') : 'Unknown Author',
+                                coverUrl: originalImg,
+                                isbn: b.isbn || null,
+                                description: b.description,
+                                pageCount: b.pageCount,
+                                publishedDate: b.publishedDate,
+                                categories: b.categories,
+                                language: b.language,
+                                isLocal: false,
+                                ratingsCount: b.ratingsCount || 0,
+                                averageRating: b.averageRating || 0,
+                            };
+
                             return {
                                 image: `https://wsrv.nl/?url=${encodeURIComponent(originalImg)}&output=webp&default=https://picsum.photos/600/800`,
-                                text: b.title.length > 25 ? b.title.substring(0, 25) + '...' : b.title
+                                text: b.title.length > 25 ? b.title.substring(0, 25) + '...' : b.title,
+                                book: bookItem
                             };
                         });
                     
-                    setFeaturedBooks(books.length > 0 ? books : getDefaultBooks());
+                    setFeaturedBooks(mapped.length > 0 ? mapped : getDefaultBooks());
                 } else {
                     setFeaturedBooks(getDefaultBooks());
                 }
@@ -64,13 +93,62 @@ const DailyFeaturedBooks: React.FC = () => {
         fetchFeatured();
     }, []);
 
-    const getDefaultBooks = () => [
-        { image: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=600&auto=format&fit=crop', text: 'Stunning Fiction' },
-        { image: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?q=80&w=600&auto=format&fit=crop', text: 'Classic Literature' },
-        { image: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?q=80&w=600&auto=format&fit=crop', text: 'Modern Design' },
-        { image: 'https://images.unsplash.com/photo-1629196918663-e3c631fb17ff?q=80&w=600&auto=format&fit=crop', text: 'Epic Fantasy' },
-        { image: 'https://images.unsplash.com/photo-1535905557558-afc4877a26fc?q=80&w=600&auto=format&fit=crop', text: 'Mystery Tales' },
+    const getDefaultBooks = (): { image: string; text: string; book: BookItem }[] => [
+        { 
+            image: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=600&auto=format&fit=crop', 
+            text: 'Milk and Honey',
+            book: { id: 'default1', title: 'Milk and Honey', author: 'Rupi Kaur', coverUrl: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=600&auto=format&fit=crop', isLocal: false } as BookItem
+        },
+        { 
+            image: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?q=80&w=600&auto=format&fit=crop', 
+            text: 'The Alchemist',
+            book: { id: 'default2', title: 'The Alchemist', author: 'Paulo Coelho', coverUrl: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?q=80&w=600&auto=format&fit=crop', isLocal: false } as BookItem
+        },
+        { 
+            image: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?q=80&w=600&auto=format&fit=crop', 
+            text: 'Modern Architecture',
+            book: { id: 'default3', title: 'Modern Architecture', author: 'Archi Design', coverUrl: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?q=80&w=600&auto=format&fit=crop', isLocal: false } as BookItem
+        },
+        { 
+            image: 'https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=600&auto=format&fit=crop', 
+            text: 'Great Gatsby',
+            book: { id: 'default4', title: 'Great Gatsby', author: 'F. Scott Fitzgerald', coverUrl: 'https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=600&auto=format&fit=crop', isLocal: false } as BookItem
+        },
+        { 
+            image: 'https://images.unsplash.com/photo-1495446815901-a7297e633e8d?q=80&w=600&auto=format&fit=crop', 
+            text: 'Library Secrets',
+            book: { id: 'default5', title: 'Library Secrets', author: 'Bibliophile', coverUrl: 'https://images.unsplash.com/photo-1495446815901-a7297e633e8d?q=80&w=600&auto=format&fit=crop', isLocal: false } as BookItem
+        },
+        { 
+            image: 'https://images.unsplash.com/photo-1516979187457-637abb4f9353?q=80&w=600&auto=format&fit=crop', 
+            text: 'Education 101',
+            book: { id: 'default6', title: 'Education 101', author: 'Professor X', coverUrl: 'https://images.unsplash.com/photo-1516979187457-637abb4f9353?q=80&w=600&auto=format&fit=crop', isLocal: false } as BookItem
+        },
+        { 
+            image: 'https://images.unsplash.com/photo-1491843343655-ad8af3600000?q=80&w=600&auto=format&fit=crop', 
+            text: 'Zen Design',
+            book: { id: 'default7', title: 'Zen Design', author: 'Zen Master', coverUrl: 'https://images.unsplash.com/photo-1491843343655-ad8af3600000?q=80&w=600&auto=format&fit=crop', isLocal: false } as BookItem
+        },
+        { 
+            image: 'https://images.unsplash.com/photo-1471970394675-61b43a5cc503?q=80&w=600&auto=format&fit=crop', 
+            text: 'Study Habits',
+            book: { id: 'default8', title: 'Study Habits', author: 'Efficient Learner', coverUrl: 'https://images.unsplash.com/photo-1471970394675-61b43a5cc503?q=80&w=600&auto=format&fit=crop', isLocal: false } as BookItem
+        },
+        { 
+            image: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?q=80&w=600&auto=format&fit=crop', 
+            text: 'Bookstore Tales',
+            book: { id: 'default9', title: 'Bookstore Tales', author: 'Clerk Jones', coverUrl: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?q=80&w=600&auto=format&fit=crop', isLocal: false } as BookItem
+        },
+        { 
+            image: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=600&auto=format&fit=crop', 
+            text: 'Adventure Peaks',
+            book: { id: 'default10', title: 'Adventure Peaks', author: 'Sky Walker', coverUrl: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=600&auto=format&fit=crop', isLocal: false } as BookItem
+        },
     ];
+
+    const handleGalleryClick = useCallback((item: any) => {
+        if (onBookClick) onBookClick(item.book);
+    }, [onBookClick]);
 
     if (loading) {
         return (
@@ -116,6 +194,7 @@ const DailyFeaturedBooks: React.FC = () => {
                     bend={0} 
                     textColor="#ffffff" 
                     borderRadius={0.05}
+                    onItemClick={handleGalleryClick}
                 />
             </div>
         </div>

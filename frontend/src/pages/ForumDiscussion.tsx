@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import Navigation from '../components/Navigation';
 import LightRays from '../components/LightRays';
+import ConfirmModal from '../components/ConfirmModal';
+import MeatballsMenu from '../components/MeatballsMenu';
+import ReportModal from '../components/ReportModal';
 
 interface UserInfo {
     felhasznalonev: string;
@@ -12,7 +15,9 @@ interface ForumComment {
     id: number;
     letrehozva: string;
     tartalom: string;
+    felhasznalo_id: number;
     Felhasznalo: UserInfo;
+    Reakciok: ForumReakcio[];
 }
 
 interface ForumSzavazat {
@@ -55,6 +60,14 @@ const ForumDiscussion = () => {
     const [actionError, setActionError] = useState("");
     const commentsEndRef = useRef<HTMLDivElement>(null);
 
+    // Deletion Modal State
+    const [deleteTarget, setDeleteTarget] = useState<{ type: 'post' | 'comment', id: number } | null>(null);
+    const [deleteStep, setDeleteStep] = useState(1);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    // Reporting State
+    const [reportTarget, setReportTarget] = useState<{ type: 'post' | 'comment', id: number } | null>(null);
+
     const [userStr] = useState(localStorage.getItem('user'));
     const user = userStr ? JSON.parse(userStr) : null;
 
@@ -95,8 +108,8 @@ const ForumDiscussion = () => {
                     ...prev, 
                     up_szavazatok: updated.up_szavazatok, 
                     down_szavazatok: updated.down_szavazatok,
-                    Szavazatok: prev.Szavazatok.filter(s => s.felhasznalo_id !== user.felhasznalo_id).concat(
-                        (prev.Szavazatok.find(s => s.felhasznalo_id === user.felhasznalo_id)?.ertek === ertek) ? [] : [{ felhasznalo_id: user.felhasznalo_id, ertek }]
+                    Szavazatok: prev.Szavazatok.filter(s => s.felhasznalo_id !== user.id).concat(
+                        (prev.Szavazatok.find(s => s.felhasznalo_id === user.id)?.ertek === ertek) ? [] : [{ felhasznalo_id: user.id, ertek }]
                     )
                 } : null);
             }
@@ -106,7 +119,7 @@ const ForumDiscussion = () => {
     const handleReact = async (emoji: string) => {
         if (!user) return navigate('/login');
         
-        const myReactions = post?.Reakciok.filter(r => r.felhasznalo_id === user.felhasznalo_id) || [];
+        const myReactions = post?.Reakciok.filter(r => r.felhasznalo_id === user.id) || [];
         const alreadyHasEmoji = myReactions.some(r => r.emoji === emoji);
         if (!alreadyHasEmoji && myReactions.length >= 3) {
             setActionError("You can only have up to 3 different reactions per post.");
@@ -132,6 +145,40 @@ const ForumDiscussion = () => {
         } catch (err) { console.error("Reaction failed", err); }
     };
 
+    const handleCommentReact = async (commentId: number, emoji: string) => {
+        if (!user) return navigate('/login');
+        
+        const comment = post?.Hozzaszolasok.find(c => c.id === commentId);
+        if (!comment) return;
+
+        const myCommentReactions = comment.Reakciok.filter(r => r.felhasznalo_id === user.id) || [];
+        const alreadyHasEmoji = myCommentReactions.some(r => r.emoji === emoji);
+        
+        if (!alreadyHasEmoji && myCommentReactions.length >= 3) {
+            setActionError("Up to 3 reactions per comment.");
+            setTimeout(() => setActionError(""), 3000);
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch(`/api/forums/comments/${commentId}/react`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                body: JSON.stringify({ emoji })
+            });
+            if (res.ok) {
+                const updatedReactions = await res.json();
+                setPost(prev => prev ? {
+                    ...prev,
+                    Hozzaszolasok: prev.Hozzaszolasok.map(c => 
+                        c.id === commentId ? { ...c, Reakciok: updatedReactions } : c
+                    )
+                } : null);
+            }
+        } catch (err) { console.error("Comment reaction failed", err); }
+    };
+
     const handleCommentSubmit = async () => {
         if (!user) return navigate('/login');
         if (!commentContent.trim()) { setActionError("Comment cannot be empty."); return; }
@@ -155,6 +202,38 @@ const ForumDiscussion = () => {
         } catch (err: any) { setActionError(err.message); } finally { setIsSubmitting(false); }
     };
 
+    const handleDeleteAction = async () => {
+        if (!deleteTarget) return;
+        setIsDeleting(true);
+        
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch(`/api/forums/${deleteTarget.type}s/${deleteTarget.id}`, {
+                method: "DELETE",
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            
+            if (res.ok) {
+                if (deleteTarget.type === 'post') {
+                    navigate('/forums');
+                } else {
+                    setPost(prev => prev ? {
+                        ...prev,
+                        Hozzaszolasok: prev.Hozzaszolasok.filter(c => c.id !== deleteTarget.id)
+                    } : null);
+                    setDeleteTarget(null);
+                }
+            } else {
+                const data = await res.json();
+                alert(data.error || "Deletion failed");
+            }
+        } catch (err) {
+            console.error("Delete error", err);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     const formatDate = (isoString: string) => {
         const date = new Date(isoString);
         return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
@@ -170,8 +249,8 @@ const ForumDiscussion = () => {
 
     if (!post) return null;
 
-    const myVote = post.Szavazatok.find(s => s.felhasznalo_id === user?.felhasznalo_id)?.ertek;
-    const myReactions = post.Reakciok.filter(r => r.felhasznalo_id === user?.felhasznalo_id).map(r => r.emoji);
+    const myVote = post.Szavazatok.find(s => s.felhasznalo_id === user?.id)?.ertek;
+    const myReactions = post.Reakciok.filter(r => r.felhasznalo_id === user?.id).map(r => r.emoji);
     
     const reactionTotals = post.Reakciok.reduce((acc, r) => {
         acc[r.emoji] = (acc[r.emoji] || 0) + 1;
@@ -244,9 +323,32 @@ const ForumDiscussion = () => {
                                 </div>
                                 <div className="flex-1">
                                     <div className="flex items-center gap-3 mb-4">
-                                        <img src={post.Felhasznalo.profilkep || '/images/profile_icon.png'} className="w-8 h-8 rounded-full object-cover ring-2 ring-emerald-500/20" alt={post.Felhasznalo.felhasznalonev} />
+                                        <img src={post.Felhasznalo.profilkep || '/images/profile_icon.png'} className="w-8 h-8 rounded-full object-cover ring-2 ring-emerald-500/20" alt={post.Felhasznalo.felhasznalonev} referrerPolicy="no-referrer" />
                                         <div>
-                                            <div className="font-bold text-gray-900 dark:text-white text-sm sm:text-base">{post.Felhasznalo.felhasznalonev}</div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="font-bold text-gray-900 dark:text-white text-sm sm:text-base">{post.Felhasznalo.felhasznalonev}</div>
+                                                <div className="flex items-center gap-1">
+                                                    {user?.szerepkor === 'ADMIN' && (
+                                                        <button 
+                                                            onClick={() => { setDeleteTarget({ type: 'post', id: post.id }); setDeleteStep(1); }}
+                                                            className="p-1.5 rounded-lg text-red-500/50 hover:text-red-500 hover:bg-red-500/10 transition-all active:scale-95"
+                                                            title="Delete Post (Admin)"
+                                                        >
+                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                        </button>
+                                                    )}
+                                                    <MeatballsMenu 
+                                                        items={[
+                                                            {
+                                                                label: "Report Post",
+                                                                icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>,
+                                                                onClick: () => setReportTarget({ type: 'post', id: post.id }),
+                                                                variant: "danger"
+                                                            }
+                                                        ]}
+                                                    />
+                                                </div>
+                                            </div>
                                             <div className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-tighter">{formatDate(post.letrehozva)}</div>
                                         </div>
                                     </div>
@@ -300,12 +402,62 @@ const ForumDiscussion = () => {
                             <div key={comment.id} className="p-5 rounded-2xl bg-white/30 dark:bg-black/20 backdrop-blur-sm border border-black/5 dark:border-white/5">
                                 <div className="flex justify-between items-start mb-3">
                                     <div className="flex items-center gap-3">
-                                        <img src={comment.Felhasznalo.profilkep || '/images/profile_icon.png'} className="w-8 h-8 rounded-full object-cover" alt={comment.Felhasznalo.felhasznalonev} />
+                                        <img src={comment.Felhasznalo.profilkep || '/images/profile_icon.png'} className="w-8 h-8 rounded-full object-cover" alt={comment.Felhasznalo.felhasznalonev} referrerPolicy="no-referrer" />
                                         <span className="font-bold text-gray-900 dark:text-gray-100">{comment.Felhasznalo.felhasznalonev}</span>
+                                        <div className="flex items-center gap-1 ml-1">
+                                            {(user?.id === comment.felhasznalo_id || user?.szerepkor === 'ADMIN') && (
+                                                <button 
+                                                    onClick={() => { setDeleteTarget({ type: 'comment', id: comment.id }); setDeleteStep(1); }}
+                                                    className="p-1.5 rounded-lg text-red-500/50 hover:text-red-500 hover:bg-red-500/10 transition-all active:scale-95"
+                                                    title="Delete Comment"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                </button>
+                                            )}
+                                            <MeatballsMenu 
+                                                items={[
+                                                    ...ALLOWED_EMOJIS.map(emoji => ({
+                                                        label: `React ${emoji}`,
+                                                        icon: <span className="text-lg">{emoji}</span>,
+                                                        onClick: () => handleCommentReact(comment.id, emoji)
+                                                    })),
+                                                    {
+                                                        label: "Report Comment",
+                                                        icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>,
+                                                        onClick: () => setReportTarget({ type: 'comment', id: comment.id }),
+                                                        variant: "danger" as const
+                                                    }
+                                                ]}
+                                            />
+                                        </div>
                                     </div>
                                     <span className="text-[10px] font-semibold text-gray-500/80 dark:text-gray-500">{formatDate(comment.letrehozva)}</span>
                                 </div>
-                                <p className="text-gray-800 dark:text-gray-300 whitespace-pre-wrap leading-relaxed pl-11">{comment.tartalom}</p>
+                                <p className="text-gray-800 dark:text-gray-300 whitespace-pre-wrap leading-relaxed pl-11 mb-3">{comment.tartalom}</p>
+                                
+                                {/* Comment Reactions Display */}
+                                {comment.Reakciok && comment.Reakciok.length > 0 && (
+                                    <div className="flex flex-wrap gap-2 pl-11 mb-2">
+                                        {Object.entries(
+                                            comment.Reakciok.reduce((acc, r) => {
+                                                acc[r.emoji] = (acc[r.emoji] || 0) + 1;
+                                                return acc;
+                                            }, {} as Record<string, number>)
+                                        ).map(([emoji, count]) => {
+                                            const isActive = comment.Reakciok.some(r => r.felhasznalo_id === user?.id && r.emoji === emoji);
+                                            return (
+                                                <button
+                                                    key={emoji}
+                                                    onClick={() => handleCommentReact(comment.id, emoji)}
+                                                    className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-xs font-black transition-all ${isActive ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-500' : 'bg-black/5 dark:bg-white/5 border-transparent text-gray-500'}`}
+                                                >
+                                                    <span>{emoji}</span>
+                                                    <span>{count}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         ))
                     )}
@@ -337,6 +489,32 @@ const ForumDiscussion = () => {
                     )}
                 </div>
             </main>
+
+            <ConfirmModal 
+                isOpen={!!deleteTarget}
+                onClose={() => setDeleteTarget(null)}
+                onConfirm={handleDeleteAction}
+                title={deleteTarget?.type === 'post' ? "Delete Discussion" : "Delete Comment"}
+                message={
+                    user?.szerepkor === 'ADMIN' && deleteStep === 1
+                    ? `Are you sure you want to remove this ${deleteTarget?.type}? This action is permanent.`
+                    : user?.szerepkor === 'ADMIN' && deleteStep === 2
+                    ? `Final warning: This cannot be undone. All data associated with this ${deleteTarget?.type} will be lost.`
+                    : `Are you sure you want to delete your comment?`
+                }
+                type="danger"
+                steps={user?.szerepkor === 'ADMIN' ? 2 : 1}
+                currentStep={deleteStep}
+                onStepConfirm={() => setDeleteStep(2)}
+                confirmText={isDeleting ? "Deleting..." : "Delete Permanently"}
+            />
+
+            <ReportModal 
+                isOpen={!!reportTarget} 
+                onClose={() => setReportTarget(null)} 
+                targetId={reportTarget?.id || 0}
+                targetType={reportTarget?.type || 'post'}
+            />
         </div>
     );
 };

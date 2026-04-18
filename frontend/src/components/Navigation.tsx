@@ -155,7 +155,6 @@ const Navigation = () => {
                   >
                     <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
-                      {/* Using heart as crown placeholder if I can't find a good crown path immediately, but I'll find a crown path */}
                       <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 00-.553.894l1 5a1 1 0 00.998.807L5 11.78l.051-.001.076-.015a1.008 1.008 0 00.183-.039l3.69-1.23 3.69 1.23a1.013 1.013 0 00.183.039l.076.015.051.001 1-.001a1 1 0 00.998-.807l1-5a1 1 0 00-.553-.894l-7-3zM5 14a1 1 0 00-1 1v1a2 2 0 002 2h8a2 2 0 002-2v-1a1 1 0 00-1-1H5z" />
                     </svg>
                   </button>
@@ -167,13 +166,18 @@ const Navigation = () => {
                 >
                   <span className="text-gray-900 dark:text-white font-bold text-sm hidden lg:block group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors uppercase tracking-wider">{user.felhasznalonev || user.username}</span>
                   <div className="relative p-0.5 rounded-full ring-2 ring-emerald-500/20 group-hover:ring-emerald-500/50 transition-all">
-                    <img src={user.profilkep || "/images/profile_icon.png"} alt="Profile" className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover" />
+                    <img 
+                      src={user.profilkep || "/images/profile_icon.png"} 
+                      alt="Profile" 
+                      className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover" 
+                      referrerPolicy="no-referrer"
+                    />
                   </div>
                 </button>
               </div>
             ) : (
               <NavLink to="/login" className="flex items-center gap-2 group shrink-0">
-                 <span className="text-gray-900 dark:text-white font-bold text-sm hidden sm:block group-hover:text-emerald-600 transition-colors uppercase">Sign In</span>
+                 <span className="text-gray-900 dark:text-white font-bold text-sm hidden sm:block group-hover:text-emerald-600 transition-colors uppercase tracking-widest">Sign In</span>
                  <div className="p-1 rounded-full ring-2 ring-black/5 dark:ring-white/5 group-hover:ring-emerald-500/30 transition-all">
                   <img src="/images/profile_icon.png" alt="Profile" className="w-8 h-8 sm:w-9 sm:h-9 rounded-full" />
                  </div>

@@ -1,9 +1,30 @@
 import express from "express";
 import { PrismaClient } from "../../generated/prisma/index.js";
 import { authenticate } from "./auth.js";
+import { censorText } from "../utils/censor.js";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 
 const router = express.Router();
 const prisma = new PrismaClient();
+
+// Multer Storage for Report Images
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = "src/uploads/reports";
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, `report-${uniqueSuffix}${path.extname(file.originalname)}`);
+  }
+});
+const upload = multer({ 
+  storage, 
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
 
 // Get list of forums with pagination, search, and sorting
 router.get("/", async (req, res, next) => {
@@ -101,10 +122,17 @@ router.get("/:id", async (req, res, next) => {
           include: {
             Felhasznalo: {
               select: {
+                felhasznalo_id: true,
                 felhasznalonev: true,
                 profilkep: true,
               },
             },
+            Reakciok: {
+                select: {
+                    felhasznalo_id: true,
+                    emoji: true
+                }
+            }
           },
           orderBy: {
             letrehozva: "asc",
@@ -146,9 +174,18 @@ router.post("/", authenticate, async (req, res, next) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
+    const censoredCim = await censorText(cim);
+    const censoredTartalom = await censorText(tartalom);
+
     const post = await prisma.forumBejegyzes.create({
       data: {
-        felhasznalo_id, konyv_id, konyv_cim, konyv_boritokep, cim, tartalom, ertekeles
+        felhasznalo_id, 
+        konyv_id, 
+        konyv_cim, 
+        konyv_boritokep, 
+        cim: censoredCim, 
+        tartalom: censoredTartalom, 
+        ertekeles
       },
     });
     res.status(201).json(post);
@@ -276,12 +313,127 @@ router.post("/:id/comments", authenticate, async (req, res, next) => {
 
     if (!tartalom || tartalom.trim() === "") return res.status(400).json({ error: "Comment content cannot be empty" });
 
+    const censoredTartalom = await censorText(tartalom);
+
     const comment = await prisma.forumHozzaszolas.create({
-      data: { bejegyzes_id, felhasznalo_id, tartalom },
+      data: { bejegyzes_id, felhasznalo_id, tartalom: censoredTartalom },
       include: { Felhasznalo: { select: { felhasznalonev: true, profilkep: true } } },
     });
     res.status(201).json(comment);
   } catch (error) { next(error); }
+});
+
+// Delete a forum post (Admin only)
+router.delete("/posts/:id", authenticate, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+
+    // Biztonsági ellenőrzés: csak admin törölhet bejegyzést
+    if (req.user.szerepkor !== 'ADMIN') {
+      return res.status(403).json({ error: "Only administrators can delete discussion posts." });
+    }
+
+    await prisma.forumBejegyzes.delete({ where: { id } });
+    res.json({ message: "Post deleted successfully" });
+  } catch (error) {
+    if (error.code === 'P2025') return res.status(404).json({ error: "Post not found" });
+    next(error);
+  }
+});
+
+// Delete a comment (Admin or OP)
+router.delete("/comments/:id", authenticate, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+
+    const comment = await prisma.forumHozzaszolas.findUnique({
+      where: { id },
+      select: { felhasznalo_id: true }
+    });
+
+    if (!comment) return res.status(404).json({ error: "Comment not found" });
+
+    // Ellenőrzés: Admin VAGY a hozzászólás írója
+    if (req.user.szerepkor !== 'ADMIN' && req.user.userId !== comment.felhasznalo_id) {
+      return res.status(403).json({ error: "You don't have permission to delete this comment." });
+    }
+
+    await prisma.forumHozzaszolas.delete({ where: { id } });
+    res.json({ message: "Comment deleted successfully" });
+  } catch (error) { next(error); }
+});
+
+// REPORT POST
+router.post("/:id/report", authenticate, upload.single("image"), async (req, res, next) => {
+    try {
+        const id = parseInt(req.params.id);
+        const { tipus, leiras } = req.body;
+        const reporterId = req.user.userId;
+
+        const report = await prisma.forumReport.create({
+            data: {
+                felhasznalo_id: reporterId,
+                bejegyzes_id: id,
+                tipus,
+                leiras: leiras || null,
+                kep_url: req.file ? `/uploads/reports/${req.file.filename}` : null
+            }
+        });
+        res.status(201).json(report);
+    } catch (error) { next(error); }
+});
+
+// REPORT COMMENT
+router.post("/comments/:id/report", authenticate, upload.single("image"), async (req, res, next) => {
+    try {
+        const id = parseInt(req.params.id);
+        const { tipus, leiras } = req.body;
+        const reporterId = req.user.userId;
+
+        const report = await prisma.forumReport.create({
+            data: {
+                felhasznalo_id: reporterId,
+                hozzaszolas_id: id,
+                tipus,
+                leiras: leiras || null,
+                kep_url: req.file ? `/uploads/reports/${req.file.filename}` : null
+            }
+        });
+        res.status(201).json(report);
+    } catch (error) { next(error); }
+});
+
+// COMMENT REACTIONS
+router.post("/comments/:id/react", authenticate, async (req, res, next) => {
+    try {
+        const id = parseInt(req.params.id);
+        const { emoji } = req.body;
+        const felhasznalo_id = req.user.userId;
+
+        if (!ALLOWED_EMOJIS.includes(emoji)) return res.status(400).json({ error: "Invalid emoji" });
+
+        const existing = await prisma.forumHozzaszolasReakcio.findMany({
+            where: { hozzaszolas_id: id, felhasznalo_id }
+        });
+
+        const hasThisEmoji = existing.find(r => r.emoji === emoji);
+        if (hasThisEmoji) {
+            await prisma.forumHozzaszolasReakcio.delete({ where: { id: hasThisEmoji.id } });
+        } else {
+            if (existing.length >= 3) return res.status(400).json({ error: "Up to 3 reactions only." });
+            await prisma.forumHozzaszolasReakcio.create({
+                data: { hozzaszolas_id: id, felhasznalo_id, emoji }
+            });
+        }
+
+        const updated = await prisma.forumHozzaszolasReakcio.findMany({
+            where: { hozzaszolas_id: id },
+            select: { emoji: true, felhasznalo_id: true }
+        });
+        res.json(updated);
+    } catch (error) { next(error); }
 });
 
 export default router;
