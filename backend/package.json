@@ -36,6 +36,7 @@
     "google-auth-library": "^10.6.1",
     "jsonwebtoken": "^9.0.3",
     "mariadb": "^3.4.5",
+    "multer": "^2.1.1",
     "nodemon": "^3.1.11",
     "puppeteer": "^24.36.1",
     "puppeteer-extra": "^3.3.6",

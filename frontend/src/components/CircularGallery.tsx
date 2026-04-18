@@ -237,7 +237,8 @@ class Media {
         void main() {
           vUv = uv;
           vec3 p = position;
-          p.z = (sin(p.x * 4.0 + uTime) * 1.5 + cos(p.y * 2.0 + uTime) * 1.5) * (0.1 + uSpeed * 0.5);
+          // Wobble removed as requested
+          // p.z = (sin(p.x * 4.0 + uTime) * 1.5 + cos(p.y * 2.0 + uTime) * 1.5) * (0.1 + uSpeed * 0.5);
           gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
         }
       `,
@@ -381,11 +382,15 @@ interface AppConfig {
   font?: string;
   scrollSpeed?: number;
   scrollEase?: number;
+  autoRotationSpeed?: number;
+  onItemClick?: (item: any) => void;
 }
 
 class App {
   container: HTMLElement;
   scrollSpeed: number;
+  autoRotationSpeed: number;
+  onItemClick?: (item: any) => void;
   scroll: {
     ease: number;
     current: number;
@@ -409,10 +414,15 @@ class App {
   boundOnWheel!: (e: Event) => void;
   boundOnTouchDown!: (e: MouseEvent | TouchEvent) => void;
   boundOnTouchMove!: (e: MouseEvent | TouchEvent) => void;
-  boundOnTouchUp!: () => void;
+  boundOnTouchUp!: (e: MouseEvent | TouchEvent) => void;
 
   isDown: boolean = false;
   start: number = 0;
+  startTime: number = 0;
+  clickThreshold: number = 10; // pixels
+  lastX: number = 0;
+  lastY: number = 0;
+  isDragging: boolean = false;
 
   constructor(
     container: HTMLElement,
@@ -421,16 +431,21 @@ class App {
       bend = 1,
       textColor = '#ffffff',
       borderRadius = 0,
-      font = 'bold 30px Figtree',
+      font = 'bold 30px Contrail',
       scrollSpeed = 2,
-      scrollEase = 0.05
+      scrollEase = 0.05,
+      autoRotationSpeed = 0,
+      onItemClick
     }: AppConfig
   ) {
+    autoBind(this);
     document.documentElement.classList.remove('no-js');
     this.container = container;
     this.scrollSpeed = scrollSpeed;
+    this.autoRotationSpeed = autoRotationSpeed;
+    this.onItemClick = onItemClick;
     this.scroll = { ease: scrollEase, current: 0, target: 0, last: 0 };
-    this.onCheckDebounce = debounce(this.onCheck.bind(this), 200);
+    this.onCheckDebounce = debounce(this.onCheck, 200);
     this.createRenderer();
     this.createCamera();
     this.createScene();
@@ -477,54 +492,18 @@ class App {
     font: string
   ) {
     const defaultItems = [
-      {
-        image: `https://picsum.photos/seed/1/800/600?grayscale`,
-        text: 'Bridge'
-      },
-      {
-        image: `https://picsum.photos/seed/2/800/600?grayscale`,
-        text: 'Desk Setup'
-      },
-      {
-        image: `https://picsum.photos/seed/3/800/600?grayscale`,
-        text: 'Waterfall'
-      },
-      {
-        image: `https://picsum.photos/seed/4/800/600?grayscale`,
-        text: 'Strawberries'
-      },
-      {
-        image: `https://picsum.photos/seed/5/800/600?grayscale`,
-        text: 'Deep Diving'
-      },
-      {
-        image: `https://picsum.photos/seed/16/800/600?grayscale`,
-        text: 'Train Track'
-      },
-      {
-        image: `https://picsum.photos/seed/17/800/600?grayscale`,
-        text: 'Santorini'
-      },
-      {
-        image: `https://picsum.photos/seed/8/800/600?grayscale`,
-        text: 'Blurry Lights'
-      },
-      {
-        image: `https://picsum.photos/seed/9/800/600?grayscale`,
-        text: 'New York'
-      },
-      {
-        image: `https://picsum.photos/seed/10/800/600?grayscale`,
-        text: 'Good Boy'
-      },
-      {
-        image: `https://picsum.photos/seed/21/800/600?grayscale`,
-        text: 'Coastline'
-      },
-      {
-        image: `https://picsum.photos/seed/12/800/600?grayscale`,
-        text: 'Palm Trees'
-      }
+      { image: `https://picsum.photos/seed/1/800/600?grayscale`, text: 'Bridge' },
+      { image: `https://picsum.photos/seed/2/800/600?grayscale`, text: 'Desk Setup' },
+      { image: `https://picsum.photos/seed/3/800/600?grayscale`, text: 'Waterfall' },
+      { image: `https://picsum.photos/seed/4/800/600?grayscale`, text: 'Strawberries' },
+      { image: `https://picsum.photos/seed/5/800/600?grayscale`, text: 'Deep Diving' },
+      { image: `https://picsum.photos/seed/16/800/600?grayscale`, text: 'Train Track' },
+      { image: `https://picsum.photos/seed/17/800/600?grayscale`, text: 'Santorini' },
+      { image: `https://picsum.photos/seed/8/800/600?grayscale`, text: 'Blurry Lights' },
+      { image: `https://picsum.photos/seed/9/800/600?grayscale`, text: 'New York' },
+      { image: `https://picsum.photos/seed/10/800/600?grayscale`, text: 'Good Boy' },
+      { image: `https://picsum.photos/seed/21/800/600?grayscale`, text: 'Coastline' },
+      { image: `https://picsum.photos/seed/12/800/600?grayscale`, text: 'Palm Trees' }
     ];
     const galleryItems = items && items.length ? items : defaultItems;
     this.mediasImages = galleryItems.concat(galleryItems);
@@ -548,10 +527,39 @@ class App {
     });
   }
 
+  onResize() {
+    this.screen = { width: this.container.clientWidth, height: this.container.clientHeight };
+    this.renderer.setSize(this.screen.width, this.screen.height);
+    this.camera.perspective({ aspect: this.screen.width / this.screen.height });
+    const fov = (this.camera.fov * Math.PI) / 180;
+    const height = 2 * Math.tan(fov / 2) * this.camera.position.z;
+    const width = height * this.camera.aspect;
+    this.viewport = { width, height };
+    if (this.medias) {
+      this.medias.forEach(media => media.onResize({ screen: this.screen, viewport: this.viewport }));
+    }
+  }
+
+  update() {
+    this.scroll.current = lerp(this.scroll.current, this.scroll.target, this.scroll.ease);
+    if (!this.isDown && this.autoRotationSpeed !== 0) {
+      this.scroll.target += this.autoRotationSpeed;
+    }
+    const direction = this.scroll.current > this.scroll.last ? 'right' : 'left';
+    if (this.medias) {
+      this.medias.forEach(media => media.update(this.scroll, direction));
+    }
+    this.renderer.render({ scene: this.scene, camera: this.camera });
+    this.scroll.last = this.scroll.current;
+    this.raf = window.requestAnimationFrame(this.update);
+  }
+
   onTouchDown(e: MouseEvent | TouchEvent) {
     this.isDown = true;
     this.scroll.position = this.scroll.current;
     this.start = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    this.startTime = Date.now();
+    this.lastX = this.start;
   }
 
   onTouchMove(e: MouseEvent | TouchEvent) {
@@ -561,9 +569,51 @@ class App {
     this.scroll.target = (this.scroll.position ?? 0) + distance;
   }
 
-  onTouchUp() {
+  onTouchUp(e: MouseEvent | TouchEvent) {
+    if (!this.isDown) return;
     this.isDown = false;
+    this.container.style.cursor = 'grab';
     this.onCheck();
+    
+    const x = 'touches' in e ? (e as TouchEvent).changedTouches[0].clientX : (e as MouseEvent).clientX;
+    const y = 'touches' in e ? (e as TouchEvent).changedTouches[0].clientY : (e as MouseEvent).clientY;
+    
+    const timeDiff = Date.now() - this.startTime;
+    const dist = Math.sqrt(Math.pow(x - this.start, 2) + Math.pow(y - (this.lastY || y), 2));
+    
+    if (timeDiff < 300 && dist < this.clickThreshold) {
+      this.handleClick(x, y);
+    }
+  }
+
+  handleClick(clientX: number, clientY: number) {
+    if (!this.onItemClick || this.medias.length === 0) return;
+    
+    // CRITICAL: Check if the click is actually within the container's bounds
+    const rect = this.container.getBoundingClientRect();
+    if (
+        clientX < rect.left || 
+        clientX > rect.right || 
+        clientY < rect.top || 
+        clientY > rect.bottom
+    ) {
+        return;
+    }
+
+    const x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    const projectedX = (x * this.viewport.width) / 2;
+    let closestMedia = this.medias[0];
+    let minDistance = Math.abs(this.medias[0].plane.position.x - projectedX);
+    this.medias.forEach(media => {
+      const dist = Math.abs(media.plane.position.x - projectedX);
+      if (dist < minDistance) {
+        minDistance = dist;
+        closestMedia = media;
+      }
+    });
+    const originalLen = this.mediasImages.length / 2;
+    const clickedItem = this.mediasImages[closestMedia.index % originalLen];
+    if (clickedItem) this.onItemClick(clickedItem);
   }
 
   onWheel(e: Event) {
@@ -581,50 +631,21 @@ class App {
     this.scroll.target = this.scroll.target < 0 ? -item : item;
   }
 
-  onResize() {
-    this.screen = {
-      width: this.container.clientWidth,
-      height: this.container.clientHeight
-    };
-    this.renderer.setSize(this.screen.width, this.screen.height);
-    this.camera.perspective({
-      aspect: this.screen.width / this.screen.height
-    });
-    const fov = (this.camera.fov * Math.PI) / 180;
-    const height = 2 * Math.tan(fov / 2) * this.camera.position.z;
-    const width = height * this.camera.aspect;
-    this.viewport = { width, height };
-    if (this.medias) {
-      this.medias.forEach(media => media.onResize({ screen: this.screen, viewport: this.viewport }));
-    }
-  }
-
-  update() {
-    this.scroll.current = lerp(this.scroll.current, this.scroll.target, this.scroll.ease);
-    const direction = this.scroll.current > this.scroll.last ? 'right' : 'left';
-    if (this.medias) {
-      this.medias.forEach(media => media.update(this.scroll, direction));
-    }
-    this.renderer.render({ scene: this.scene, camera: this.camera });
-    this.scroll.last = this.scroll.current;
-    this.raf = window.requestAnimationFrame(this.update.bind(this));
-  }
-
   addEventListeners() {
-    this.boundOnResize = this.onResize.bind(this);
-    this.boundOnWheel = this.onWheel.bind(this);
-    this.boundOnTouchDown = this.onTouchDown.bind(this);
-    this.boundOnTouchMove = this.onTouchMove.bind(this);
-    this.boundOnTouchUp = this.onTouchUp.bind(this);
+    this.boundOnResize = this.onResize;
+    this.boundOnWheel = this.onWheel;
+    this.boundOnTouchDown = this.onTouchDown;
+    this.boundOnTouchMove = this.onTouchMove;
+    this.boundOnTouchUp = this.onTouchUp;
     window.addEventListener('resize', this.boundOnResize);
     window.addEventListener('mousewheel', this.boundOnWheel);
     window.addEventListener('wheel', this.boundOnWheel);
-    window.addEventListener('mousedown', this.boundOnTouchDown);
+    this.container.addEventListener('mousedown', this.boundOnTouchDown);
     window.addEventListener('mousemove', this.boundOnTouchMove);
     window.addEventListener('mouseup', this.boundOnTouchUp);
-    window.addEventListener('touchstart', this.boundOnTouchDown);
-    window.addEventListener('touchmove', this.boundOnTouchMove);
-    window.addEventListener('touchend', this.boundOnTouchUp);
+    this.container.addEventListener('touchstart', this.boundOnTouchDown, { passive: true });
+    window.addEventListener('touchmove', this.boundOnTouchMove, { passive: true });
+    window.addEventListener('touchend', this.boundOnTouchUp, { passive: true });
   }
 
   destroy() {
@@ -632,10 +653,10 @@ class App {
     window.removeEventListener('resize', this.boundOnResize);
     window.removeEventListener('mousewheel', this.boundOnWheel);
     window.removeEventListener('wheel', this.boundOnWheel);
-    window.removeEventListener('mousedown', this.boundOnTouchDown);
+    this.container.removeEventListener('mousedown', this.boundOnTouchDown);
     window.removeEventListener('mousemove', this.boundOnTouchMove);
     window.removeEventListener('mouseup', this.boundOnTouchUp);
-    window.removeEventListener('touchstart', this.boundOnTouchDown);
+    this.container.removeEventListener('touchstart', this.boundOnTouchDown);
     window.removeEventListener('touchmove', this.boundOnTouchMove);
     window.removeEventListener('touchend', this.boundOnTouchUp);
     if (this.renderer && this.renderer.gl && this.renderer.gl.canvas.parentNode) {
@@ -652,6 +673,8 @@ interface CircularGalleryProps {
   font?: string;
   scrollSpeed?: number;
   scrollEase?: number;
+  autoRotationSpeed?: number;
+  onItemClick?: (item: any) => void;
 }
 
 export default function CircularGallery({
@@ -659,11 +682,19 @@ export default function CircularGallery({
   bend = 3,
   textColor = '#ffffff',
   borderRadius = 0.05,
-  font = 'bold 30px Figtree',
+  font = 'bold 30px Contrail',
   scrollSpeed = 2,
-  scrollEase = 0.05
+  scrollEase = 0.05,
+  autoRotationSpeed = 0.02,
+  onItemClick
 }: CircularGalleryProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const clickHandlerRef = useRef(onItemClick);
+
+  useEffect(() => {
+    clickHandlerRef.current = onItemClick;
+  }, [onItemClick]);
+
   useEffect(() => {
     if (!containerRef.current) return;
     const app = new App(containerRef.current, {
@@ -673,11 +704,12 @@ export default function CircularGallery({
       borderRadius,
       font,
       scrollSpeed,
-      scrollEase
+      scrollEase,
+      autoRotationSpeed,
+      onItemClick: (item) => clickHandlerRef.current?.(item)
     });
-    return () => {
-      app.destroy();
-    };
-  }, [items, bend, textColor, borderRadius, font, scrollSpeed, scrollEase]);
+    return () => app.destroy();
+  }, [items, bend, textColor, borderRadius, font, scrollSpeed, scrollEase, autoRotationSpeed]);
+
   return <div className="w-full h-full overflow-hidden cursor-grab active:cursor-grabbing" ref={containerRef} />;
 }

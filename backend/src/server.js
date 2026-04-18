@@ -62,6 +62,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use("/uploads", express.static("src/uploads"));
 
 // Routes
 app.use("/api/auth", authRoutes);

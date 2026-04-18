@@ -97,9 +97,10 @@ const ProfileModal = ({ isOpen, onClose, user }: ProfileModalProps) => {
                                         src={user.profilkep || "/images/profile_icon.png"}
                                         alt="Profile Avatar"
                                         className="w-full h-full object-cover"
+                                        referrerPolicy="no-referrer"
                                         onError={(e) => {
                                             // Fallback if image fails
-                                            (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${user.username}&background=random`;
+                                            (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${user.username || user.felhasznalonev}&background=random`;
                                         }}
                                     />
                                 </div>

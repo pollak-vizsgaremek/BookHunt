@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "../../generated/prisma/index.js";
 import { OAuth2Client } from "google-auth-library";
+import { isForbiddenUsername } from "../utils/censor.js";
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -78,6 +79,10 @@ router.post("/register", async (req, res) => {
 
     if (!/^[a-zA-Z0-9_]+$/.test(username)) {
       return res.status(400).json({ error: "Username can only contain letters, numbers, and underscores" });
+    }
+
+    if (await isForbiddenUsername(username)) {
+      return res.status(400).json({ error: "This username is not allowed." });
     }
 
     if (password.length < 6) {

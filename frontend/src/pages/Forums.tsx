@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import Navigation from '../components/Navigation';
 import LightRays from '../components/LightRays';
 import CreateForumModal from '../components/CreateForumModal';
+import ConfirmModal from '../components/ConfirmModal';
 
 interface UserInfo {
     felhasznalonev: string;
@@ -37,6 +38,11 @@ const Forums = () => {
     const [isLoading, setIsLoading] = useState(false);
     
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    
+    // Deletion State
+    const [deleteId, setDeleteId] = useState<number | null>(null);
+    const [deleteStep, setDeleteStep] = useState(1);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [userStr] = useState(localStorage.getItem('user'));
     const user = userStr ? JSON.parse(userStr) : null;
 
@@ -86,6 +92,29 @@ const Forums = () => {
         setSkip(0);
         setSearch(search + " ");
         setTimeout(() => setSearch(search.trim()), 0);
+    };
+
+    const handleDeletePost = async () => {
+        if (!deleteId) return;
+        setIsDeleting(true);
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch(`/api/forums/posts/${deleteId}`, {
+                method: "DELETE",
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            if (res.ok) {
+                setPosts(prev => prev.filter(p => p.id !== deleteId));
+                setDeleteId(null);
+            } else {
+                const data = await res.json();
+                alert(data.error || "Failed to delete post");
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     const formatDate = (isoString: string) => {
@@ -196,7 +225,22 @@ const Forums = () => {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex justify-between items-start gap-4">
-                                            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white truncate">{post.cim}</h2>
+                                            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white truncate flex items-center gap-4">
+                                                {post.cim}
+                                                {user?.szerepkor === 'ADMIN' && (
+                                                    <button 
+                                                        onClick={(e) => { 
+                                                            e.stopPropagation(); 
+                                                            setDeleteId(post.id); 
+                                                            setDeleteStep(1); 
+                                                        }}
+                                                        className="p-1 px-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all active:scale-95"
+                                                        title="Admin Delete"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                    </button>
+                                                )}
+                                            </h2>
                                             <div className="flex text-yellow-400 shrink-0">
                                                 {[...Array(5)].map((_, i) => (
                                                     <svg key={i} className={`w-4 h-4 sm:w-5 sm:h-5 ${i < post.ertekeles ? 'text-yellow-400' : 'text-gray-300 dark:text-gray-600'}`} fill="currentColor" viewBox="0 0 20 20">
@@ -227,7 +271,7 @@ const Forums = () => {
 
                                         <div className="mt-4 flex items-center justify-between text-[10px] sm:text-xs">
                                             <div className="flex items-center gap-2">
-                                                <img src={post.Felhasznalo.profilkep || '/images/profile_icon.png'} className="w-5 h-5 sm:w-6 sm:h-6 rounded-full object-cover" alt={post.Felhasznalo.felhasznalonev} />
+                                                <img src={post.Felhasznalo.profilkep || '/images/profile_icon.png'} className="w-5 h-5 sm:w-6 sm:h-6 rounded-full object-cover" alt={post.Felhasznalo.felhasznalonev} referrerPolicy="no-referrer" />
                                                 <span className="font-semibold text-gray-800 dark:text-gray-200">{post.Felhasznalo.felhasznalonev}</span>
                                                 <span className="text-gray-500 dark:text-gray-500 mx-1">•</span>
                                                 <span className="text-gray-500 dark:text-gray-400">{formatDate(post.letrehozva)}</span>
@@ -265,6 +309,21 @@ const Forums = () => {
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
                 onPostCreated={handlePostCreated}
+            />
+
+            <ConfirmModal 
+                isOpen={!!deleteId}
+                onClose={() => setDeleteId(null)}
+                onConfirm={handleDeletePost}
+                title="Delete Discussion"
+                message={deleteStep === 1 
+                    ? "Are you sure you want to delete this discussion? This action is permanent." 
+                    : "Final warning: This cannot be undone. All comments and votes will be lost."}
+                type="danger"
+                steps={2}
+                currentStep={deleteStep}
+                onStepConfirm={() => setDeleteStep(2)}
+                confirmText={isDeleting ? "Deleting..." : "Delete Permanently"}
             />
         </div>
     );

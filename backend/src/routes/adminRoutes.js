@@ -507,4 +507,151 @@ router.get("/stats", ...adminGuard, async (req, res) => {
   }
 });
 
+// ============================================================
+// CENSORSHIP MANAGER
+// ============================================================
+
+/**
+ * @swagger
+ * /api/admin/censored-words:
+ *   get:
+ *     summary: List all censored words (Admin only)
+ *     tags: [Admin]
+ */
+router.get("/censored-words", ...adminGuard, async (req, res) => {
+  try {
+    const words = await prisma.censoredWord.findMany({
+      orderBy: { word: "asc" }
+    });
+    res.json(words);
+  } catch (error) {
+    console.error("[Admin] Error fetching censored words:", error);
+    res.status(500).json({ error: "Failed to fetch censored words" });
+  }
+});
+
+/**
+ * @swagger
+ * /api/admin/censored-words:
+ *   post:
+ *     summary: Add a new censored word (Admin only)
+ *     tags: [Admin]
+ */
+router.post("/censored-words", ...adminGuard, async (req, res) => {
+  try {
+    const { word } = req.body;
+    if (!word) return res.status(400).json({ error: "Word is required" });
+
+    const trimmedWord = word.trim().toLowerCase();
+    
+    // Check if exists
+    const existing = await prisma.censoredWord.findUnique({ where: { word: trimmedWord } });
+    if (existing) return res.status(400).json({ error: "Word already in list" });
+
+    const created = await prisma.censoredWord.create({
+      data: { word: trimmedWord }
+    });
+    res.json(created);
+  } catch (error) {
+    console.error("[Admin] Error adding censored word:", error);
+    res.status(500).json({ error: "Failed to add censored word" });
+  }
+});
+
+/**
+ * @swagger
+ * /api/admin/censored-words/{id}:
+ *   delete:
+ *     summary: Remove a censored word (Admin only)
+ *     tags: [Admin]
+ */
+router.delete("/censored-words/:id", ...adminGuard, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+
+    await prisma.censoredWord.delete({ where: { id } });
+    res.json({ message: "Word removed successfully" });
+  } catch (error) {
+    console.error("[Admin] Error deleting censored word:", error);
+    res.status(500).json({ error: "Failed to delete censored word" });
+  }
+});
+
+// ============================================================
+// REPORTS MANAGER
+// ============================================================
+
+/**
+ * @swagger
+ * /api/admin/reports:
+ *   get:
+ *     summary: List all content reports (Admin only)
+ *     tags: [Admin]
+ */
+router.get("/reports", ...adminGuard, async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const [reports, total] = await Promise.all([
+      prisma.forumReport.findMany({
+        skip,
+        take: limit,
+        orderBy: { letrehozva: "desc" },
+        include: {
+          Bejelento: { select: { felhasznalonev: true, email: true } },
+          Bejegyzes: { select: { cim: true } },
+          Hozzaszolas: { select: { tartalom: true, bejegyzes_id: true } }
+        }
+      }),
+      prisma.forumReport.count()
+    ]);
+
+    res.json({ total, page, limit, totalPages: Math.ceil(total / limit), reports });
+  } catch (error) {
+    console.error("[Admin] Error fetching reports:", error);
+    res.status(500).json({ error: "Failed to fetch reports" });
+  }
+});
+
+/**
+ * @swagger
+ * /api/admin/reports/count:
+ *   get:
+ *     summary: Get unhandled report count (Admin only)
+ *     tags: [Admin]
+ */
+router.get("/reports/count", ...adminGuard, async (req, res) => {
+  try {
+    const count = await prisma.forumReport.count({ where: { kezelt: false }});
+    res.json({ count });
+  } catch (error) {
+    console.error("[Admin] Error counting reports:", error);
+    res.status(500).json({ error: "Failed to count reports" });
+  }
+});
+
+/**
+ * @swagger
+ * /api/admin/reports/{id}/resolve:
+ *   patch:
+ *     summary: Mark report as resolved (Admin only)
+ *     tags: [Admin]
+ */
+router.patch("/reports/:id/resolve", ...adminGuard, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    await prisma.forumReport.update({
+      where: { id },
+      data: { kezelt: true }
+    });
+    res.json({ message: "Report resolved" });
+  } catch (error) {
+    console.error("[Admin] Error resolving report:", error);
+    res.status(500).json({ error: "Failed to resolve report" });
+  }
+});
+
 export default router;

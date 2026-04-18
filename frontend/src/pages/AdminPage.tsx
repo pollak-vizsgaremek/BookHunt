@@ -13,6 +13,18 @@ interface User {
   tiltas_oka: string | null;
 }
 
+interface Report {
+  id: number;
+  tipus: string;
+  leiras: string | null;
+  kep_url: string | null;
+  letrehozva: string;
+  kezelt: boolean;
+  Bejelento: { felhasznalonev: string; email: string };
+  Bejegyzes: { cim: string } | null;
+  Hozzaszolas: { tartalom: string; bejegyzes_id: number } | null;
+}
+
 const AdminPage = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,6 +39,17 @@ const AdminPage = () => {
   const [banData, setBanData] = useState({ days: 0, hours: 0, minutes: 0, reason: "" });
   // Message state
   const [messageText, setMessageText] = useState("");
+
+  // Censorship state
+  const [censoredWords, setCensoredWords] = useState<{ id: number; word: string }[]>([]);
+  const [newWord, setNewWord] = useState("");
+  const [loadingWords, setLoadingWords] = useState(false);
+
+  // Reports state
+  const [reports, setReports] = useState<Report[]>([]);
+  const [unreadReportsCount, setUnreadReportsCount] = useState(0);
+  const [activeTab, setActiveTab] = useState<"users" | "reports">("users");
+  const [loadingReports, setLoadingReports] = useState(false);
 
   const fetchUsers = async () => {
     try {
@@ -62,9 +85,68 @@ const AdminPage = () => {
     }
   };
 
+  const fetchCensoredWords = async () => {
+    try {
+      setLoadingWords(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/admin/censored-words", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCensoredWords(data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingWords(false);
+    }
+  };
+
+  const fetchReports = async () => {
+    try {
+      setLoadingReports(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/admin/reports", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setReports(data.reports || data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingReports(false);
+    }
+  };
+
+  const fetchReportsCount = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/admin/reports/count", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUnreadReportsCount(data.count);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
+    fetchCensoredWords();
+    fetchReportsCount();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === "reports") {
+      fetchReports();
+    }
+  }, [activeTab]);
 
   const handleAction = async (type: string, payload: any) => {
     const token = localStorage.getItem("token");
@@ -84,6 +166,17 @@ const AdminPage = () => {
       method = "DELETE";
     }
 
+    if (type === "addWord") {
+      url = "/api/admin/censored-words";
+      payload = { word: newWord };
+    } else if (type === "deleteWord") {
+      url = `/api/admin/censored-words/${payload.id}`;
+      method = "DELETE";
+    } else if (type === "resolveReport") {
+      url = `/api/admin/reports/${payload.id}/resolve`;
+      method = "PATCH";
+    }
+
     try {
       const res = await fetch(url, {
         method,
@@ -91,12 +184,20 @@ const AdminPage = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}` 
         },
-        body: method !== "DELETE" ? JSON.stringify(payload) : undefined
+        body: (method !== "DELETE" && type !== "deleteWord") ? JSON.stringify(payload) : undefined
       });
       
       if (res.ok) {
-        fetchUsers();
-        closeModal();
+        if (type === "addWord" || type === "deleteWord") {
+          fetchCensoredWords();
+          setNewWord("");
+        } else if (type === "resolveReport") {
+          fetchReports();
+          fetchReportsCount();
+        } else {
+          fetchUsers();
+          closeModal();
+        }
       } else {
         const err = await res.json();
         alert(err.error || "Action failed");
@@ -167,7 +268,30 @@ const AdminPage = () => {
           </button>
         </motion.div>
 
-        {/* Users Card */}
+        {/* Tab Switcher */}
+        <div className="flex gap-4 mb-8">
+          <button 
+            onClick={() => setActiveTab("users")}
+            className={`px-8 py-3 rounded-2xl font-bold transition-all relative ${activeTab === "users" ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" : "bg-white/40 dark:bg-white/5 text-gray-500 hover:bg-white/60 dark:hover:bg-white/10"}`}
+          >
+            User Management
+          </button>
+          <button 
+            onClick={() => setActiveTab("reports")}
+            className={`px-8 py-3 rounded-2xl font-bold transition-all relative ${activeTab === "reports" ? "bg-red-500 text-white shadow-lg shadow-red-500/20" : "bg-white/40 dark:bg-white/5 text-gray-500 hover:bg-white/60 dark:hover:bg-white/10"}`}
+          >
+            Content Reports
+            {unreadReportsCount > 0 && (
+              <span className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 text-white text-[10px] flex items-center justify-center rounded-full border-2 border-[#f2eadd] dark:border-[#1a1a1c] animate-bounce">
+                {unreadReportsCount}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {activeTab === "users" ? (
+          <>
+            {/* Users Card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -230,6 +354,7 @@ const AdminPage = () => {
                           src={user.profilkep || "/images/profile_icon.png"} 
                           className="w-10 h-10 rounded-xl object-cover" 
                           alt="" 
+                          referrerPolicy="no-referrer"
                         />
                         <div>
                           <p className="font-bold text-gray-900 dark:text-white">{user.felhasznalonev}</p>
@@ -299,6 +424,161 @@ const AdminPage = () => {
             </table>
           </div>
         </motion.div>
+
+        {/* Censorship Manager Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="mt-12 rounded-[2.5rem] bg-white/40 dark:bg-white/5 backdrop-blur-xl border border-white/50 dark:border-white/10 p-8 shadow-2xl relative overflow-hidden"
+        >
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center text-red-500">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              Censorship Manager
+            </h2>
+          </div>
+
+          <p className="text-gray-500 dark:text-gray-400 mb-8 font-medium">
+            Define words that should be automatically filtered in forum posts and comments. These words will also be blocked from new usernames.
+          </p>
+
+          <div className="flex gap-4 mb-8">
+            <input 
+              type="text" 
+              placeholder="Add forbidden word..."
+              value={newWord}
+              onChange={(e) => setNewWord(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAction('addWord', {})}
+              className="flex-1 bg-black/5 dark:bg-white/5 border border-transparent focus:border-red-500/30 rounded-2xl px-6 py-4 outline-none dark:text-white transition-all text-sm font-medium"
+            />
+            <button 
+              onClick={() => handleAction('addWord', {})}
+              className="px-8 py-4 rounded-2xl bg-red-500 text-white font-bold shadow-lg shadow-red-500/20 hover:scale-105 active:scale-95 transition-all"
+            >
+              Add Word
+            </button>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {loadingWords && <p className="text-gray-400 text-sm animate-pulse">Updating dictionary...</p>}
+            {!loadingWords && censoredWords.length === 0 && <p className="text-gray-500 text-sm italic">The world is currently pure. No words are censored.</p>}
+            {censoredWords.map(wordObj => (
+              <motion.div 
+                layout
+                key={wordObj.id}
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="flex items-center gap-2 bg-emerald-500/10 dark:bg-white/5 border border-emerald-500/10 dark:border-white/10 px-4 py-2 rounded-xl group transition-all hover:bg-red-500/10 hover:border-red-500/20"
+              >
+                <span className="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-red-500 transition-colors uppercase tracking-tight">{wordObj.word}</span>
+                <button 
+                  onClick={() => handleAction('deleteWord', { id: wordObj.id })}
+                  className="text-gray-400 hover:text-red-500 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+        </>
+        ) : (
+          /* Reports Manager Card */
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="rounded-[2.5rem] bg-white/40 dark:bg-white/5 backdrop-blur-xl border border-white/50 dark:border-white/10 p-8 shadow-2xl overflow-hidden"
+          >
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center text-red-500">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Pending Reports ({reports.length})</h2>
+            </div>
+
+            <div className="space-y-6">
+              {loadingReports ? (
+                <p className="text-center py-10 text-gray-500 animate-pulse">Scanning database for violations...</p>
+              ) : reports.length === 0 ? (
+                <div className="text-center py-20 bg-emerald-500/5 rounded-3xl border border-emerald-500/10">
+                  <p className="text-emerald-500 font-bold">No active reports. Everything is civil.</p>
+                </div>
+              ) : (
+                reports.map(report => (
+                <motion.div 
+                  layout
+                  key={report.id}
+                  className={`p-6 rounded-3xl border transition-all ${report.kezelt ? 'bg-black/5 dark:bg-white/5 border-transparent opacity-60' : 'bg-white/20 dark:bg-white/5 border-white/50 dark:border-white/10 shadow-xl'}`}
+                >
+                  <div className="flex flex-col lg:flex-row gap-6">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-1 rounded-md bg-red-500/10 text-red-500 text-[10px] font-black uppercase tracking-wider border border-red-500/20">{report.tipus}</span>
+                          <span className="text-xs text-gray-400 font-medium">#{report.id} • {new Date(report.letrehozva).toLocaleString()}</span>
+                        </div>
+                        {!report.kezelt && (
+                          <button 
+                            onClick={() => handleAction("resolveReport", { id: report.id })}
+                            className="text-xs font-black text-emerald-500 hover:underline uppercase tracking-widest"
+                          >
+                            Mark Handled
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div className="p-4 rounded-2xl bg-black/5 dark:bg-white/5">
+                          <p className="text-[10px] font-black uppercase text-gray-400 mb-1">Reporter</p>
+                          <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{report.Bejelento.felhasznalonev}</p>
+                          <p className="text-[10px] text-gray-500 truncate">{report.Bejelento.email}</p>
+                        </div>
+                        <div className="p-4 rounded-2xl bg-black/5 dark:bg-white/5">
+                          <p className="text-[10px] font-black uppercase text-gray-400 mb-1">Target</p>
+                          <p className="text-sm font-bold text-gray-900 dark:text-white truncate">
+                            {report.Bejegyzes ? `Post: ${report.Bejegyzes.cim}` : `Comment on Post #${report.Hozzaszolas?.bejegyzes_id}`}
+                          </p>
+                          <p className="text-[10px] text-gray-500 italic truncate">
+                             "{report.Hozzaszolas?.tartalom || 'See post content'}"
+                          </p>
+                        </div>
+                      </div>
+
+                      {report.leiras && (
+                        <div className="mb-4">
+                          <p className="text-[10px] font-black uppercase text-gray-400 mb-1">Additional Details</p>
+                          <p className="text-sm text-gray-700 dark:text-gray-300 italic">"{report.leiras}"</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {report.kep_url && (
+                      <div className="lg:w-48 shrink-0">
+                        <p className="text-[10px] font-black uppercase text-gray-400 mb-2">Evidence Attachment</p>
+                        <a href={report.kep_url} target="_blank" rel="noreferrer" className="block w-full aspect-square rounded-2xl overflow-hidden shadow-lg border border-white/10 group relative">
+                          <img src={report.kep_url} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt="Evidence" />
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
+                          </div>
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+                ))
+              )}
+            </div>
+          </motion.div>
+        )}
       </main>
 
       {/* MODALS */}
