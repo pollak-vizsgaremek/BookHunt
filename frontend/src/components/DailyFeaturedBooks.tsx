@@ -110,54 +110,54 @@ const DailyFeaturedBooks: React.FC<DailyFeaturedBooksProps> = ({ onBookClick }) 
 
     const getDefaultBooks = (): { image: string; text: string; book: BookItem }[] => [
         { 
-            image: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=600&auto=format&fit=crop', 
+            image: `https://wsrv.nl/?url=${encodeURIComponent('https://books.google.com/books/publisher/content/images/frontcover/vH3LDwAAQBAJ?fife=w800-h1200')}&w=630&h=840&fit=cover&output=webp&q=80`, 
             text: 'Milk and Honey',
-            book: { id: 'default1', title: 'Milk and Honey', author: 'Rupi Kaur', coverUrl: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=600&auto=format&fit=crop', isLocal: false } as BookItem
+            book: { id: 'default1', title: 'Milk and Honey', author: 'Rupi Kaur', coverUrl: 'https://books.google.com/books/publisher/content/images/frontcover/vH3LDwAAQBAJ?fife=w800-h1200', isLocal: false } as BookItem
         },
         { 
-            image: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?q=80&w=600&auto=format&fit=crop', 
+            image: `https://wsrv.nl/?url=${encodeURIComponent('https://books.google.com/books/publisher/content/images/frontcover/F2NWnQEACAAJ?fife=w800-h1200')}&w=630&h=840&fit=cover&output=webp&q=80`, 
             text: 'The Alchemist',
-            book: { id: 'default2', title: 'The Alchemist', author: 'Paulo Coelho', coverUrl: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?q=80&w=600&auto=format&fit=crop', isLocal: false } as BookItem
+            book: { id: 'default2', title: 'The Alchemist', author: 'Paulo Coelho', coverUrl: 'https://books.google.com/books/publisher/content/images/frontcover/F2NWnQEACAAJ?fife=w800-h1200', isLocal: false } as BookItem
         },
         { 
-            image: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?q=80&w=600&auto=format&fit=crop', 
+            image: `https://wsrv.nl/?url=${encodeURIComponent('https://books.google.com/books/content?id=jZ91EAAAQBAJ&printsec=frontcover&img=1&zoom=2')}&w=630&h=840&fit=cover&output=webp&q=80`, 
             text: 'Modern Architecture',
-            book: { id: 'default3', title: 'Modern Architecture', author: 'Archi Design', coverUrl: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?q=80&w=600&auto=format&fit=crop', isLocal: false } as BookItem
+            book: { id: 'default3', title: 'Modern Architecture', author: 'Archi Design', coverUrl: 'https://books.google.com/books/content?id=jZ91EAAAQBAJ&printsec=frontcover&img=1&zoom=2', isLocal: false } as BookItem
         },
         { 
-            image: 'https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=600&auto=format&fit=crop', 
+            image: `https://wsrv.nl/?url=${encodeURIComponent('https://books.google.com/books/publisher/content/images/frontcover/1d-XDwAAQBAJ?fife=w800-h1200')}&w=630&h=840&fit=cover&output=webp&q=80`, 
             text: 'Great Gatsby',
-            book: { id: 'default4', title: 'Great Gatsby', author: 'F. Scott Fitzgerald', coverUrl: 'https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=600&auto=format&fit=crop', isLocal: false } as BookItem
+            book: { id: 'default4', title: 'Great Gatsby', author: 'F. Scott Fitzgerald', coverUrl: 'https://books.google.com/books/publisher/content/images/frontcover/1d-XDwAAQBAJ?fife=w800-h1200', isLocal: false } as BookItem
         },
         { 
-            image: 'https://images.unsplash.com/photo-1495446815901-a7297e633e8d?q=80&w=600&auto=format&fit=crop', 
+            image: `https://wsrv.nl/?url=${encodeURIComponent('https://books.google.com/books/publisher/content/images/frontcover/NlcPAgAAQBAJ?fife=w800-h1200')}&w=630&h=840&fit=cover&output=webp&q=80`, 
             text: 'Library Secrets',
-            book: { id: 'default5', title: 'Library Secrets', author: 'Bibliophile', coverUrl: 'https://images.unsplash.com/photo-1495446815901-a7297e633e8d?q=80&w=600&auto=format&fit=crop', isLocal: false } as BookItem
+            book: { id: 'default5', title: 'Library Secrets', author: 'Bibliophile', coverUrl: 'https://books.google.com/books/publisher/content/images/frontcover/NlcPAgAAQBAJ?fife=w800-h1200', isLocal: false } as BookItem
         },
         { 
-            image: 'https://images.unsplash.com/photo-1516979187457-637abb4f9353?q=80&w=600&auto=format&fit=crop', 
-            text: 'Education 101',
-            book: { id: 'default6', title: 'Education 101', author: 'Professor X', coverUrl: 'https://images.unsplash.com/photo-1516979187457-637abb4f9353?q=80&w=600&auto=format&fit=crop', isLocal: false } as BookItem
+            image: `https://wsrv.nl/?url=${encodeURIComponent('https://books.google.com/books/publisher/content/images/frontcover/sXh4EAAAQBAJ?fife=w800-h1200')}&w=630&h=840&fit=cover&output=webp&q=80`, 
+            text: 'Dune',
+            book: { id: 'default6', title: 'Dune', author: 'Frank Herbert', coverUrl: 'https://books.google.com/books/publisher/content/images/frontcover/sXh4EAAAQBAJ?fife=w800-h1200', isLocal: false } as BookItem
         },
         { 
-            image: 'https://images.unsplash.com/photo-1491843343655-ad8af3600000?q=80&w=600&auto=format&fit=crop', 
+            image: `https://wsrv.nl/?url=${encodeURIComponent('https://books.google.com/books/publisher/content/images/frontcover/6H-oEAAAQBAJ?fife=w800-h1200')}&w=630&h=840&fit=cover&output=webp&q=80`, 
             text: 'Zen Design',
-            book: { id: 'default7', title: 'Zen Design', author: 'Zen Master', coverUrl: 'https://images.unsplash.com/photo-1491843343655-ad8af3600000?q=80&w=600&auto=format&fit=crop', isLocal: false } as BookItem
+            book: { id: 'default7', title: 'Zen Design', author: 'Zen Master', coverUrl: 'https://books.google.com/books/publisher/content/images/frontcover/6H-oEAAAQBAJ?fife=w800-h1200', isLocal: false } as BookItem
         },
         { 
-            image: 'https://images.unsplash.com/photo-1471970394675-61b43a5cc503?q=80&w=600&auto=format&fit=crop', 
-            text: 'Study Habits',
-            book: { id: 'default8', title: 'Study Habits', author: 'Efficient Learner', coverUrl: 'https://images.unsplash.com/photo-1471970394675-61b43a5cc503?q=80&w=600&auto=format&fit=crop', isLocal: false } as BookItem
+            image: `https://wsrv.nl/?url=${encodeURIComponent('https://books.google.com/books/publisher/content/images/frontcover/Ld79EAAAQBAJ?fife=w800-h1200')}&w=630&h=840&fit=cover&output=webp&q=80`, 
+            text: 'Atomic Habits',
+            book: { id: 'default8', title: 'Atomic Habits', author: 'James Clear', coverUrl: 'https://books.google.com/books/publisher/content/images/frontcover/Ld79EAAAQBAJ?fife=w800-h1200', isLocal: false } as BookItem
         },
         { 
-            image: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?q=80&w=600&auto=format&fit=crop', 
+            image: `https://wsrv.nl/?url=${encodeURIComponent('https://books.google.com/books/publisher/content/images/frontcover/5NomkK4XV68C?fife=w800-h1200')}&w=630&h=840&fit=cover&output=webp&q=80`, 
             text: 'Bookstore Tales',
-            book: { id: 'default9', title: 'Bookstore Tales', author: 'Clerk Jones', coverUrl: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?q=80&w=600&auto=format&fit=crop', isLocal: false } as BookItem
+            book: { id: 'default9', title: 'Bookstore Tales', author: 'Clerk Jones', coverUrl: 'https://books.google.com/books/publisher/content/images/frontcover/5NomkK4XV68C?fife=w800-h1200', isLocal: false } as BookItem
         },
         { 
-            image: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=600&auto=format&fit=crop', 
+            image: `https://wsrv.nl/?url=${encodeURIComponent('https://books.google.com/books/publisher/content/images/frontcover/E1bWEAAAQBAJ?fife=w800-h1200')}&w=630&h=840&fit=cover&output=webp&q=80`, 
             text: 'Adventure Peaks',
-            book: { id: 'default10', title: 'Adventure Peaks', author: 'Sky Walker', coverUrl: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=600&auto=format&fit=crop', isLocal: false } as BookItem
+            book: { id: 'default10', title: 'Adventure Peaks', author: 'Sky Walker', coverUrl: 'https://books.google.com/books/publisher/content/images/frontcover/E1bWEAAAQBAJ?fife=w800-h1200', isLocal: false } as BookItem
         },
     ];
 
