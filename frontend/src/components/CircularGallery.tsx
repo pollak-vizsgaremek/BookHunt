@@ -32,7 +32,7 @@ function getFontSize(font: string): number {
 function createTextTexture(
   gl: GL,
   text: string,
-  font: string = 'bold 30px monospace',
+  font: string = 'bold 30px "Contrail", system-ui, -apple-system, sans-serif',
   color: string = 'black'
 ): { texture: Texture; width: number; height: number } {
   const canvas = document.createElement('canvas');
@@ -78,7 +78,7 @@ class Title {
   font: string;
   mesh!: Mesh;
 
-  constructor({ gl, plane, renderer, text, textColor = '#545050', font = '30px sans-serif' }: TitleProps) {
+  constructor({ gl, plane, renderer, text, textColor = '#545050', font = '30px "Contrail", system-ui, sans-serif' }: TitleProps) {
     autoBind(this);
     this.gl = gl;
     this.plane = plane;
@@ -278,7 +278,7 @@ class Media {
       uniforms: {
         tMap: { value: texture },
         uPlaneSizes: { value: [0, 0] },
-        uImageSizes: { value: [0, 0] },
+        uImageSizes: { value: [1, 1] },
         uSpeed: { value: 0 },
         uTime: { value: 100 * Math.random() },
         uBorderRadius: { value: this.borderRadius }
@@ -431,7 +431,7 @@ class App {
       bend = 1,
       textColor = '#ffffff',
       borderRadius = 0,
-      font = 'bold 30px Contrail',
+      font = 'bold 30px "Contrail", system-ui, sans-serif',
       scrollSpeed = 2,
       scrollEase = 0.05,
       autoRotationSpeed = 0,
@@ -682,7 +682,7 @@ export default function CircularGallery({
   bend = 3,
   textColor = '#ffffff',
   borderRadius = 0.05,
-  font = 'bold 30px Contrail',
+  font = 'bold 30px "Contrail", system-ui, sans-serif',
   scrollSpeed = 2,
   scrollEase = 0.05,
   autoRotationSpeed = 0.02,

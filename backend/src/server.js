@@ -1,9 +1,10 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import swaggerUi from "swagger-ui-express";
 import swaggerJsDoc from "swagger-jsdoc";
 import cors from "cors";
-import dotenv from "dotenv";
-dotenv.config();
 
 import { PrismaClient } from "../generated/prisma/index.js";
 import authRoutes, { authenticate } from "./routes/auth.js";
