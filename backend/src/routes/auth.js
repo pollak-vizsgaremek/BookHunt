@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "../../generated/prisma/index.js";
 import { OAuth2Client } from "google-auth-library";
+import { isForbiddenUsername } from "../utils/censor.js";
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -80,6 +81,10 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ error: "Username can only contain letters, numbers, and underscores" });
     }
 
+    if (await isForbiddenUsername(username)) {
+      return res.status(400).json({ error: "This username is not allowed." });
+    }
+
     if (password.length < 6) {
       return res.status(400).json({ error: "Password must be at least 6 characters" });
     }
@@ -145,6 +150,7 @@ router.post("/register", async (req, res) => {
         username: user.felhasznalonev,
         email: user.email,
         szerepkor: user.szerepkor,
+        profilkep: user.profilkep,
       },
     });
   } catch (error) {
@@ -183,6 +189,15 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ error: "Invalid credentials" });
     }
 
+    // --- Ban Check ---
+    if (user.tiltva_eddig && user.tiltva_eddig > new Date()) {
+      return res.status(403).json({
+        error: "Banned",
+        reason: user.tiltas_oka,
+        until: user.tiltva_eddig
+      });
+    }
+
     const token = jwt.sign(
       { userId: user.felhasznalo_id, szerepkor: user.szerepkor },
       process.env.JWT_SECRET || "bookhunt_secret",
@@ -196,6 +211,7 @@ router.post("/login", async (req, res) => {
         username: user.felhasznalonev,
         email: user.email,
         szerepkor: user.szerepkor,
+        profilkep: user.profilkep,
       },
     });
   } catch (error) {
@@ -225,7 +241,7 @@ router.post("/google", async (req, res) => {
       return res.status(400).json({ error: "Invalid Google token payload" });
     }
 
-    const { email, name } = payload;
+    const { email, name, picture } = payload;
     if (!email) {
       return res.status(400).json({ error: "Email not provided by Google" });
     }
@@ -259,7 +275,22 @@ router.post("/google", async (req, res) => {
           felhasznalonev: username,
           jelszo: randomPassword,
           email,
+          profilkep: picture || null,
         },
+      });
+    } else if (!user.profilkep && picture) {
+      user = await prisma.felhasznalo.update({
+        where: { email },
+        data: { profilkep: picture }
+      });
+    }
+
+    // --- Ban Check ---
+    if (user.tiltva_eddig && user.tiltva_eddig > new Date()) {
+      return res.status(403).json({
+        error: "Banned",
+        reason: user.tiltas_oka,
+        until: user.tiltva_eddig
       });
     }
 
@@ -276,6 +307,7 @@ router.post("/google", async (req, res) => {
         username: user.felhasznalonev,
         email: user.email,
         szerepkor: user.szerepkor,
+        profilkep: user.profilkep,
       },
     });
   } catch (error) {
@@ -283,7 +315,7 @@ router.post("/google", async (req, res) => {
     if (error.message && (error.message.includes("DATABASE_URL") || error.message.includes("Can't reach database server"))) {
       return res.status(503).json({ error: "Database connection failed. Please ensure your local database is running and DATABASE_URL is set in .env." });
     }
-    res.status(500).json({ error: "Google authentication failed" });
+    res.status(500).json({ error: "Google authentication failed", details: error.message || error.toString() });
   }
 });
 
@@ -313,6 +345,8 @@ router.get("/me", async (req, res) => {
         id: user.felhasznalo_id,
         username: user.felhasznalonev,
         email: user.email,
+        profilkep: user.profilkep,
+        szerepkor: user.szerepkor,
       },
     });
   } catch (error) {
@@ -335,7 +369,10 @@ export const authenticate = (req, res, next) => {
       token,
       process.env.JWT_SECRET || "bookhunt_secret",
     );
-    req.user = { userId: decoded.userId };
+    req.user = { 
+      userId: decoded.userId,
+      szerepkor: decoded.szerepkor 
+    };
     next();
   } catch (error) {
     if (error.name === "TokenExpiredError") {

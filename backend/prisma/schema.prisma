@@ -13,15 +13,26 @@ model Felhasznalo {
   jelszo         String
   email          String         @unique
   felhasznalonev String         @unique
+  profilkep      String?        @db.VarChar(500)
   szerepkor      Szerepkor      @default(USER)
+  tiltva_eddig   DateTime?
+  tiltas_oka     String?        @db.Text
   Keres          Keres[]
   Kedvencek      Kedvencek[]
   Velemenyek     Velemeny[]
   Kivansaglista  Kivansaglista[]
   Ertesites      Ertesites[]
 
+  ForumBejegyzes   ForumBejegyzes[]
+  ForumHozzaszolas ForumHozzaszolas[]
+  ForumSzavazat    ForumSzavazat[]
+  ForumReakcio     ForumReakcio[]
+  ForumHozzaszolasReakcio ForumHozzaszolasReakcio[]
+  BejelentettJelentesek ForumReport[] @relation("ReportOrigin")
+
   @@index([email], name: "idx_email")
   @@index([felhasznalonev], name: "idx_felhasznalonev")
+  @@index([tiltva_eddig], name: "idx_tiltva_eddig")
 }
 
 model WebAruhaz {
@@ -184,4 +195,102 @@ model Ertesites {
 
   Felhasznalo    Felhasznalo @relation(fields: [felhasznalo_id], references: [felhasznalo_id], onDelete: Cascade, onUpdate: Cascade)
   @@index([felhasznalo_id], name: "idx_notification_felhasznalo")
+}
+
+model ForumBejegyzes {
+  id              Int      @id @default(autoincrement())
+  felhasznalo_id  Int
+  konyv_id        String   @db.VarChar(255)
+  konyv_cim       String   @db.VarChar(500)
+  konyv_boritokep String?  @db.VarChar(500)
+  cim             String   @db.VarChar(255)
+  tartalom        String   @db.Text
+  ertekeles       Int
+  up_szavazatok   Int      @default(0)
+  down_szavazatok Int      @default(0)
+  letrehozva      DateTime @default(now())
+
+  Felhasznalo      Felhasznalo @relation(fields: [felhasznalo_id], references: [felhasznalo_id], onDelete: Cascade)
+  Hozzaszolasok    ForumHozzaszolas[]
+  Szavazatok       ForumSzavazat[]
+  Reakciok         ForumReakcio[]
+  Jelentesek       ForumReport[]
+
+  @@index([felhasznalo_id], name: "idx_forum_felhasznalo")
+}
+
+model ForumHozzaszolas {
+  id              Int      @id @default(autoincrement())
+  bejegyzes_id    Int
+  felhasznalo_id  Int
+  tartalom        String   @db.Text
+  letrehozva      DateTime @default(now())
+
+  Bejegyzes       ForumBejegyzes @relation(fields: [bejegyzes_id], references: [id], onDelete: Cascade)
+  Felhasznalo     Felhasznalo    @relation(fields: [felhasznalo_id], references: [felhasznalo_id], onDelete: Cascade)
+  Reakciok        ForumHozzaszolasReakcio[]
+  Jelentesek      ForumReport[]
+
+  @@index([bejegyzes_id], name: "idx_hozzaszolas_bejegyzes")
+  @@index([felhasznalo_id], name: "idx_hozzaszolas_felhasznalo")
+}
+
+model ForumHozzaszolasReakcio {
+  id              Int      @id @default(autoincrement())
+  hozzaszolas_id  Int
+  felhasznalo_id  Int
+  emoji           String   @db.VarChar(10)
+
+  Hozzaszolas      ForumHozzaszolas @relation(fields: [hozzaszolas_id], references: [id], onDelete: Cascade)
+  Felhasznalo      Felhasznalo      @relation(fields: [felhasznalo_id], references: [felhasznalo_id], onDelete: Cascade)
+
+  @@index([hozzaszolas_id], name: "idx_comment_reakcio_hozzaszolas")
+}
+
+model ForumReport {
+  id              Int      @id @default(autoincrement())
+  felhasznalo_id  Int      // reporter
+  bejegyzes_id    Int?     // reported post
+  hozzaszolas_id  Int?     // reported comment
+  tipus           String   // vulgar, inappropriate, spam, etc.
+  leiras          String?  @db.Text
+  kep_url         String?  @db.VarChar(500)
+  letrehozva      DateTime @default(now())
+  kezelt          Boolean  @default(false)
+
+  Bejelento       Felhasznalo       @relation("ReportOrigin", fields: [felhasznalo_id], references: [felhasznalo_id], onDelete: Cascade)
+  Bejegyzes       ForumBejegyzes?   @relation(fields: [bejegyzes_id], references: [id], onDelete: Cascade)
+  Hozzaszolas     ForumHozzaszolas? @relation(fields: [hozzaszolas_id], references: [id], onDelete: Cascade)
+
+  @@index([felhasznalo_id], name: "idx_report_reporter")
+  @@index([kezelt], name: "idx_report_status")
+}
+
+model ForumSzavazat {
+  id              Int      @id @default(autoincrement())
+  bejegyzes_id    Int
+  felhasznalo_id  Int
+  ertek           Int      // 1: up, -1: down
+
+  Bejegyzes       ForumBejegyzes @relation(fields: [bejegyzes_id], references: [id], onDelete: Cascade)
+  Felhasznalo     Felhasznalo    @relation(fields: [felhasznalo_id], references: [felhasznalo_id], onDelete: Cascade)
+
+  @@unique([bejegyzes_id, felhasznalo_id], name: "unique_forum_szavazat")
+}
+
+model ForumReakcio {
+  id              Int      @id @default(autoincrement())
+  bejegyzes_id    Int
+  felhasznalo_id  Int
+  emoji           String   @db.VarChar(10)
+
+  Bejegyzes       ForumBejegyzes @relation(fields: [bejegyzes_id], references: [id], onDelete: Cascade)
+  Felhasznalo     Felhasznalo    @relation(fields: [felhasznalo_id], references: [felhasznalo_id], onDelete: Cascade)
+
+  @@index([bejegyzes_id], name: "idx_reakcio_bejegyzes")
+}
+
+model CensoredWord {
+  id    Int    @id @default(autoincrement())
+  word  String @unique @db.VarChar(255)
 }

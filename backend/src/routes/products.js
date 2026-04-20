@@ -117,6 +117,9 @@ router.get("/products", async (req, res) => {
 router.get("/:id", async (req, res) => {
   try {
     const termek_id = parseInt(req.params.id);
+    if (isNaN(termek_id)) {
+      return res.status(400).json({ error: "Invalid product ID" });
+    }
     const product = await prisma.termek.findUnique({
       where: { termek_id },
       include: {

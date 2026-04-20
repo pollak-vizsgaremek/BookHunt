@@ -94,12 +94,13 @@ const ProfileModal = ({ isOpen, onClose, user }: ProfileModalProps) => {
                             <div className="absolute -top-12 left-6">
                                 <div className="w-24 h-24 rounded-full border-4 border-white dark:border-[#2A2B3D] overflow-hidden bg-gray-100 dark:bg-[#333446] transition-colors">
                                     <img
-                                        src="/images/profile_icon.png"
+                                        src={user.profilkep || "/images/profile_icon.png"}
                                         alt="Profile Avatar"
                                         className="w-full h-full object-cover"
+                                        referrerPolicy="no-referrer"
                                         onError={(e) => {
                                             // Fallback if image fails
-                                            (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${user.username}&background=random`;
+                                            (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${user.username || user.felhasznalonev}&background=random`;
                                         }}
                                     />
                                 </div>

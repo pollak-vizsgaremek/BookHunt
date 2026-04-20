@@ -3,6 +3,8 @@ import swaggerUi from "swagger-ui-express";
 import swaggerJsDoc from "swagger-jsdoc";
 import cors from "cors";
 import dotenv from "dotenv";
+dotenv.config();
+
 import { PrismaClient } from "../generated/prisma/index.js";
 import authRoutes, { authenticate } from "./routes/auth.js";
 import usersRoutes from "./routes/users.js";
@@ -19,6 +21,7 @@ import bookPricesRoutes from "./routes/bookPrices.js";
 import compareRoutes from "./routes/compare.js";
 import kivansaglistaRoutes from "./routes/kivansaglista.js";
 import ertesitesekRoutes from "./routes/ertesitesek.js";
+import forumsRoutes from "./routes/forums.js";
 import { startPriceAlerts } from "./scripts/priceAlertCron.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import adminRoutes from "./routes/adminRoutes.js";
@@ -46,8 +49,7 @@ const swaggerOptions = {
   apis: ["./src/routes/*.js"],
 };
 
-// Load environment variables
-dotenv.config();
+// Load environment variables (Moved to top)
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -60,12 +62,14 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use("/uploads", express.static("src/uploads"));
 
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/wishlist", kivansaglistaRoutes);
 app.use("/api/notifications", ertesitesekRoutes);
+app.use("/api/forums", forumsRoutes);
 app.use("/api", webshopsRoutes);
 app.use("/api", productsRoutes);
 app.use("/api/price-history", priceHistoryRoutes);
