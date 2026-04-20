@@ -58,18 +58,22 @@ const DailyFeaturedBooks: React.FC<DailyFeaturedBooksProps> = ({ onBookClick }) 
                         });
 
                     const mapped = uniqueBooks.map((b: any) => {
-                            // Ensure we get a high quality version if possible, but keep it as a fallback
-                            // Some books don't support zoom=3 and it can return snippets/text pages instead
-                            let originalImg = b.thumbnail.replace('http:', 'https:').replace('&edge=curl', '');
+                            // Try to get a high quality version from our new imageLinks field, or fallback to zoom manipulation
+                            let bestImg = b.imageLinks?.extraLarge || b.imageLinks?.large || b.imageLinks?.medium || b.thumbnail;
                             
-                            // Try to get a larger version but fallback to the original if it fails or looks like a snippet
-                            const highResImg = originalImg.replace('&zoom=1', '&zoom=2'); 
-                            
+                            if (bestImg) {
+                                bestImg = bestImg.replace('http:', 'https:').replace('&edge=curl', '');
+                                // If it's still a zoom=1 URL, attempt to upgrade it
+                                if (bestImg.includes('zoom=1') && !bestImg.includes('zoom=2') && !bestImg.includes('zoom=3')) {
+                                    bestImg = bestImg.replace('zoom=1', 'zoom=2');
+                                }
+                            }
+
                             const bookItem: BookItem = {
                                 id: b.googleId,
                                 title: b.title,
                                 author: b.authors && b.authors.length > 0 ? b.authors.join(', ') : 'Unknown Author',
-                                coverUrl: highResImg,
+                                coverUrl: bestImg,
                                 isbn: b.isbn || null,
                                 description: b.description,
                                 pageCount: b.pageCount,
@@ -82,9 +86,9 @@ const DailyFeaturedBooks: React.FC<DailyFeaturedBooksProps> = ({ onBookClick }) 
                             };
 
                             return {
-                                // use wsrv.nl to proxy and resize properly, ensuring object-fit style coverage
-                                image: `https://wsrv.nl/?url=${encodeURIComponent(originalImg)}&w=600&h=800&fit=cover&output=webp&default=https://picsum.photos/600/800`,
-                                text: b.title.length > 25 ? b.title.substring(0, 25) + '...' : b.title,
+                                // use wsrv.nl to proxy and resize properly with 3:4 aspect ratio (600x800)
+                                image: `https://wsrv.nl/?url=${encodeURIComponent(bestImg)}&w=600&h=800&fit=cover&output=webp&q=80&default=https://picsum.photos/600/800`,
+                                text: b.title, // Pass full title, truncation will be handled by UI or we can truncate here if needed
                                 book: bookItem
                             };
                         });
