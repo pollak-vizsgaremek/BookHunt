@@ -17,9 +17,6 @@ RUN npx prisma generate
 
 COPY . .
 
-# Build TypeScript
-RUN npm run build
-
 EXPOSE 3000
 
-CMD ["npm", "start"]
+CMD ["node", "src/server.js"]
