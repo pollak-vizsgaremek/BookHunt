@@ -81,8 +81,15 @@ router.get("/search", async (req, res) => {
 
     res.json({ total: response.data.totalItems, books });
   } catch (error) {
-    console.error("Google Books API error:", error.message);
-    res.status(500).json({ error: "Failed to fetch books from Google." });
+    if (error.response) {
+      console.error("Google Books API rejection:", error.response.status, error.response.data);
+    } else {
+      console.error("Google Books API error:", error.message);
+    }
+    res.status(500).json({ 
+      error: "Failed to fetch books from Google.",
+      details: error.response?.data?.error?.message || error.message 
+    });
   }
 });
 
