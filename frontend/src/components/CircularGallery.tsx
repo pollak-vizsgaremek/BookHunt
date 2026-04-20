@@ -32,7 +32,7 @@ function getFontSize(font: string): number {
 function createTextTexture(
   gl: GL,
   text: string,
-  font: string = 'bold 30px "Contrail", system-ui, -apple-system, sans-serif',
+  font: string = 'bold 30px "Contrail", "Segoe UI", Roboto, Arial, system-ui, sans-serif',
   color: string = 'black'
 ): { texture: Texture; width: number; height: number } {
   const canvas = document.createElement('canvas');
@@ -78,7 +78,7 @@ class Title {
   font: string;
   mesh!: Mesh;
 
-  constructor({ gl, plane, renderer, text, textColor = '#545050', font = '30px "Contrail", system-ui, sans-serif' }: TitleProps) {
+  constructor({ gl, plane, renderer, text, textColor = '#545050', font = '30px "Contrail", "Segoe UI", Roboto, Arial, system-ui, sans-serif' }: TitleProps) {
     autoBind(this);
     this.gl = gl;
     this.plane = plane;
@@ -363,11 +363,17 @@ class Media {
         this.plane.program.uniforms.uViewportSizes.value = [this.viewport.width, this.viewport.height];
       }
     }
-    this.scale = this.screen.height / 1500;
-    this.plane.scale.y = (this.viewport.height * (900 * this.scale)) / this.screen.height;
-    this.plane.scale.x = (this.viewport.width * (700 * this.scale)) / this.screen.width;
+    
+    // Use a more predictable scaling based on viewport height to maintain aspect ratio
+    this.scale = this.screen.height / 1200;
+    const baseHeight = 840;
+    const baseWidth = 630; // 3:4 ratio to match book covers exactly
+    
+    this.plane.scale.y = (this.viewport.height * (baseHeight * this.scale)) / this.screen.height;
+    this.plane.scale.x = (this.viewport.width * (baseWidth * this.scale)) / this.screen.width;
+    
     this.plane.program.uniforms.uPlaneSizes.value = [this.plane.scale.x, this.plane.scale.y];
-    this.padding = 2;
+    this.padding = 1.5; // Slightly tighter padding
     this.width = this.plane.scale.x + this.padding;
     this.widthTotal = this.width * this.length;
     this.x = this.width * this.index;
@@ -431,7 +437,7 @@ class App {
       bend = 1,
       textColor = '#ffffff',
       borderRadius = 0,
-      font = 'bold 30px "Contrail", system-ui, sans-serif',
+      font = 'bold 30px "Contrail", "Segoe UI", Roboto, Arial, system-ui, sans-serif',
       scrollSpeed = 2,
       scrollEase = 0.05,
       autoRotationSpeed = 0,
@@ -682,7 +688,7 @@ export default function CircularGallery({
   bend = 3,
   textColor = '#ffffff',
   borderRadius = 0.05,
-  font = 'bold 30px "Contrail", system-ui, sans-serif',
+  font = 'bold 30px "Contrail", "Segoe UI", Roboto, Arial, system-ui, sans-serif',
   scrollSpeed = 2,
   scrollEase = 0.05,
   autoRotationSpeed = 0.02,
