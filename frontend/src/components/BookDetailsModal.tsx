@@ -62,18 +62,18 @@ const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
                 let updatedRows = [...prevCompare.allRows];
                 
                 if (newOffer.store === 'BooksRun') {
-                    if (updatedRows.some(r => r.store === 'BooksRun' && r.status === 'Loading')) {
-                        const idx = updatedRows.findIndex(r => r.store === 'BooksRun' && r.status === 'Loading');
+                    if (updatedRows.some((r: Offer) => r.store === 'BooksRun' && r.status === 'Loading')) {
+                        const idx = updatedRows.findIndex((r: Offer) => r.store === 'BooksRun' && r.status === 'Loading');
                         updatedRows[idx] = newOffer;
-                    } else if (updatedRows.some(r => r.store === 'BooksRun' && r.status === 'Not Found' && newOffer.status !== 'Not Found')) {
-                        const idx = updatedRows.findIndex(r => r.store === 'BooksRun' && r.status === 'Not Found');
+                    } else if (updatedRows.some((r: Offer) => r.store === 'BooksRun' && r.status === 'Not Found' && newOffer.status !== 'Not Found')) {
+                        const idx = updatedRows.findIndex((r: Offer) => r.store === 'BooksRun' && r.status === 'Not Found');
                         updatedRows[idx] = newOffer;
                     } else if (newOffer.status === 'Found') {
-                         const idx = updatedRows.findLastIndex(r => r.store === 'BooksRun');
+                         const idx = updatedRows.findLastIndex((r: Offer) => r.store === 'BooksRun');
                          updatedRows.splice(idx + 1, 0, newOffer);
                     }
                 } else {
-                    const idx = updatedRows.findIndex(r => r.store === newOffer.store);
+                    const idx = updatedRows.findIndex((r: Offer) => r.store === newOffer.store);
                     if (idx !== -1) {
                         updatedRows[idx] = newOffer;
                     } else {
