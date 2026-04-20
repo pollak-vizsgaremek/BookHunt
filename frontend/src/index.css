@@ -9,12 +9,12 @@
 }
 
 @theme {
-  --font-sans: 'Contrail', system-ui, sans-serif;
-  --font-serif: 'Contrail', serif;
+  --font-sans: 'Contrail', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+  --font-serif: 'Contrail', Georgia, Cambria, 'Times New Roman', Times, serif;
 }
 
 :root {
-  font-family: 'Contrail', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Contrail', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
