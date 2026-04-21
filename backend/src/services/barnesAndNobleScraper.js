@@ -47,11 +47,10 @@ export const scrapeBarnesAndNoble = async (isbn, signal) => {
     // HTTP error detection
     if (pageResponse) {
       const httpStatus = pageResponse.status();
+      // If we are actively blocked by datacenter IPs, silently treat it as Not Found rather than crashing the component
       if (httpStatus === 403 || httpStatus === 451 || httpStatus === 503 || httpStatus === 429) {
-        throw Object.assign(
-          new Error(`Barnes & Noble returned HTTP ${httpStatus}`),
-          { scraperStatus: 'Error' }
-        );
+        console.warn(`[BarnesAndNoble] Blocked by anti-bot (HTTP ${httpStatus}), returning null.`);
+        return null;
       }
     }
 
@@ -134,6 +133,8 @@ export const scrapeBarnesAndNoble = async (isbn, signal) => {
     };
   } catch (err) {
     if (signal?.aborted) throw new Error(`BarnesAndNoble scraper aborted for ISBN ${isbn}`);
+    if (err.message.includes('Anti-bot detected')) return null;
+    
     const wrapped = new Error(`BarnesAndNoble scraper error for ISBN ${isbn}: ${err.message}`);
     wrapped.scraperStatus = err.scraperStatus || 'Error';
     throw wrapped;

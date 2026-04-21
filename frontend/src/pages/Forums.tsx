@@ -36,6 +36,7 @@ const Forums = () => {
     const [skip, setSkip] = useState(0);
     const [hasMore, setHasMore] = useState(true);
     const [isLoading, setIsLoading] = useState(false);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
     
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     
@@ -72,7 +73,7 @@ const Forums = () => {
         }, 300);
 
         return () => clearTimeout(timer);
-    }, [search, skip, sortBy]);
+    }, [search, skip, sortBy, refreshTrigger]);
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearch(e.target.value);
@@ -90,8 +91,7 @@ const Forums = () => {
 
     const handlePostCreated = () => {
         setSkip(0);
-        setSearch(search + " ");
-        setTimeout(() => setSearch(search.trim()), 0);
+        setRefreshTrigger(prev => prev + 1);
     };
 
     const handleDeletePost = async () => {
