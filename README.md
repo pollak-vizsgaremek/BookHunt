@@ -5,6 +5,9 @@ Egy könyvárkereső és összehasonlító webalkalmazás: kereshetsz könyveket
 A dizájn és a funkciós terv Figmán érhető el:
 https://www.figma.com/design/6Sfcfak6pxeAkFoFLjsLJA/BookHunt?m=auto&t=BsCw4jXg10MAnhda-6
 
+BookHunt PPT:
+https://www.canva.com/design/DAHHaVvPhek/vf3elLAbcMK96Bpc8SB_5g/view?utm_content=DAHHaVvPhek&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h68448ca586#1
+
 ## Technológiai stack
 
 **Backend**
