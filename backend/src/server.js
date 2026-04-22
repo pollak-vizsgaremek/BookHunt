@@ -26,6 +26,7 @@ import forumsRoutes from "./routes/forums.js";
 import { startPriceAlerts } from "./scripts/priceAlertCron.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import imageProxyRoute from "./routes/imageProxy.js";
 
 // Swagger setup
 const swaggerOptions = {
@@ -83,6 +84,7 @@ app.use("/api/books", booksRoutes);
 app.use("/api/book-prices", bookPricesRoutes);
 app.use("/api/compare", compareRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/proxy/image", imageProxyRoute);
 
 // Root route — server status page
 app.get("/", async (req, res) => {

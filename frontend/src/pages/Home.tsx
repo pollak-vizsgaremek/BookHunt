@@ -565,7 +565,7 @@ const Home = () => {
             {/* Display default local products if any exist since we removed the direct rendering of all local products above. Let's just show a few */}
             {localProducts.length > 0 && (
                 <div className="w-full">
-                    <h2 className="text-3xl font-serif font-bold text-gray-900 dark:text-[#DFE6E6] mb-8 text-center">Featured Collection</h2>
+                    <h2 className="text-3xl  font-bold text-gray-900 dark:text-[#DFE6E6] mb-8 text-center">Featured Collection</h2>
                     <div className="w-full justify-center grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 px-4">
                         {localProducts.slice(0, 5).map((product) => (
                             <ProductCard 
