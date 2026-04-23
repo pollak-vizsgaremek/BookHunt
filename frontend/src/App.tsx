@@ -18,6 +18,7 @@ import { useNavigate } from "react-router";
 // ===============================
 
 import ClickSpark from "./components/ClickSpark";
+import GuideHelper from "./components/GuideHelper";
 
 function FloatingWishlistButton() {
 // ... existing code was not touched inside FloatingWishlistButton
@@ -59,6 +60,7 @@ function App() {
         <Route path="/bookmarks" element={<Bookmarks />} />
       </Routes>
       <FloatingWishlistButton />
+      <GuideHelper />
     </>
   );
 }
