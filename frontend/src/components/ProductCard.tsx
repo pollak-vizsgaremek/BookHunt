@@ -16,6 +16,37 @@ export interface BookItem {
     isLocal?: boolean;
     ratingsCount?: number;
     averageRating?: number;
+    price?: string;
+    previewLink?: string;
+}
+
+/** Derive a display type + badge style from the book's categories */
+function getBookTypeBadge(product: BookItem): { label: string; className: string } {
+    const cats = (product.categories ?? []).map(c => c.toLowerCase()).join(' ');
+    const isLibri = product.isbn?.startsWith('LIBRI-');
+
+    if (cats.includes('manga')) {
+        return {
+            label: 'Manga',
+            className: 'bg-pink-500/20 dark:bg-pink-500/30 border-pink-400/40 text-pink-700 dark:text-pink-300',
+        };
+    }
+    if (cats.includes('comic') || cats.includes('graphic novel')) {
+        return {
+            label: 'Comic',
+            className: 'bg-yellow-400/20 dark:bg-yellow-400/20 border-yellow-400/40 text-yellow-700 dark:text-yellow-300',
+        };
+    }
+    if (isLibri) {
+        return {
+            label: 'Libri',
+            className: 'bg-emerald-500/20 dark:bg-emerald-500/30 border-emerald-400/40 text-emerald-700 dark:text-emerald-300',
+        };
+    }
+    return {
+        label: product.type || 'Book',
+        className: 'bg-black/10 dark:bg-black/60 border-black/10 dark:border-white/10 text-gray-900 dark:text-[#DFE6E6]',
+    };
 }
 
 interface ProductCardProps {
@@ -126,9 +157,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, onWishlistT
                     )}
 
                     {/* Type Badge */}
-                    <div className="absolute top-3 right-3 bg-black/10 dark:bg-black/60 backdrop-blur-md text-gray-900 dark:text-[#DFE6E6] text-xs font-bold px-3 py-1 rounded-full border border-black/10 dark:border-white/10 shadow-sm uppercase tracking-wider transition-colors z-10">
-                        {product.type || 'Book'}
-                    </div>
+                    {(() => {
+                        const { label, className } = getBookTypeBadge(product);
+                        return (
+                            <div className={`absolute top-3 right-3 backdrop-blur-md text-xs font-bold px-3 py-1 rounded-full border shadow-sm uppercase tracking-wider transition-colors z-10 ${className}`}>
+                                {label}
+                            </div>
+                        );
+                    })()}
 
                     {/* Wishlist Button */}
                     <button 
@@ -178,9 +214,15 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, onWishlistT
                     </p>
 
                     <div className="mt-auto pt-4 border-t border-black/10 dark:border-white/10 flex items-center justify-between transition-colors">
-                        <span className="text-gray-600 dark:text-[#DFE6E6]/50 text-xs font-mono bg-black/5 dark:bg-black/30 px-2 py-1 rounded max-w-[140px] truncate">
-                            {product.isbn || 'N/A'}
-                        </span>
+                        {product.price ? (
+                            <span className="text-emerald-600 dark:text-emerald-400 font-bold text-lg max-w-[140px] truncate">
+                                {product.price}
+                            </span>
+                        ) : (
+                            <span className="text-gray-600 dark:text-[#DFE6E6]/50 text-xs font-mono bg-black/5 dark:bg-black/30 px-2 py-1 rounded max-w-[140px] truncate">
+                                {product.isbn || 'N/A'}
+                            </span>
+                        )}
                         <div className="text-gray-800 dark:text-[#DFE6E6]/80 group-hover:text-black dark:group-hover:text-white bg-black/5 dark:bg-white/5 group-hover:bg-black/10 dark:group-hover:bg-white/20 p-2 rounded-full transition-colors flex items-center justify-center">
                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

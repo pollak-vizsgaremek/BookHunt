@@ -17,12 +17,8 @@ const Profile = () => {
 
     const handleProfileUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
-        // Since we don't have an endpoint for this yet based on the backend folder
-        // we'll simulate the UX
-        setMessage({ text: 'Profile update functionality is not yet connected to the backend.', type: 'info' });
+        setMessage({ text: 'Updating profile...', type: 'info' });
 
-        // Example implementation if API existed:
-        /*
         try {
             const token = localStorage.getItem('token');
             const res = await fetch('/api/users/profile', {
@@ -30,17 +26,20 @@ const Profile = () => {
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ username, email })
             });
+
+            const data = await res.json();
+
             if (res.ok) {
-                const updatedUser = await res.json();
-                localStorage.setItem('user', JSON.stringify(updatedUser));
+                localStorage.setItem('user', JSON.stringify(data));
+                // Update navigation by triggering a storage event
+                window.dispatchEvent(new Event('storage'));
                 setMessage({ text: 'Profile updated successfully!', type: 'success' });
             } else {
-                setMessage({ text: 'Failed to update profile.', type: 'error' });
+                setMessage({ text: data.error || 'Failed to update profile.', type: 'error' });
             }
         } catch (err) {
-            setMessage({ text: 'An error occurred.', type: 'error' });
+            setMessage({ text: 'An error occurred during profile update.', type: 'error' });
         }
-        */
     };
 
     const handlePasswordChange = async (e: React.FormEvent) => {
@@ -51,7 +50,29 @@ const Profile = () => {
             return;
         }
 
-        setMessage({ text: 'Password update functionality is not yet connected to the backend.', type: 'info' });
+        setMessage({ text: 'Updating password...', type: 'info' });
+
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/users/password', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ currentPassword, newPassword })
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                setMessage({ text: 'Password updated successfully!', type: 'success' });
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+            } else {
+                setMessage({ text: data.error || 'Failed to update password.', type: 'error' });
+            }
+        } catch (err) {
+            setMessage({ text: 'An error occurred during password update.', type: 'error' });
+        }
     };
 
     if (!user) {

@@ -42,11 +42,11 @@ export async function censorText(text) {
   sortedWords.forEach((word) => {
     // Escape special regex characters in the forbidden word
     const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    
+
     // Using word boundaries \b to avoid matches inside other words
     // We use a non-capturing group for boundaries to handle various punctation
     const regex = new RegExp(`\\b${escapedWord}\\b`, 'gi');
-    
+
     censoredText = censoredText.replace(regex, (match) => {
       return '*'.repeat(match.length);
     });

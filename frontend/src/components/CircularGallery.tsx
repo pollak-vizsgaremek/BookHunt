@@ -3,6 +3,18 @@ import { useEffect, useRef } from 'react';
 
 type GL = Renderer['gl'];
 
+/**
+ * Routes an image URL through our backend proxy so WebGL can load it
+ * without CORS taint issues (Google Books doesn't send CORS headers).
+ */
+function proxyImageUrl(url: string): string {
+  // Only proxy absolute http/https URLs pointing at external hosts
+  if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+    return `/api/proxy/image?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+}
+
 function debounce<T extends (...args: any[]) => void>(func: T, wait: number) {
   let timeout: number;
   return function (this: any, ...args: Parameters<T>) {
@@ -39,25 +51,35 @@ function createTextTexture(
   const context = canvas.getContext('2d');
   if (!context) throw new Error('Could not get 2d context');
 
+  // Use a high-res backing canvas for crisp text (2x)
+  const dpr = 2;
   context.font = font;
   const metrics = context.measureText(text);
   const textWidth = Math.ceil(metrics.width);
   const fontSize = getFontSize(font);
-  const textHeight = Math.ceil(fontSize * 1.2);
+  const textHeight = Math.ceil(fontSize * 1.4);
 
-  canvas.width = textWidth + 20;
-  canvas.height = textHeight + 20;
+  // Logical dimensions
+  const logicalW = textWidth + 24;
+  const logicalH = textHeight + 16;
 
-  context.font = font;
-  context.fillStyle = color;
-  context.textBaseline = 'middle';
-  context.textAlign = 'center';
-  context.clearRect(0, 0, canvas.width, canvas.height);
-  context.fillText(text, canvas.width / 2, canvas.height / 2);
+  // Physical (hi-dpi) canvas
+  canvas.width = logicalW * dpr;
+  canvas.height = logicalH * dpr;
+
+  const ctx2 = canvas.getContext('2d')!;
+  ctx2.scale(dpr, dpr);
+  ctx2.font = font;
+  ctx2.fillStyle = color;
+  ctx2.textBaseline = 'middle';
+  ctx2.textAlign = 'center';
+  ctx2.clearRect(0, 0, logicalW, logicalH);
+  ctx2.fillText(text, logicalW / 2, logicalH / 2);
 
   const texture = new Texture(gl, { generateMipmaps: false });
   texture.image = canvas;
-  return { texture, width: canvas.width, height: canvas.height };
+  // Return logical dimensions so aspect ratio is correct
+  return { texture, width: logicalW, height: logicalH };
 }
 
 interface TitleProps {
@@ -78,7 +100,7 @@ class Title {
   font: string;
   mesh!: Mesh;
 
-  constructor({ gl, plane, renderer, text, textColor = '#545050', font = '30px "Contrail", "Segoe UI", Roboto, Arial, system-ui, sans-serif' }: TitleProps) {
+  constructor({ gl, plane, renderer, text, textColor = '#545050', font = 'bold 28px "Contrail", "Segoe UI", Roboto, Arial, system-ui, sans-serif' }: TitleProps) {
     autoBind(this);
     this.gl = gl;
     this.plane = plane;
@@ -118,11 +140,20 @@ class Title {
       transparent: true
     });
     this.mesh = new Mesh(this.gl, { geometry, program });
-    const aspect = width / height;
-    const textHeightScaled = this.plane.scale.y * 0.15;
-    const textWidthScaled = textHeightScaled * aspect;
-    this.mesh.scale.set(textWidthScaled, textHeightScaled, 1);
-    this.mesh.position.y = -this.plane.scale.y * 0.5 - textHeightScaled * 0.5 - 0.05;
+
+    // The text mesh is a child of the plane, so its local scale gets multiplied
+    // by the plane's world scale. To avoid aspect distortion we must compensate:
+    // local_scale_x = desired_world_width  / plane.scale.x
+    // local_scale_y = desired_world_height / plane.scale.y
+    const textWorldHeight = this.plane.scale.y * 0.13; // ~13% of card height
+    const textWorldWidth  = textWorldHeight * (width / height);
+
+    const localScaleX = textWorldWidth  / this.plane.scale.x;
+    const localScaleY = textWorldHeight / this.plane.scale.y;
+
+    this.mesh.scale.set(localScaleX, localScaleY, 1);
+    // Position in local (plane) space: just below the card
+    this.mesh.position.y = -0.5 - (textWorldHeight / this.plane.scale.y) * 0.6;
     this.mesh.setParent(this.plane);
   }
 }
@@ -287,7 +318,7 @@ class Media {
     });
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.src = this.image;
+    img.src = proxyImageUrl(this.image);
     img.onload = () => {
       texture.image = img;
       this.program.uniforms.uImageSizes.value = [img.naturalWidth, img.naturalHeight];
@@ -363,15 +394,15 @@ class Media {
         this.plane.program.uniforms.uViewportSizes.value = [this.viewport.width, this.viewport.height];
       }
     }
-    
+
     // Use a more predictable scaling based on viewport height to maintain aspect ratio
     this.scale = this.screen.height / 1200;
     const baseHeight = 840;
     const baseWidth = 630; // 3:4 ratio to match book covers exactly
-    
+
     this.plane.scale.y = (this.viewport.height * (baseHeight * this.scale)) / this.screen.height;
     this.plane.scale.x = (this.viewport.width * (baseWidth * this.scale)) / this.screen.width;
-    
+
     this.plane.program.uniforms.uPlaneSizes.value = [this.plane.scale.x, this.plane.scale.y];
     this.padding = 1.5; // Slightly tighter padding
     this.width = this.plane.scale.x + this.padding;
@@ -437,7 +468,7 @@ class App {
       bend = 1,
       textColor = '#ffffff',
       borderRadius = 0,
-      font = 'bold 30px "Contrail", "Segoe UI", Roboto, Arial, system-ui, sans-serif',
+      font = 'bold 28px "Contrail", "Segoe UI", Roboto, Arial, system-ui, sans-serif',
       scrollSpeed = 2,
       scrollEase = 0.05,
       autoRotationSpeed = 0,
@@ -580,13 +611,13 @@ class App {
     this.isDown = false;
     this.container.style.cursor = 'grab';
     this.onCheck();
-    
+
     const x = 'touches' in e ? (e as TouchEvent).changedTouches[0].clientX : (e as MouseEvent).clientX;
     const y = 'touches' in e ? (e as TouchEvent).changedTouches[0].clientY : (e as MouseEvent).clientY;
-    
+
     const timeDiff = Date.now() - this.startTime;
     const dist = Math.sqrt(Math.pow(x - this.start, 2) + Math.pow(y - (this.lastY || y), 2));
-    
+
     if (timeDiff < 300 && dist < this.clickThreshold) {
       this.handleClick(x, y);
     }
@@ -594,16 +625,16 @@ class App {
 
   handleClick(clientX: number, clientY: number) {
     if (!this.onItemClick || this.medias.length === 0) return;
-    
+
     // CRITICAL: Check if the click is actually within the container's bounds
     const rect = this.container.getBoundingClientRect();
     if (
-        clientX < rect.left || 
-        clientX > rect.right || 
-        clientY < rect.top || 
-        clientY > rect.bottom
+      clientX < rect.left ||
+      clientX > rect.right ||
+      clientY < rect.top ||
+      clientY > rect.bottom
     ) {
-        return;
+      return;
     }
 
     const x = ((clientX - rect.left) / rect.width) * 2 - 1;
@@ -688,7 +719,7 @@ export default function CircularGallery({
   bend = 3,
   textColor = '#ffffff',
   borderRadius = 0.05,
-  font = 'bold 30px "Contrail", "Segoe UI", Roboto, Arial, system-ui, sans-serif',
+  font = 'bold 28px "Contrail", "Segoe UI", Roboto, Arial, system-ui, sans-serif',
   scrollSpeed = 2,
   scrollEase = 0.05,
   autoRotationSpeed = 0.02,
@@ -703,18 +734,30 @@ export default function CircularGallery({
 
   useEffect(() => {
     if (!containerRef.current) return;
-    const app = new App(containerRef.current, {
-      items,
-      bend,
-      textColor,
-      borderRadius,
-      font,
-      scrollSpeed,
-      scrollEase,
-      autoRotationSpeed,
-      onItemClick: (item) => clickHandlerRef.current?.(item)
+    let app: App | null = null;
+    let destroyed = false;
+
+    // Wait for the Contrail font to be loaded so canvas.fillText uses the correct font,
+    // preventing text from rendering in a fallback system font.
+    document.fonts.load('bold 28px "Contrail"').finally(() => {
+      if (destroyed || !containerRef.current) return;
+      app = new App(containerRef.current, {
+        items,
+        bend,
+        textColor,
+        borderRadius,
+        font,
+        scrollSpeed,
+        scrollEase,
+        autoRotationSpeed,
+        onItemClick: (item) => clickHandlerRef.current?.(item)
+      });
     });
-    return () => app.destroy();
+
+    return () => {
+      destroyed = true;
+      app?.destroy();
+    };
   }, [items, bend, textColor, borderRadius, font, scrollSpeed, scrollEase, autoRotationSpeed]);
 
   return <div className="w-full h-full overflow-hidden cursor-grab active:cursor-grabbing" ref={containerRef} />;

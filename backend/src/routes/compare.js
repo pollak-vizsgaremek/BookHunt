@@ -32,7 +32,7 @@ function sanitizeOffer(item) {
 
 router.get('/:isbn', async (req, res) => {
   const { isbn } = req.params;
-  const { currency = 'HUF', refresh = 'false', categories = '', stream = 'false' } = req.query;
+  const { currency = 'HUF', refresh = 'false', categories = '', language = '', stream = 'false' } = req.query;
 
   if (!isbn || isbn.trim().length === 0) {
     if (stream === 'true') {
@@ -60,6 +60,8 @@ router.get('/:isbn', async (req, res) => {
   const categoryList = categories.toLowerCase().split(',');
   const isManga = categoryList.some(c => c.includes('manga'));
   const isComic = categoryList.some(c => c.includes('comic') || c.includes('graphic novel'));
+  // If language is explicitly 'hu' OR categories hint Hungarian content, run Hungarian store scrapers
+  const isHungarian = language.toLowerCase() === 'hu' || categoryList.some(c => c.includes('hungarian') || c.includes('magyar'));
 
   const isStream = stream === 'true';
 
@@ -113,9 +115,11 @@ router.get('/:isbn', async (req, res) => {
          expectedStores.push({ store: 'Crunchyroll', status: 'Loading' });
       } else {
          if (isComic) expectedStores.push({ store: 'Walts Comic Shop', status: 'Loading' });
-         expectedStores.push({ store: 'libri.hu', status: 'Loading' });
-         expectedStores.push({ store: 'bookline.hu', status: 'Loading' });
-         expectedStores.push({ store: 'Libristo', status: 'Loading' });
+         if (isHungarian) {
+           expectedStores.push({ store: 'libri.hu', status: 'Loading' });
+           expectedStores.push({ store: 'bookline.hu', status: 'Loading' });
+           expectedStores.push({ store: 'Libristo', status: 'Loading' });
+         }
          expectedStores.push({ store: 'Amazon', status: 'Loading' });
          expectedStores.push({ store: 'ThriftBooks', status: 'Loading' });
          expectedStores.push({ store: 'BarnesAndNoble', status: 'Loading' });
@@ -127,6 +131,7 @@ router.get('/:isbn', async (req, res) => {
       isbn: safeIsbn,
       isManga,
       isComic,
+      isHungarian,
       onProgress: isStream ? (row) => {
          let outRow = sanitizeOffer(row);
          if (currency.toUpperCase() === 'USD' && liveUsdRate && outRow.price) {

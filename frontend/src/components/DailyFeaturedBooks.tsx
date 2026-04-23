@@ -58,14 +58,18 @@ const DailyFeaturedBooks: React.FC<DailyFeaturedBooksProps> = ({ onBookClick }) 
                         });
 
                     const mapped = uniqueBooks.map((b: any) => {
-                            // Try to get a high quality version from our new imageLinks field, or fallback to zoom manipulation
+                            // Prefer the highest resolution image available — same strategy as search results
                             let bestImg = b.imageLinks?.extraLarge || b.imageLinks?.large || b.imageLinks?.medium || b.thumbnail;
                             
                             if (bestImg) {
-                                bestImg = bestImg.replace('http:', 'https:').replace('&edge=curl', '');
-                                // If it's still a zoom=1 URL, attempt to upgrade it
-                                if (bestImg.includes('zoom=1') && !bestImg.includes('zoom=2') && !bestImg.includes('zoom=3')) {
-                                    bestImg = bestImg.replace('zoom=1', 'zoom=2');
+                                bestImg = bestImg
+                                    .replace('http:', 'https:')
+                                    .replace('&edge=curl', '')
+                                    .replace('&zoom=1', '&zoom=3')
+                                    .replace('zoom=1', 'zoom=3');
+                                // Upgrade fife resolution if present
+                                if (bestImg.includes('fife=w')) {
+                                    bestImg = bestImg.replace(/fife=w\d+-h\d+/, 'fife=w800-h1200');
                                 }
                             }
 
@@ -86,9 +90,8 @@ const DailyFeaturedBooks: React.FC<DailyFeaturedBooksProps> = ({ onBookClick }) 
                             };
 
                             return {
-                                // use wsrv.nl to proxy and resize properly with 3:4 aspect ratio (600x800)
-                                image: `https://wsrv.nl/?url=${encodeURIComponent(bestImg)}&w=600&h=800&fit=cover&output=webp&q=80&default=https://picsum.photos/600/800`,
-                                text: b.title, // Pass full title, truncation will be handled by UI or we can truncate here if needed
+                                image: bestImg, // Use the high-res Google Books URL directly
+                                text: b.title,
                                 book: bookItem
                             };
                         });
@@ -110,52 +113,52 @@ const DailyFeaturedBooks: React.FC<DailyFeaturedBooksProps> = ({ onBookClick }) 
 
     const getDefaultBooks = (): { image: string; text: string; book: BookItem }[] => [
         { 
-            image: `https://wsrv.nl/?url=${encodeURIComponent('https://books.google.com/books/publisher/content/images/frontcover/vH3LDwAAQBAJ?fife=w800-h1200')}&w=630&h=840&fit=cover&output=webp&q=80`, 
+            image: 'https://books.google.com/books/publisher/content/images/frontcover/vH3LDwAAQBAJ?fife=w800-h1200', 
             text: 'Milk and Honey',
             book: { id: 'default1', title: 'Milk and Honey', author: 'Rupi Kaur', coverUrl: 'https://books.google.com/books/publisher/content/images/frontcover/vH3LDwAAQBAJ?fife=w800-h1200', isLocal: false } as BookItem
         },
         { 
-            image: `https://wsrv.nl/?url=${encodeURIComponent('https://books.google.com/books/publisher/content/images/frontcover/F2NWnQEACAAJ?fife=w800-h1200')}&w=630&h=840&fit=cover&output=webp&q=80`, 
+            image: 'https://books.google.com/books/publisher/content/images/frontcover/F2NWnQEACAAJ?fife=w800-h1200', 
             text: 'The Alchemist',
             book: { id: 'default2', title: 'The Alchemist', author: 'Paulo Coelho', coverUrl: 'https://books.google.com/books/publisher/content/images/frontcover/F2NWnQEACAAJ?fife=w800-h1200', isLocal: false } as BookItem
         },
         { 
-            image: `https://wsrv.nl/?url=${encodeURIComponent('https://books.google.com/books/content?id=jZ91EAAAQBAJ&printsec=frontcover&img=1&zoom=2')}&w=630&h=840&fit=cover&output=webp&q=80`, 
+            image: 'https://books.google.com/books/content?id=jZ91EAAAQBAJ&printsec=frontcover&img=1&zoom=3', 
             text: 'Modern Architecture',
-            book: { id: 'default3', title: 'Modern Architecture', author: 'Archi Design', coverUrl: 'https://books.google.com/books/content?id=jZ91EAAAQBAJ&printsec=frontcover&img=1&zoom=2', isLocal: false } as BookItem
+            book: { id: 'default3', title: 'Modern Architecture', author: 'Archi Design', coverUrl: 'https://books.google.com/books/content?id=jZ91EAAAQBAJ&printsec=frontcover&img=1&zoom=3', isLocal: false } as BookItem
         },
         { 
-            image: `https://wsrv.nl/?url=${encodeURIComponent('https://books.google.com/books/publisher/content/images/frontcover/1d-XDwAAQBAJ?fife=w800-h1200')}&w=630&h=840&fit=cover&output=webp&q=80`, 
+            image: 'https://books.google.com/books/publisher/content/images/frontcover/1d-XDwAAQBAJ?fife=w800-h1200', 
             text: 'Great Gatsby',
             book: { id: 'default4', title: 'Great Gatsby', author: 'F. Scott Fitzgerald', coverUrl: 'https://books.google.com/books/publisher/content/images/frontcover/1d-XDwAAQBAJ?fife=w800-h1200', isLocal: false } as BookItem
         },
         { 
-            image: `https://wsrv.nl/?url=${encodeURIComponent('https://books.google.com/books/publisher/content/images/frontcover/NlcPAgAAQBAJ?fife=w800-h1200')}&w=630&h=840&fit=cover&output=webp&q=80`, 
+            image: 'https://books.google.com/books/publisher/content/images/frontcover/NlcPAgAAQBAJ?fife=w800-h1200', 
             text: 'Library Secrets',
             book: { id: 'default5', title: 'Library Secrets', author: 'Bibliophile', coverUrl: 'https://books.google.com/books/publisher/content/images/frontcover/NlcPAgAAQBAJ?fife=w800-h1200', isLocal: false } as BookItem
         },
         { 
-            image: `https://wsrv.nl/?url=${encodeURIComponent('https://books.google.com/books/publisher/content/images/frontcover/sXh4EAAAQBAJ?fife=w800-h1200')}&w=630&h=840&fit=cover&output=webp&q=80`, 
+            image: 'https://books.google.com/books/publisher/content/images/frontcover/sXh4EAAAQBAJ?fife=w800-h1200', 
             text: 'Dune',
             book: { id: 'default6', title: 'Dune', author: 'Frank Herbert', coverUrl: 'https://books.google.com/books/publisher/content/images/frontcover/sXh4EAAAQBAJ?fife=w800-h1200', isLocal: false } as BookItem
         },
         { 
-            image: `https://wsrv.nl/?url=${encodeURIComponent('https://books.google.com/books/publisher/content/images/frontcover/6H-oEAAAQBAJ?fife=w800-h1200')}&w=630&h=840&fit=cover&output=webp&q=80`, 
+            image: 'https://books.google.com/books/publisher/content/images/frontcover/6H-oEAAAQBAJ?fife=w800-h1200', 
             text: 'Zen Design',
             book: { id: 'default7', title: 'Zen Design', author: 'Zen Master', coverUrl: 'https://books.google.com/books/publisher/content/images/frontcover/6H-oEAAAQBAJ?fife=w800-h1200', isLocal: false } as BookItem
         },
         { 
-            image: `https://wsrv.nl/?url=${encodeURIComponent('https://books.google.com/books/publisher/content/images/frontcover/Ld79EAAAQBAJ?fife=w800-h1200')}&w=630&h=840&fit=cover&output=webp&q=80`, 
+            image: 'https://books.google.com/books/publisher/content/images/frontcover/Ld79EAAAQBAJ?fife=w800-h1200', 
             text: 'Atomic Habits',
             book: { id: 'default8', title: 'Atomic Habits', author: 'James Clear', coverUrl: 'https://books.google.com/books/publisher/content/images/frontcover/Ld79EAAAQBAJ?fife=w800-h1200', isLocal: false } as BookItem
         },
         { 
-            image: `https://wsrv.nl/?url=${encodeURIComponent('https://books.google.com/books/publisher/content/images/frontcover/5NomkK4XV68C?fife=w800-h1200')}&w=630&h=840&fit=cover&output=webp&q=80`, 
+            image: 'https://books.google.com/books/publisher/content/images/frontcover/5NomkK4XV68C?fife=w800-h1200', 
             text: 'Bookstore Tales',
             book: { id: 'default9', title: 'Bookstore Tales', author: 'Clerk Jones', coverUrl: 'https://books.google.com/books/publisher/content/images/frontcover/5NomkK4XV68C?fife=w800-h1200', isLocal: false } as BookItem
         },
         { 
-            image: `https://wsrv.nl/?url=${encodeURIComponent('https://books.google.com/books/publisher/content/images/frontcover/E1bWEAAAQBAJ?fife=w800-h1200')}&w=630&h=840&fit=cover&output=webp&q=80`, 
+            image: 'https://books.google.com/books/publisher/content/images/frontcover/E1bWEAAAQBAJ?fife=w800-h1200', 
             text: 'Adventure Peaks',
             book: { id: 'default10', title: 'Adventure Peaks', author: 'Sky Walker', coverUrl: 'https://books.google.com/books/publisher/content/images/frontcover/E1bWEAAAQBAJ?fife=w800-h1200', isLocal: false } as BookItem
         },
@@ -191,7 +194,7 @@ const DailyFeaturedBooks: React.FC<DailyFeaturedBooksProps> = ({ onBookClick }) 
                     <span className="text-sm font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1">
                         Resets In
                     </span>
-                    <span className="text-2xl md:text-3xl font-mono font-bold text-gray-800 dark:text-[#DFE6E6] bg-black/5 dark:bg-black/40 px-4 py-1.5 rounded-lg border border-black/10 dark:border-white/10 backdrop-blur-sm">
+                    <span className="text-2xl md:text-3xl  font-bold text-gray-800 dark:text-[#DFE6E6] bg-black/5 dark:bg-black/40 px-4 py-1.5 rounded-lg border border-black/10 dark:border-white/10 backdrop-blur-sm">
                         {timeLeft}
                     </span>
                 </div>

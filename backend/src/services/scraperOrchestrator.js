@@ -40,7 +40,7 @@ function extractOffer(status, value, reason, storeName) {
   return { store: storeName, status: 'Error' };
 }
 
-export async function runScrapers({ isbn, isManga = false, isComic = false, usdRate = null, eurRate = null, onProgress = null }) {
+export async function runScrapers({ isbn, isManga = false, isComic = false, isHungarian = false, usdRate = null, eurRate = null, onProgress = null }) {
   if (!isbn) {
     throw new Error('scraperOrchestrator: isbn is required');
   }
@@ -135,9 +135,9 @@ export async function runScrapers({ isbn, isManga = false, isComic = false, usdR
 
   const scraperPromises = [
     runBooksRun(),
-    runGenericHufScraper(scrapeLibri, 'libri.hu', !isManga),
-    runGenericHufScraper(scrapeBookline, 'bookline.hu', !isManga),
-    runGenericHufScraper(scrapeLibristo, 'Libristo', !isManga),
+    runGenericHufScraper(scrapeLibri, 'libri.hu', !isManga && isHungarian),
+    runGenericHufScraper(scrapeBookline, 'bookline.hu', !isManga && isHungarian),
+    runGenericHufScraper(scrapeLibristo, 'Libristo', !isManga && isHungarian),
     runGenericUsdEurScraper(scrapeWalts, 'Walts Comic Shop', isComic || isManga, true),
     runGenericUsdEurScraper(scrapeAmazon, 'Amazon', true),
     runGenericUsdEurScraper(scrapeCrunchyroll, 'Crunchyroll', isManga),

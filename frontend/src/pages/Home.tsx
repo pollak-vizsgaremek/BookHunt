@@ -16,6 +16,7 @@ const Home = () => {
   const [wishlistedBookIds, setWishlistedBookIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   
@@ -102,6 +103,7 @@ const Home = () => {
           JSON.stringify(lastFetchRef.current.filters) !== JSON.stringify(filters);
 
       setIsSearching(true);
+      if (!ignore) setSearchError(null);
       try {
         let qParams = searchQuery.trim() || "";
         if (filters.year) qParams += ` ${filters.year}`;
@@ -118,7 +120,7 @@ const Home = () => {
         }
 
         // Fetch a few extra results so we have enough after ISBN filtering
-        let url = `/api/books/search?maxResults=20&startIndex=${startIndex}`;
+        let url = `/api/books/search?maxResults=40&startIndex=${startIndex}`
         
         if (qParams) url += `&q=${encodeURIComponent(qParams)}`;
         if (filters.genre !== 'All') url += `&subject=${encodeURIComponent(filters.genre)}`;
@@ -127,11 +129,41 @@ const Home = () => {
         if (filters.sortBy === 'Newest') url += `&orderBy=newest`;
         else if (filters.sortBy === 'Popularity') url += `&orderBy=relevance`;
 
-        const response = await fetch(url);
+        const [googleResponse, libriResponse] = await Promise.all([
+            fetch(url),
+            // Only search libri if there is an actual text query (not just genre/type filters)
+            searchQuery.trim() ? fetch(`/api/books/libri-search?q=${encodeURIComponent(searchQuery.trim())}`).catch(() => null) : Promise.resolve(null)
+        ]);
+
         if (ignore) return;
         
-        if (response.ok) {
-          const data = await response.json();
+        if (googleResponse.ok) {
+          const data = await googleResponse.json();
+          let libriBooks: BookItem[] = [];
+          
+          if (libriResponse && libriResponse.ok) {
+              try {
+                  const libriData = await libriResponse.json();
+                  libriBooks = (libriData.books || []).map((b: any) => ({
+                      id: b.googleId,
+                      title: b.title,
+                      author: b.authors && b.authors.length > 0 ? b.authors.join(', ') : 'Unknown Author',
+                      coverUrl: b.thumbnail,
+                      isbn: 'LIBRI-' + b.googleId, // Dummy ISBN so it passes the isValidISBN or we can just give it a real one if available
+                      description: b.description,
+                      pageCount: null,
+                      publishedDate: null,
+                      categories: [],
+                      language: 'hu',
+                      isLocal: false,
+                      ratingsCount: 500, // Boost rating so it sorts high
+                      averageRating: 5,
+                      price: b.price,
+                      previewLink: b.previewLink
+                  }));
+              } catch(e) {}
+          }
+
           const allMapped: BookItem[] = (data.books || []).map((b: { googleId: string; title: string; authors?: string[]; thumbnail?: string; isbn?: string; description?: string; pageCount?: number; publishedDate?: string; categories?: string[]; language?: string; ratingsCount?: number; averageRating?: number }) => ({
             id: b.googleId,
             title: b.title,
@@ -150,10 +182,14 @@ const Home = () => {
             averageRating: b.averageRating || 0,
           }));
 
+          // Combine Libri books at the top, then Google books
+          const combinedMapped = startIndex === 0 ? [...libriBooks, ...allMapped] : allMapped;
+
           // Only show books that have an ISBN — required for price lookup
-          const mapped = allMapped.filter(b => !!b.isbn);
+          // Libri books have a dummy 'LIBRI-...' ISBN so they pass
+          const mapped = combinedMapped.filter(b => !!b.isbn);
           
-          if (allMapped.length < 20) setHasMore(false);
+          if (allMapped.length < 40) setHasMore(false);
           else setHasMore(true);
 
           if (isNewQuery) {
@@ -168,9 +204,23 @@ const Home = () => {
           }
 
           lastFetchRef.current = { q: searchQuery, filters };
+        } else {
+            if (!ignore) {
+                try {
+                    const errData = await googleResponse.json();
+                    setSearchError(errData.error || "Failed to search books.");
+                } catch (e) {
+                    setSearchError("Service temporarily unavailable.");
+                }
+                if (isNewQuery) setSearchResults([]);
+            }
         }
       } catch (error) {
-        if (!ignore) console.error("Failed to fetch search results", error);
+        if (!ignore) {
+            console.error("Failed to fetch search results", error);
+            setSearchError("Network error occurred.");
+            if (isNewQuery) setSearchResults([]);
+        }
       } finally {
         if (!ignore) setIsSearching(false);
       }
@@ -239,6 +289,17 @@ const Home = () => {
   const displayedSearchResults = getSortedResults(searchResults);
   const displayedLocalMatches = getSortedResults(localMatches);
   const showResults = searchQuery.trim() || filters.genre !== 'All';
+
+  // Grouping for ISBN Validation
+  const isValidISBN = (isbn: string | null | undefined) => {
+    if (!isbn) return false;
+    if (isbn.startsWith('LIBRI-')) return true;
+    const clean = isbn.replace(/-/g, '');
+    return /^(?:\d{9}[\dX]|\d{13})$/i.test(clean);
+  };
+
+  const validISBNResults = displayedSearchResults.filter(r => isValidISBN(r.isbn));
+  const invalidISBNResults = displayedSearchResults.filter(r => !isValidISBN(r.isbn));
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -405,22 +466,63 @@ const Home = () => {
 
               {searchResults.length > 0 ? (
                 <div className="w-full pb-12 pt-2">
-                    <div className="w-full justify-center grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 relative">
-                        {displayedSearchResults.map((product) => (
-                            <ProductCard 
-                                key={product.id} 
-                                product={product} 
-                                onClick={handleBookClick} 
-                                initialIsWishlisted={wishlistedBookIds.has(product.id.toString())}
-                            />
-                        ))}
-                    </div>
+                    {validISBNResults.length > 0 && (
+                        <div className="w-full justify-center grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 relative">
+                            {validISBNResults.map((product) => (
+                                <ProductCard 
+                                    key={product.id} 
+                                    product={product} 
+                                    onClick={handleBookClick} 
+                                    initialIsWishlisted={wishlistedBookIds.has(product.id.toString())}
+                                />
+                            ))}
+                        </div>
+                    )}
+
+                    {invalidISBNResults.length > 0 && (
+                        <div className="w-full mt-10 border-t border-black/10 dark:border-white/10 pt-8 flex flex-col items-start bg-black/5 dark:bg-white/5 rounded-3xl p-6 backdrop-blur-sm">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="p-2 bg-amber-500/20 rounded-lg text-amber-600 dark:text-amber-400">
+                                    <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-xl font-serif font-bold text-gray-900 dark:text-[#DFE6E6]">
+                                    Digital & Unpriced Varieties
+                                </h3>
+                            </div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-8 max-w-3xl leading-relaxed">
+                                These matching items (often comic books, mangas, or digital prints) do not possess an international physical ISBN standard barcode. They cannot be routed through our automated retail web scraper engines, but you can still view them and track them in your wishlist collections!
+                            </p>
+                            <div className="w-full justify-center grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 relative">
+                                {invalidISBNResults.map((product) => (
+                                    <ProductCard 
+                                        key={product.id} 
+                                        product={product} 
+                                        onClick={handleBookClick} 
+                                        initialIsWishlisted={wishlistedBookIds.has(product.id.toString())}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    
+                    {searchError && (
+                        <div className="mt-8 flex justify-center w-full">
+                            <div className="bg-red-500/10 border border-red-500/20 text-red-500 px-6 py-3 rounded-xl flex items-center gap-3">
+                                <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                <span className="font-medium text-sm">{searchError}</span>
+                            </div>
+                        </div>
+                    )}
                     
                     {/* Load More Button */}
-                    {hasMore && (
+                    {!searchError && hasMore && (
                         <div className="mt-12 flex justify-center pb-4">
                             <button 
-                                onClick={() => setStartIndex(prev => prev + 10)}
+                                onClick={() => setStartIndex(prev => prev + 40)}
                                 disabled={isSearching}
                                 className="group relative px-8 py-3 bg-white dark:bg-[#1a1b26] border border-black/10 dark:border-white/20 hover:border-emerald-500 dark:hover:border-emerald-500 text-gray-900 dark:text-white rounded-xl font-bold font-serif tracking-wide shadow-md hover:shadow-xl transition-all duration-300 disabled:opacity-50 overflow-hidden"
                             >
@@ -432,11 +534,19 @@ const Home = () => {
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                         </svg>
                                     )}
-                                    Load 10 more
+                                    Load more results
                                 </span>
                             </button>
                         </div>
                     )}
+                </div>
+              ) : searchError ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center w-full bg-red-500/5 dark:bg-red-500/10 rounded-3xl border border-red-500/20 backdrop-blur-sm mb-8">
+                  <svg className="h-12 w-12 text-red-500/50 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <h3 className="text-lg font-bold text-red-500 mb-1">Search Unavailable</h3>
+                  <p className="text-sm text-red-400/80">{searchError}</p>
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-12 text-center w-full bg-black/5 dark:bg-white/5 rounded-3xl border border-black/10 dark:border-white/10 backdrop-blur-sm transition-colors">
@@ -490,7 +600,7 @@ const Home = () => {
             {/* Display default local products if any exist since we removed the direct rendering of all local products above. Let's just show a few */}
             {localProducts.length > 0 && (
                 <div className="w-full">
-                    <h2 className="text-3xl font-serif font-bold text-gray-900 dark:text-[#DFE6E6] mb-8 text-center">Featured Collection</h2>
+                    <h2 className="text-3xl  font-bold text-gray-900 dark:text-[#DFE6E6] mb-8 text-center">Featured Collection</h2>
                     <div className="w-full justify-center grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 px-4">
                         {localProducts.slice(0, 5).map((product) => (
                             <ProductCard 

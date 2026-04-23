@@ -18,7 +18,7 @@ const ScrollFloat = ({
     // Track scroll progress of this specific component
     const { scrollYProgress } = useScroll({
         target: containerRef,
-        offset: ["start 0.9", "center center"]
+        offset: ["start 0.9", "end 0.9"]
     });
 
     return (
@@ -51,7 +51,7 @@ const ScrollFloat = ({
                     // Add a pronounced blur radius that clears as it floats in
                     const blur = useTransform(scrollYProgress,
                         [MathClamp(start, 0, 1), MathClamp(end, 0, 1)],
-                        ["blur(24px)", "blur(0px)"]
+                        ["blur(12px)", "blur(0px)"]
                     );
 
                     return (
