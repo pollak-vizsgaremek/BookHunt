@@ -1,7 +1,60 @@
 import express from "express";
 import axios from "axios";
+import { scrapeLibri } from "../utils/libriScraper.js";
+import { scrapeBookline } from "../utils/booklineScraper.js";
 
 const router = express.Router();
+
+/**
+ * @swagger
+ * /api/books/libri-search:
+ *   get:
+ *     summary: Search for books directly from Libri.hu
+ *     tags: [Books]
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Search query (e.g. book title, author)
+ *     responses:
+ *       200:
+ *         description: A list of matching books from Libri
+ *       400:
+ *         description: Missing search query
+ *       500:
+ *         description: Failed to scrape Libri
+ */
+router.get("/libri-search", async (req, res) => {
+  const { q } = req.query;
+
+  if (!q) {
+    return res.status(400).json({ error: "Search query (q) is required." });
+  }
+
+  try {
+    const books = await scrapeLibri(q);
+    res.json({ total: books.length, books });
+  } catch (error) {
+    console.error("Libri search error:", error);
+    res.status(500).json({ error: "Failed to fetch books from Libri." });
+  }
+});
+
+router.get("/bookline-search", async (req, res) => {
+  const { q } = req.query;
+  if (!q) {
+    return res.status(400).json({ error: "Search query (q) is required." });
+  }
+  try {
+    const books = await scrapeBookline(q);
+    res.json({ total: books.length, books });
+  } catch (error) {
+    console.error("Bookline search error:", error);
+    res.status(500).json({ error: "Failed to fetch books from Bookline." });
+  }
+});
 
 /**
  * @swagger

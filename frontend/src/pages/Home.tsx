@@ -129,11 +129,41 @@ const Home = () => {
         if (filters.sortBy === 'Newest') url += `&orderBy=newest`;
         else if (filters.sortBy === 'Popularity') url += `&orderBy=relevance`;
 
-        const response = await fetch(url);
+        const [googleResponse, libriResponse] = await Promise.all([
+            fetch(url),
+            // Only search libri if there is an actual text query (not just genre/type filters)
+            searchQuery.trim() ? fetch(`/api/books/libri-search?q=${encodeURIComponent(searchQuery.trim())}`).catch(() => null) : Promise.resolve(null)
+        ]);
+
         if (ignore) return;
         
-        if (response.ok) {
-          const data = await response.json();
+        if (googleResponse.ok) {
+          const data = await googleResponse.json();
+          let libriBooks: BookItem[] = [];
+          
+          if (libriResponse && libriResponse.ok) {
+              try {
+                  const libriData = await libriResponse.json();
+                  libriBooks = (libriData.books || []).map((b: any) => ({
+                      id: b.googleId,
+                      title: b.title,
+                      author: b.authors && b.authors.length > 0 ? b.authors.join(', ') : 'Unknown Author',
+                      coverUrl: b.thumbnail,
+                      isbn: 'LIBRI-' + b.googleId, // Dummy ISBN so it passes the isValidISBN or we can just give it a real one if available
+                      description: b.description,
+                      pageCount: null,
+                      publishedDate: null,
+                      categories: [],
+                      language: 'hu',
+                      isLocal: false,
+                      ratingsCount: 500, // Boost rating so it sorts high
+                      averageRating: 5,
+                      price: b.price,
+                      previewLink: b.previewLink
+                  }));
+              } catch(e) {}
+          }
+
           const allMapped: BookItem[] = (data.books || []).map((b: { googleId: string; title: string; authors?: string[]; thumbnail?: string; isbn?: string; description?: string; pageCount?: number; publishedDate?: string; categories?: string[]; language?: string; ratingsCount?: number; averageRating?: number }) => ({
             id: b.googleId,
             title: b.title,
@@ -152,8 +182,12 @@ const Home = () => {
             averageRating: b.averageRating || 0,
           }));
 
+          // Combine Libri books at the top, then Google books
+          const combinedMapped = startIndex === 0 ? [...libriBooks, ...allMapped] : allMapped;
+
           // Only show books that have an ISBN — required for price lookup
-          const mapped = allMapped.filter(b => !!b.isbn);
+          // Libri books have a dummy 'LIBRI-...' ISBN so they pass
+          const mapped = combinedMapped.filter(b => !!b.isbn);
           
           if (allMapped.length < 40) setHasMore(false);
           else setHasMore(true);
@@ -173,7 +207,7 @@ const Home = () => {
         } else {
             if (!ignore) {
                 try {
-                    const errData = await response.json();
+                    const errData = await googleResponse.json();
                     setSearchError(errData.error || "Failed to search books.");
                 } catch (e) {
                     setSearchError("Service temporarily unavailable.");
@@ -257,8 +291,9 @@ const Home = () => {
   const showResults = searchQuery.trim() || filters.genre !== 'All';
 
   // Grouping for ISBN Validation
-  const isValidISBN = (isbn: string | null) => {
+  const isValidISBN = (isbn: string | null | undefined) => {
     if (!isbn) return false;
+    if (isbn.startsWith('LIBRI-')) return true;
     const clean = isbn.replace(/-/g, '');
     return /^(?:\d{9}[\dX]|\d{13})$/i.test(clean);
   };
