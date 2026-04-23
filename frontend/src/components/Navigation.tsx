@@ -80,7 +80,10 @@ const Navigation = () => {
   const routes = [
     { name: "Home", route: "/" },
     { name: "Forums", route: "/forums" },
-    ...(user ? [{ name: "Wishlist", route: "/wishlist" }] : [{ name: "Login", route: "/login" }]),
+    ...(user ? [
+      { name: "Wishlist", route: "/wishlist" },
+      { name: "Bookmarks", route: "/bookmarks" }
+    ] : [{ name: "Login", route: "/login" }]),
   ];
 
   return (
