@@ -1,12 +1,23 @@
 import express from "express";
+import rateLimit from "express-rate-limit";
 import { PrismaClient } from "../../generated/prisma/index.js";
 import { authenticate } from "./auth.js";
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
+const bookmarksRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each user/IP to 100 requests per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests. Please try again later." }
+});
+
+router.use(authenticate, bookmarksRateLimiter);
+
 // Get all bookmarks for the authenticated user
-router.get("/", authenticate, async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const userId = req.user.userId;
     const bookmarks = await prisma.konyvjelzo.findMany({
@@ -21,7 +32,7 @@ router.get("/", authenticate, async (req, res) => {
 });
 
 // Add a new bookmark
-router.post("/", authenticate, async (req, res) => {
+router.post("/", async (req, res) => {
   try {
     const userId = req.user.userId;
     const { konyv_id, cim, szerzo, boritokep_url, oldalszam, max_oldalszam, idezet } = req.body;
@@ -70,7 +81,7 @@ router.post("/", authenticate, async (req, res) => {
 });
 
 // Update a bookmark (page number and quote)
-router.put("/:id", authenticate, async (req, res) => {
+router.put("/:id", async (req, res) => {
   try {
     const userId = req.user.userId;
     const bookmarkId = parseInt(req.params.id);
@@ -109,7 +120,7 @@ router.put("/:id", authenticate, async (req, res) => {
 });
 
 // Delete a bookmark
-router.delete("/:id", authenticate, async (req, res) => {
+router.delete("/:id", async (req, res) => {
   try {
     const userId = req.user.userId;
     const bookmarkId = parseInt(req.params.id);
