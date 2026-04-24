@@ -50,7 +50,7 @@ const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
     const [showLoginToast, setShowLoginToast] = useState(false);
 
     const fetchPrices = useCallback((isManualRefresh = false) => {
-        if (!book?.isbn) return () => {};
+        if (!book || !book.isbn) return () => {};
         
         setLoadingPrices(true);
         setPriceError(null);
@@ -157,7 +157,7 @@ const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
 
     // Fetch Bookline prices when modal opens for a LIBRI book
     useEffect(() => {
-        if (!isOpen || !book?.isbn?.startsWith('LIBRI-')) {
+        if (!isOpen || !book?.isbn?.startsWith('LIBRI-') || !book) {
             setBooklineResults([]);
             return;
         }
@@ -208,6 +208,7 @@ const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
     }, [isOpen, book?.id]);
 
     const handleWishlistToggle = async () => {
+        if (!book) return;
         const token = localStorage.getItem('token');
         if (!token) {
             setShowLoginToast(true);
@@ -252,6 +253,7 @@ const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
     };
 
     const handleBookmarkToggle = async () => {
+        if (!book) return;
         const token = localStorage.getItem('token');
         if (!token) {
             setShowLoginToast(true);
