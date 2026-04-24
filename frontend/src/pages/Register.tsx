@@ -3,12 +3,14 @@ import { Link, useNavigate } from 'react-router';
 import { GoogleLogin } from '@react-oauth/google';
 
 import Navigation from '../components/Navigation';
+import { usePageTitle } from '../utils/usePageTitle';
 import SpotlightCard from '../components/SpotlightCard';
 import StarBorder from '../components/StarBorder';
 import SplitText from '../components/SplitText';
 import LightRays from '../components/LightRays';
 
 const RegisterPage = () => {
+    usePageTitle('Register');
     const [formData, setFormData] = useState({
         username: '',
         email: '',
@@ -107,9 +109,7 @@ const RegisterPage = () => {
                     className="absolute inset-0 z-0 pointer-events-none"
                 />
             </div>
-            <div className="relative z-10 w-full">
-                <Navigation />
-            </div>
+            <Navigation />
             <div className="relative z-10 flex min-h-screen items-center justify-center pt-20 p-4">
                 <SpotlightCard
                     className="w-full max-w-lg aspect-3/4 bg-cover bg-center bg-no-repeat rounded-r-3xl shadow-2xl flex flex-col items-center justify-center py-12 pl-12 pr-20 sm:py-20 sm:pl-20 sm:pr-32"

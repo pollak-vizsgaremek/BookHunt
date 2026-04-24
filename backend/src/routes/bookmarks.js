@@ -25,6 +25,7 @@ router.post("/", authenticate, async (req, res) => {
   try {
     const userId = req.user.userId;
     const { konyv_id, cim, szerzo, boritokep_url, oldalszam, max_oldalszam, idezet } = req.body;
+    console.log("Creating bookmark for user:", userId, "Data:", req.body);
 
     if (!konyv_id || !cim) {
       return res.status(400).json({ error: "konyv_id and cim are required." });

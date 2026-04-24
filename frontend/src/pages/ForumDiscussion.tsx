@@ -5,6 +5,7 @@ import LightRays from '../components/LightRays';
 import ConfirmModal from '../components/ConfirmModal';
 import MeatballsMenu from '../components/MeatballsMenu';
 import ReportModal from '../components/ReportModal';
+import { usePageTitle } from '../utils/usePageTitle';
 
 interface UserInfo {
     felhasznalonev: string;
@@ -54,6 +55,7 @@ const ForumDiscussion = () => {
     const navigate = useNavigate();
     const [post, setPost] = useState<ForumPost | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    usePageTitle(post ? `Discussion – ${post.cim}` : 'Forums');
     
     const [commentContent, setCommentContent] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);

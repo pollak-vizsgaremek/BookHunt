@@ -40,6 +40,14 @@ const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
     const [priceError, setPriceError] = useState<string | null>(null);
     const [booklineResults, setBooklineResults] = useState<BooklineOffer[]>([]);
     const [loadingBookline, setLoadingBookline] = useState(false);
+    
+    // Actions state
+    const [isWishlisted, setIsWishlisted] = useState(false);
+    const [wishlistLoading, setWishlistLoading] = useState(false);
+    const [isBookmarked, setIsBookmarked] = useState(false);
+    const [bookmarkId, setBookmarkId] = useState<number | null>(null);
+    const [bookmarkLoading, setBookmarkLoading] = useState(false);
+    const [showLoginToast, setShowLoginToast] = useState(false);
 
     const fetchPrices = useCallback((isManualRefresh = false) => {
         if (!book?.isbn) return () => {};
@@ -162,6 +170,153 @@ const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
             .finally(() => setLoadingBookline(false));
     }, [isOpen, book?.isbn, book?.title, book?.author]);
 
+    // Sync wishlist and bookmark status
+    useEffect(() => {
+        if (!isOpen || !book) return;
+        
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const syncStatus = async () => {
+            try {
+                // Check Wishlist
+                const wRes = await fetch('/api/wishlist', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (wRes.ok) {
+                    const wData = await wRes.json();
+                    const found = wData.some((item: any) => item.konyv_id === book.id.toString());
+                    setIsWishlisted(found);
+                }
+
+                // Check Bookmarks
+                const bRes = await fetch('/api/bookmarks', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (bRes.ok) {
+                    const bData = await bRes.json();
+                    const found = bData.find((item: any) => item.konyv_id === book.id.toString());
+                    setIsBookmarked(!!found);
+                    setBookmarkId(found?.id || null);
+                }
+            } catch (err) {
+                console.error("Failed to sync book status", err);
+            }
+        };
+
+        syncStatus();
+    }, [isOpen, book?.id]);
+
+    const handleWishlistToggle = async () => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            setShowLoginToast(true);
+            setTimeout(() => setShowLoginToast(false), 3000);
+            return;
+        }
+
+        setWishlistLoading(true);
+        try {
+            if (isWishlisted) {
+                const res = await fetch(`/api/wishlist/${book.id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) setIsWishlisted(false);
+            } else {
+                const res = await fetch('/api/wishlist', {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        konyv_id: book.id.toString(),
+                        cim: book.title,
+                        szerzo: book.author,
+                        boritokep_url: book.coverUrl,
+                        isbn: book.isbn || null
+                    })
+                });
+                if (res.ok) setIsWishlisted(true);
+                else {
+                    const data = await res.json();
+                    if (data.error === "Book is already in wishlist") setIsWishlisted(true);
+                }
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setWishlistLoading(false);
+        }
+    };
+
+    const handleBookmarkToggle = async () => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            setShowLoginToast(true);
+            setTimeout(() => setShowLoginToast(false), 3000);
+            return;
+        }
+
+        setBookmarkLoading(true);
+        try {
+            if (isBookmarked && bookmarkId) {
+                const res = await fetch(`/api/bookmarks/${bookmarkId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    setIsBookmarked(false);
+                    setBookmarkId(null);
+                }
+            } else {
+                const res = await fetch('/api/bookmarks', {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        konyv_id: book.id.toString(),
+                        cim: book.title,
+                        szerzo: book.author,
+                        boritokep_url: book.coverUrl,
+                        oldalszam: 0,
+                        max_oldalszam: book.pageCount || null,
+                        idezet: ""
+                    })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setIsBookmarked(true);
+                    setBookmarkId(data.id);
+                } else {
+                    const data = await res.json();
+                    if (data.error?.includes("already")) {
+                        setIsBookmarked(true);
+                        // Try to find the ID by re-syncing
+                        const bRes = await fetch('/api/bookmarks', {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        if (bRes.ok) {
+                            const bData = await bRes.json();
+                            const found = bData.find((item: any) => item.konyv_id === book.id.toString());
+                            if (found) setBookmarkId(found.id);
+                        }
+                    } else {
+                        alert(`Bookmark error: ${data.details || data.error || 'Unknown error'}`);
+                    }
+                }
+            }
+        } catch (err: any) {
+            console.error(err);
+            alert(`Network error: ${err.message}`);
+        } finally {
+            setBookmarkLoading(false);
+        }
+    };
+
     if (!book) return null;
 
 
@@ -211,6 +366,56 @@ const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
                             <div className="flex-1 pt-4 md:pt-6">
                                 <h2 className="text-3xl font-bold font-serif text-gray-900 dark:text-[#DFE6E6] mb-2">{book.title}</h2>
                                 <p className="text-lg text-gray-700 dark:text-[#DFE6E6]/70 mb-4">{book.author}</p>
+
+                                {/* Action Buttons */}
+                                <div className="flex flex-wrap gap-3 mb-6 relative">
+                                    <button
+                                        onClick={handleWishlistToggle}
+                                        disabled={wishlistLoading}
+                                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all active:scale-95 ${
+                                            isWishlisted 
+                                                ? 'bg-red-500/10 border-red-500/20 text-red-500 hover:bg-red-500/20' 
+                                                : 'bg-white dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/10'
+                                        }`}
+                                    >
+                                        {wishlistLoading ? (
+                                            <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                        ) : (
+                                            <svg className={`w-5 h-5 ${isWishlisted ? 'fill-current' : 'fill-none'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                            </svg>
+                                        )}
+                                        <span className="font-bold text-sm">
+                                            {isWishlisted ? 'Wishlisted' : 'Add to Wishlist'}
+                                        </span>
+                                    </button>
+
+                                    <button
+                                        onClick={handleBookmarkToggle}
+                                        disabled={bookmarkLoading}
+                                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all active:scale-95 ${
+                                            isBookmarked 
+                                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20' 
+                                                : 'bg-white dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/10'
+                                        }`}
+                                    >
+                                        {bookmarkLoading ? (
+                                            <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                        ) : (
+                                            <svg className={`w-5 h-5 ${isBookmarked ? 'fill-current' : 'fill-none'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                                            </svg>
+                                        )}
+                                        <span className="font-bold text-sm">
+                                            {isBookmarked ? 'Bookmarked' : 'Add to Bookmarks'}
+                                        </span>
+                                    </button>
+
+                                    {/* Login Toast */}
+                                    <div className={`absolute -bottom-10 left-0 bg-red-500 text-white px-3 py-1 rounded-lg text-xs font-bold shadow-lg transition-all duration-300 z-50 pointer-events-none ${showLoginToast ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}>
+                                        Please log in first!
+                                    </div>
+                                </div>
 
                                 <div className="flex flex-wrap gap-2 mb-6 text-sm">
                                     {book.isbn && !book.isbn.startsWith('LIBRI-') && (

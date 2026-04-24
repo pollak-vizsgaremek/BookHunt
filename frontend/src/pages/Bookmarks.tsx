@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import Navigation from "../components/Navigation";
 import SplitText from "../components/SplitText";
+import { usePageTitle } from "../utils/usePageTitle";
 
 interface Bookmark {
   id: number;
@@ -22,6 +23,7 @@ interface SearchResult {
 }
 
 const Bookmarks = () => {
+  usePageTitle('Bookmarks');
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [loading, setLoading] = useState(true);
   

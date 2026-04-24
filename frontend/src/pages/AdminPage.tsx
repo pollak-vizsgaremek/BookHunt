@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Navigation from "../components/Navigation";
 import LightRays from "../components/LightRays";
 import { motion, AnimatePresence } from "framer-motion";
+import { usePageTitle } from "../utils/usePageTitle";
 
 interface User {
   felhasznalo_id: number;
@@ -26,6 +27,7 @@ interface Report {
 }
 
 const AdminPage = () => {
+  usePageTitle('Admin');
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

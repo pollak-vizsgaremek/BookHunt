@@ -40,6 +40,16 @@
 
 body {
   @apply bg-[#f2eadd] dark:bg-[#1a1a1c] text-gray-900 dark:text-[#DFE6E6] transition-colors duration-0;
+  user-select: none;
+}
+
+img {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
+input, textarea, [contenteditable="true"] {
+  user-select: text;
 }
 
 /* View Transitions for Dark Mode Toggler */

@@ -9,8 +9,10 @@ import BookDetailsModal from "../components/BookDetailsModal";
 import FilterModal, { type FilterOptions } from "../components/FilterModal";
 import CountUp from "../components/CountUp";
 import DailyFeaturedBooks from "../components/DailyFeaturedBooks";
+import { usePageTitle } from "../utils/usePageTitle";
 
 const Home = () => {
+  usePageTitle('Home');
   const [localProducts, setLocalProducts] = useState<BookItem[]>([]);
   const [searchResults, setSearchResults] = useState<BookItem[]>([]);
   const [wishlistedBookIds, setWishlistedBookIds] = useState<Set<string>>(new Set());
@@ -149,7 +151,7 @@ const Home = () => {
                       title: b.title,
                       author: b.authors && b.authors.length > 0 ? b.authors.join(', ') : 'Unknown Author',
                       coverUrl: b.thumbnail,
-                      isbn: 'LIBRI-' + b.googleId, // Dummy ISBN so it passes the isValidISBN or we can just give it a real one if available
+                      isbn: b.googleId.toUpperCase().replace('_', '-'), // Shorter dummy ISBN to fit DB VarChar(20) limit
                       description: b.description,
                       pageCount: null,
                       publishedDate: null,

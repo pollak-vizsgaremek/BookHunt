@@ -59,8 +59,12 @@ export async function scrapeLibri(query) {
                 }
             }
 
+            const slug = relativeLink 
+                ? relativeLink.replace(/^\/konyv\//, '').replace(/\//g, '_').split('?')[0]
+                : Buffer.from(title + author).toString('hex').slice(0, 12);
+
             books.push({
-                googleId: `libri_${i}_${Math.random().toString(36).substr(2, 9)}`,
+                googleId: `libri_${slug}`,
                 title,
                 authors: [author],
                 description: "Libri result",

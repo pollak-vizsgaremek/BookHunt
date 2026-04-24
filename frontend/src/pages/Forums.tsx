@@ -4,6 +4,7 @@ import Navigation from '../components/Navigation';
 import LightRays from '../components/LightRays';
 import CreateForumModal from '../components/CreateForumModal';
 import ConfirmModal from '../components/ConfirmModal';
+import { usePageTitle } from '../utils/usePageTitle';
 
 interface UserInfo {
     felhasznalonev: string;
@@ -29,6 +30,7 @@ interface ForumPost {
 }
 
 const Forums = () => {
+    usePageTitle('Forums');
     const navigate = useNavigate();
     const [posts, setPosts] = useState<ForumPost[]>([]);
     const [search, setSearch] = useState("");

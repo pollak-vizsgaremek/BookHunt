@@ -51,7 +51,7 @@ model Termek {
   termek_id  Int          @id @default(autoincrement())
   cim        String       @db.VarChar(500)
   tipus      Tipus
-  isbn_issn  String?      @db.VarChar(20)
+  isbn_issn  String?      @db.VarChar(50)
   boritokep  String?      @db.VarChar(500)
   Kedvencek  Kedvencek[]
   Feljegyzes Feljegyzes[]
@@ -165,7 +165,7 @@ model Velemeny {
 }
 
 model GyorsitotarazottAr {
-  isbn      String   @id @db.VarChar(20)
+  isbn      String   @id @db.VarChar(50)
   adatok    Json
   frissitve DateTime @default(now()) @updatedAt
 }
@@ -177,7 +177,7 @@ model Kivansaglista {
   cim              String   @db.VarChar(500)
   szerzo           String?  @db.VarChar(255)
   boritokep_url    String?  @db.VarChar(500)
-  isbn             String?  @db.VarChar(20)
+  isbn             String?  @db.VarChar(50)
   utolso_ismert_ar Decimal? @db.Decimal(10, 2)
   letrehozva       DateTime @default(now())
   
