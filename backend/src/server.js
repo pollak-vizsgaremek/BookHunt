@@ -23,6 +23,7 @@ import compareRoutes from "./routes/compare.js";
 import kivansaglistaRoutes from "./routes/kivansaglista.js";
 import ertesitesekRoutes from "./routes/ertesitesek.js";
 import forumsRoutes from "./routes/forums.js";
+import bookmarksRoutes from "./routes/bookmarks.js";
 import { startPriceAlerts } from "./scripts/priceAlertCron.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import adminRoutes from "./routes/adminRoutes.js";
@@ -69,6 +70,7 @@ app.use("/uploads", express.static("src/uploads"));
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);
+app.use("/api/bookmarks", bookmarksRoutes);
 app.use("/api/wishlist", kivansaglistaRoutes);
 app.use("/api/notifications", ertesitesekRoutes);
 app.use("/api/forums", forumsRoutes);
@@ -87,6 +89,15 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/proxy/image", imageProxyRoute);
 
 // Root route — server status page
+app.get("/test-db-connection", async (req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: "ok" });
+  } catch (error) {
+    res.json({ error: error.message, stack: error.stack });
+  }
+});
+
 app.get("/", async (req, res) => {
   try {
     if (await prisma.$queryRaw`SELECT 1`) {

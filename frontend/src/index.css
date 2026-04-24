@@ -1,6 +1,20 @@
 @import "tailwindcss";
 @custom-variant dark (&:is(.dark *));
 
+:root:not(.dark) {
+  --color-emerald-50: #f0f8fa;
+  --color-emerald-100: #dcf0f6;
+  --color-emerald-200: #bee0eb;
+  --color-emerald-300: #91c9dc;
+  --color-emerald-400: #5ea8c7;
+  --color-emerald-500: #007ba7;
+  --color-emerald-600: #00628a;
+  --color-emerald-700: #004d70;
+  --color-emerald-800: #02415d;
+  --color-emerald-900: #06374f;
+  --color-emerald-950: #032335;
+}
+
 @font-face {
   font-family: 'Contrail';
   src: url('/fonts/CONTRAIL.ttf') format('truetype');
@@ -26,6 +40,16 @@
 
 body {
   @apply bg-[#f2eadd] dark:bg-[#1a1a1c] text-gray-900 dark:text-[#DFE6E6] transition-colors duration-0;
+  user-select: none;
+}
+
+img {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
+input, textarea, [contenteditable="true"] {
+  user-select: text;
 }
 
 /* View Transitions for Dark Mode Toggler */

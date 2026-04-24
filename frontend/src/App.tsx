@@ -13,10 +13,12 @@ import Notifications from './pages/Notifications';
 import Forums from './pages/Forums';
 import ForumDiscussion from './pages/ForumDiscussion';
 import AdminPage from './pages/AdminPage';
+import Bookmarks from './pages/Bookmarks';
 import { useNavigate } from "react-router";
 // ===============================
 
 import ClickSpark from "./components/ClickSpark";
+import GuideHelper from "./components/GuideHelper";
 
 function FloatingWishlistButton() {
 // ... existing code was not touched inside FloatingWishlistButton
@@ -24,7 +26,7 @@ function FloatingWishlistButton() {
   return (
     <button
       onClick={() => navigate('/wishlist')}
-      className="fixed bottom-6 left-6 z-50 bg-emerald-500 hover:bg-emerald-600 text-white p-3 sm:p-4 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.5)] hover:shadow-[0_0_25px_rgba(16,185,129,0.8)] transition-all duration-300 transform hover:-translate-y-1 focus:outline-none flex items-center justify-center group"
+      className="fixed bottom-6 left-6 z-50 bg-emerald-500 hover:bg-emerald-600 text-white p-3 sm:p-4 rounded-full shadow-[0_0_15px_var(--color-emerald-500)] hover:shadow-[0_0_25px_var(--color-emerald-500)] transition-all duration-300 transform hover:-translate-y-1 focus:outline-none flex items-center justify-center group"
       title="Go to Wishlist"
     >
       <svg className="w-6 h-6 transform group-hover:scale-110 transition-transform text-white drop-shadow-md" fill="currentColor" viewBox="0 0 24 24">
@@ -38,7 +40,7 @@ function App() {
   return (
     <>
       <ClickSpark 
-        sparkColor="#8ce99a" 
+        sparkColor="var(--color-emerald-400)" 
         sparkSize={5} 
         sparkRadius={10} 
         sparkCount={8} 
@@ -55,8 +57,10 @@ function App() {
         <Route path="/forums" element={<Forums />} />
         <Route path="/forums/:id" element={<ForumDiscussion />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/bookmarks" element={<Bookmarks />} />
       </Routes>
       <FloatingWishlistButton />
+      <GuideHelper />
     </>
   );
 }

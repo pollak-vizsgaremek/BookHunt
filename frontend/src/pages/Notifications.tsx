@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router";
 import Navigation from "../components/Navigation";
+import { usePageTitle } from "../utils/usePageTitle";
 
 interface AppNotification {
   ertesites_id: number;
@@ -11,6 +12,7 @@ interface AppNotification {
 }
 
 const Notifications = () => {
+  usePageTitle('Notifications');
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();

@@ -3,8 +3,10 @@ import Navigation from "../components/Navigation";
 import ProductCard, { type BookItem } from "../components/ProductCard";
 import BookDetailsModal from "../components/BookDetailsModal";
 import SplitText from "../components/SplitText";
+import { usePageTitle } from "../utils/usePageTitle";
 
 const Wishlist = () => {
+  usePageTitle('Wishlist');
   const [wishlistItems, setWishlistItems] = useState<BookItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBook, setSelectedBook] = useState<BookItem | null>(null);

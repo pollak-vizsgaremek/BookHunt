@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import Navigation from '../components/Navigation';
+import { usePageTitle } from '../utils/usePageTitle';
 
 const Profile = () => {
+    usePageTitle('Profile');
     const userStr = localStorage.getItem('user');
     const user = userStr ? JSON.parse(userStr) : null;
 

@@ -2,13 +2,11 @@ import { NavLink, useNavigate } from "react-router";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import ProfileModal from "./ProfileModal";
-import PasscodeModal from "./PasscodeModal";
 import ThemeToggler from "./ThemeToggler";
 
 const Navigation = () => {
   const navigate = useNavigate();
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [isPasscodeModalOpen, setIsPasscodeModalOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
@@ -80,7 +78,10 @@ const Navigation = () => {
   const routes = [
     { name: "Home", route: "/" },
     { name: "Forums", route: "/forums" },
-    ...(user ? [{ name: "Wishlist", route: "/wishlist" }] : [{ name: "Login", route: "/login" }]),
+    ...(user ? [
+      { name: "Wishlist", route: "/wishlist" },
+      { name: "Bookmarks", route: "/bookmarks" }
+    ] : [{ name: "Login", route: "/login" }]),
   ];
 
   return (
@@ -158,7 +159,7 @@ const Navigation = () => {
               <div className="flex items-center gap-2 sm:gap-4">
                 {user.szerepkor === 'ADMIN' && (
                   <button
-                    onClick={() => setIsPasscodeModalOpen(true)}
+                    onClick={() => navigate("/admin")}
                     className="p-2 rounded-full bg-yellow-400/10 hover:bg-yellow-400/20 text-yellow-500 transition-all hover:scale-110 active:scale-90 shadow-lg shadow-yellow-500/10 border border-yellow-500/20"
                     title="Admin Panel"
                   >
@@ -199,12 +200,6 @@ const Navigation = () => {
           isOpen={isProfileModalOpen}
           onClose={() => setIsProfileModalOpen(false)}
           user={user}
-        />
-
-        <PasscodeModal
-          isOpen={isPasscodeModalOpen}
-          onClose={() => setIsPasscodeModalOpen(false)}
-          onSuccess={() => navigate("/admin")}
         />
       </motion.div>
     </>

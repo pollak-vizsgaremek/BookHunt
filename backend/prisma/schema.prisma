@@ -22,6 +22,7 @@ model Felhasznalo {
   Velemenyek     Velemeny[]
   Kivansaglista  Kivansaglista[]
   Ertesites      Ertesites[]
+  Konyvjelzok    Konyvjelzo[]
 
   ForumBejegyzes   ForumBejegyzes[]
   ForumHozzaszolas ForumHozzaszolas[]
@@ -50,7 +51,7 @@ model Termek {
   termek_id  Int          @id @default(autoincrement())
   cim        String       @db.VarChar(500)
   tipus      Tipus
-  isbn_issn  String?      @db.VarChar(20)
+  isbn_issn  String?      @db.VarChar(50)
   boritokep  String?      @db.VarChar(500)
   Kedvencek  Kedvencek[]
   Feljegyzes Feljegyzes[]
@@ -164,7 +165,7 @@ model Velemeny {
 }
 
 model GyorsitotarazottAr {
-  isbn      String   @id @db.VarChar(20)
+  isbn      String   @id @db.VarChar(50)
   adatok    Json
   frissitve DateTime @default(now()) @updatedAt
 }
@@ -176,7 +177,7 @@ model Kivansaglista {
   cim              String   @db.VarChar(500)
   szerzo           String?  @db.VarChar(255)
   boritokep_url    String?  @db.VarChar(500)
-  isbn             String?  @db.VarChar(20)
+  isbn             String?  @db.VarChar(50)
   utolso_ismert_ar Decimal? @db.Decimal(10, 2)
   letrehozva       DateTime @default(now())
   
@@ -293,4 +294,23 @@ model ForumReakcio {
 model CensoredWord {
   id    Int    @id @default(autoincrement())
   word  String @unique @db.VarChar(255)
+}
+
+model Konyvjelzo {
+  id             Int      @id @default(autoincrement())
+  felhasznalo_id Int
+  konyv_id       String   @db.VarChar(255)
+  cim            String   @db.VarChar(500)
+  szerzo         String?  @db.VarChar(255)
+  boritokep_url  String?  @db.VarChar(500)
+  oldalszam      Int      @default(0)
+  max_oldalszam  Int?
+  idezet         String?  @db.VarChar(255)
+  frissitve      DateTime @default(now()) @updatedAt
+  letrehozva     DateTime @default(now())
+
+  Felhasznalo    Felhasznalo @relation(fields: [felhasznalo_id], references: [felhasznalo_id], onDelete: Cascade)
+
+  @@unique([felhasznalo_id, konyv_id], name: "unique_konyvjelzo")
+  @@index([felhasznalo_id], name: "idx_konyvjelzo_felhasznalo")
 }

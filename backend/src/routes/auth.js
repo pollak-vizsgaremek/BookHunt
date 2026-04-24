@@ -77,8 +77,8 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ error: "Username must be between 3 and 30 characters" });
     }
 
-    if (!/^[\p{L}\p{N}_]+$/u.test(username)) {
-      return res.status(400).json({ error: "Username can only contain letters, numbers, and underscores" });
+    if (!/^[\p{L}\p{N}_ ]+$/u.test(username)) {
+      return res.status(400).json({ error: "Username can only contain letters, numbers, underscores, and spaces" });
     }
 
     if (await isForbiddenUsername(username)) {
@@ -254,7 +254,7 @@ router.post("/google", async (req, res) => {
       // Create user
       const secureRandomString = Math.random().toString(36).slice(-10) + Date.now().toString();
       const randomPassword = await bcrypt.hash(secureRandomString, 10);
-      let baseUsername = name ? name.replace(/\s+/g, "") : email.split("@")[0];
+      let baseUsername = name ? name.trim().replace(/\s+/g, " ") : email.split("@")[0];
       let username = baseUsername;
 
       // Ensure unique username

@@ -54,8 +54,8 @@ router.put("/profile", authenticatedReadLimiter, authenticate, async (req, res) 
       return res.status(400).json({ error: "Username must be between 3 and 30 characters" });
     }
 
-    if (!/^[\p{L}\p{N}_]+$/u.test(username)) {
-      return res.status(400).json({ error: "Username can only contain letters, numbers, and underscores" });
+    if (!/^[\p{L}\p{N}_ ]+$/u.test(username)) {
+      return res.status(400).json({ error: "Username can only contain letters, numbers, underscores, and spaces" });
     }
 
     if (await isForbiddenUsername(username)) {

@@ -20,7 +20,7 @@ const ProfileModal = ({ isOpen, onClose, user }: ProfileModalProps) => {
             setLoading(true);
             try {
                 const token = localStorage.getItem('token');
-                const response = await fetch('/api/favorites', {
+                const response = await fetch('/api/bookmarks', {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -111,8 +111,14 @@ const ProfileModal = ({ isOpen, onClose, user }: ProfileModalProps) => {
                                 <p className="text-sm text-gray-600 dark:text-white/50 transition-colors">{user.email}</p>
                             </div>
 
-                            {/* Stats */}
-                            <div className="mt-6 flex items-center justify-between p-4 bg-black/5 dark:bg-white/5 rounded-xl border border-black/5 dark:border-white/5 transition-colors">
+                            {/* Clickable Bookmark Stat */}
+                            <button
+                                onClick={() => {
+                                    onClose();
+                                    navigate('/bookmarks');
+                                }}
+                                className="w-full mt-6 flex items-center justify-between p-4 bg-black/5 dark:bg-white/5 rounded-xl border border-black/5 dark:border-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-all group/stat cursor-pointer text-left"
+                            >
                                 <div className="flex flex-col">
                                     <span className="text-xs font-semibold text-gray-600 dark:text-white/50 uppercase tracking-wider transition-colors">Bookmarks</span>
                                     <span className="text-2xl font-bold text-gray-900 dark:text-white flex items-baseline gap-2 transition-colors">
@@ -124,12 +130,12 @@ const ProfileModal = ({ isOpen, onClose, user }: ProfileModalProps) => {
                                         <span className="text-sm font-normal text-gray-500 dark:text-white/40 transition-colors">books</span>
                                     </span>
                                 </div>
-                                <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <div className="w-12 h-12 rounded-full bg-blue-500/20 group-hover/stat:bg-blue-500/30 flex items-center justify-center text-blue-400 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 group-hover/stat:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                                     </svg>
                                 </div>
-                            </div>
+                            </button>
 
                             {/* Actions */}
                             <div className="mt-6 space-y-3">
