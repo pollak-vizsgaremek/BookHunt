@@ -36,7 +36,31 @@ function FloatingWishlistButton() {
   );
 }
 
+import React, { useState, useEffect } from 'react';
+import ChristmasTheme from './components/themes/ChristmasTheme';
+
 function App() {
+  const [globalTheme, setGlobalTheme] = useState("default");
+
+  useEffect(() => {
+    const fetchGlobalTheme = async () => {
+      try {
+        const res = await fetch("/api/settings/theme");
+        if (res.ok) {
+          const data = await res.json();
+          setGlobalTheme(data.theme);
+        }
+      } catch (err) {
+        console.error("Failed to fetch global theme:", err);
+      }
+    };
+    
+    fetchGlobalTheme();
+    // Poll for changes every 30 seconds
+    const interval = setInterval(fetchGlobalTheme, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <>
       <ClickSpark 
@@ -47,6 +71,7 @@ function App() {
         duration={400} 
         extraScale={1} 
       />
+      {globalTheme === "christmas" && <ChristmasTheme />}
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<LoginPage />} />

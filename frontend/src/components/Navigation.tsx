@@ -14,6 +14,25 @@ const Navigation = () => {
   const user = userStr ? JSON.parse(userStr) : null;
 
   const [unreadCount, setUnreadCount] = useState(0);
+  const [globalTheme, setGlobalTheme] = useState("default");
+
+  // Fetch global holiday theme
+  useEffect(() => {
+    const fetchTheme = async () => {
+      try {
+        const res = await fetch("/api/settings/theme");
+        if (res.ok) {
+          const data = await res.json();
+          setGlobalTheme(data.theme);
+        }
+      } catch (err) {
+        console.error("Failed to fetch theme in Navigation:", err);
+      }
+    };
+    fetchTheme();
+    const interval = setInterval(fetchTheme, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Scroll handler for Smart-Hide
   useEffect(() => {
@@ -96,7 +115,7 @@ const Navigation = () => {
           
           <NavLink to="/" className="flex items-center gap-2 sm:gap-3 group transition-transform duration-300 hover:scale-105 shrink-0">
             <img
-              src="/images/LogoHappy.png"
+              src={globalTheme === "christmas" ? "/images/LogoChristmas.png" : "/images/LogoHappy.png"}
               className="w-8 h-8 sm:w-10 sm:h-10 md:w-11 md:h-11 drop-shadow-md"
               alt="BookHunt logo"
             />

@@ -314,3 +314,10 @@ model Konyvjelzo {
   @@unique([felhasznalo_id, konyv_id], name: "unique_konyvjelzo")
   @@index([felhasznalo_id], name: "idx_konyvjelzo_felhasznalo")
 }
+
+model GlobalSettings {
+  id    Int    @id @default(1)
+  theme String @default("default")
+
+  @@index([theme])
+}
