@@ -35,7 +35,7 @@ const AdminPage = () => {
   
   // Modals state
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [modalType, setModalType] = useState<"ban" | "message" | "delete1" | "delete2" | "broadcast" | null>(null);
+  const [modalType, setModalType] = useState<"ban" | "message" | "delete1" | "delete2" | "promote1" | "promote2" | "broadcast" | null>(null);
   
   // Ban state
   const [banData, setBanData] = useState({ days: 0, hours: 0, minutes: 0, reason: "" });
@@ -169,7 +169,7 @@ const AdminPage = () => {
       if (res.ok) {
         const data = await res.json();
         setGlobalTheme(data.theme);
-        alert("Global Theme updated successfully! Refresh the page to see changes.");
+        window.location.reload();
       } else {
         alert("Failed to update theme.");
       }
@@ -210,6 +210,10 @@ const AdminPage = () => {
     } else if (type === "delete") {
       url = `/api/admin/users/${selectedUser?.felhasznalo_id}`;
       method = "DELETE";
+    } else if (type === "promote") {
+      url = `/api/admin/users/${selectedUser?.felhasznalo_id}/role`;
+      method = "PATCH";
+      payload = { szerepkor: "ADMIN" };
     }
 
     if (type === "addWord") {
@@ -460,6 +464,15 @@ const AdminPage = () => {
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                             </button>
                             <button 
+                              onClick={() => { setSelectedUser(user); setModalType("promote1"); }}
+                              className="p-2 rounded-xl bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20 transition-all active:scale-90"
+                              title="Promote to Admin"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                              </svg>
+                            </button>
+                            <button 
                               onClick={() => { setSelectedUser(user); setModalType("delete1"); }}
                               className="p-2 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all active:scale-90"
                               title="Delete User"
@@ -660,12 +673,19 @@ const AdminPage = () => {
                   >
                     Default Theme
                   </button>
-                  <button 
+                   <button 
                     onClick={() => updateGlobalTheme("christmas")}
                     disabled={loadingTheme}
                     className={`px-6 py-3 rounded-2xl font-bold transition-all flex items-center gap-2 ${globalTheme === "christmas" ? "bg-blue-500 text-white shadow-lg shadow-blue-500/20" : "bg-black/5 dark:bg-white/5 text-gray-600 dark:text-gray-300 hover:bg-black/10 dark:hover:bg-white/10"}`}
                   >
                     <span>❄️</span> Christmas Theme
+                  </button>
+                  <button 
+                    onClick={() => updateGlobalTheme("halloween")}
+                    disabled={loadingTheme}
+                    className={`px-6 py-3 rounded-2xl font-bold transition-all flex items-center gap-2 ${globalTheme === "halloween" ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20" : "bg-black/5 dark:bg-white/5 text-gray-600 dark:text-gray-300 hover:bg-black/10 dark:hover:bg-white/10"}`}
+                  >
+                    <span>🎃</span> Halloween Theme
                   </button>
                 </div>
               </div>
@@ -788,6 +808,42 @@ const AdminPage = () => {
                   <div className="flex flex-col gap-3">
                     <button onClick={() => handleAction("delete", {})} className="w-full py-4 rounded-2xl font-black bg-red-600 text-white shadow-xl shadow-red-600/30 hover:scale-105 active:scale-95 transition-all uppercase tracking-widest">Destroy Account</button>
                     <button onClick={closeModal} className="w-full py-3 rounded-2xl font-bold bg-transparent text-gray-400 hover:text-gray-200 transition-colors">Abourt Mission</button>
+                  </div>
+                </div>
+              )}
+
+              {/* Promote Step 1 */}
+              {modalType === "promote1" && (
+                <div className="text-center">
+                  <div className="w-20 h-20 rounded-full bg-yellow-500/10 flex items-center justify-center text-yellow-500 mx-auto mb-6">
+                    <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-2">Elevate Permissions?</h3>
+                  <p className="text-gray-500 dark:text-gray-400 mb-8">You are about to promote <b>{selectedUser?.felhasznalonev}</b> to Administrator status. This grants them full control over the platform.</p>
+                  
+                  <div className="flex gap-4">
+                    <button onClick={closeModal} className="flex-1 py-4 rounded-2xl font-bold bg-gray-100 dark:bg-white/5 text-gray-500">Cancel</button>
+                    <button onClick={() => setModalType("promote2")} className="flex-1 py-4 rounded-2xl font-bold bg-yellow-500 text-white shadow-lg shadow-yellow-500/20 hover:scale-105 active:scale-95 transition-all">Continue</button>
+                  </div>
+                </div>
+              )}
+
+              {/* Promote Step 2 */}
+              {modalType === "promote2" && (
+                <div className="text-center">
+                  <div className="w-20 h-20 rounded-full bg-yellow-500 flex items-center justify-center text-white mx-auto mb-6 shadow-[0_0_30px_rgba(234,179,8,0.5)]">
+                    <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.562.562 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-2xl font-black text-yellow-500 mb-2 underline decoration-yellow-500/30">Admin Promotion</h3>
+                  <p className="text-gray-500 dark:text-gray-400 mb-8">This user will be able to manage users, reports, and global settings. <b>Are you absolutely sure?</b></p>
+                  
+                  <div className="flex flex-col gap-3">
+                    <button onClick={() => handleAction("promote", {})} className="w-full py-4 rounded-2xl font-black bg-yellow-500 text-white shadow-xl shadow-yellow-500/30 hover:scale-105 active:scale-95 transition-all uppercase tracking-widest text-sm">Confirm Promotion</button>
+                    <button onClick={closeModal} className="w-full py-3 rounded-2xl font-bold bg-transparent text-gray-400 hover:text-gray-200 transition-colors">Go Back</button>
                   </div>
                 </div>
               )}
