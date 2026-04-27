@@ -36,7 +36,7 @@ function FloatingWishlistButton() {
   );
 }
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import ChristmasTheme from './components/themes/ChristmasTheme';
 
 function App() {
