@@ -38,6 +38,7 @@ function FloatingWishlistButton() {
 
 import { useState, useEffect } from 'react';
 import ChristmasTheme from './components/themes/ChristmasTheme';
+import HalloweenTheme from './components/themes/HalloweenTheme';
 
 function App() {
   const [globalTheme, setGlobalTheme] = useState("default");
@@ -72,6 +73,7 @@ function App() {
         extraScale={1} 
       />
       {globalTheme === "christmas" && <ChristmasTheme />}
+      {globalTheme === "halloween" && <HalloweenTheme />}
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<LoginPage />} />

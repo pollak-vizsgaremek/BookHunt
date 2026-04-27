@@ -660,12 +660,19 @@ const AdminPage = () => {
                   >
                     Default Theme
                   </button>
-                  <button 
+                   <button 
                     onClick={() => updateGlobalTheme("christmas")}
                     disabled={loadingTheme}
                     className={`px-6 py-3 rounded-2xl font-bold transition-all flex items-center gap-2 ${globalTheme === "christmas" ? "bg-blue-500 text-white shadow-lg shadow-blue-500/20" : "bg-black/5 dark:bg-white/5 text-gray-600 dark:text-gray-300 hover:bg-black/10 dark:hover:bg-white/10"}`}
                   >
                     <span>❄️</span> Christmas Theme
+                  </button>
+                  <button 
+                    onClick={() => updateGlobalTheme("halloween")}
+                    disabled={loadingTheme}
+                    className={`px-6 py-3 rounded-2xl font-bold transition-all flex items-center gap-2 ${globalTheme === "halloween" ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20" : "bg-black/5 dark:bg-white/5 text-gray-600 dark:text-gray-300 hover:bg-black/10 dark:hover:bg-white/10"}`}
+                  >
+                    <span>🎃</span> Halloween Theme
                   </button>
                 </div>
               </div>

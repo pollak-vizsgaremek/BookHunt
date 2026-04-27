@@ -116,12 +116,12 @@ const Navigation = () => {
           
           <NavLink to="/" className="flex items-center gap-2 sm:gap-3 group transition-transform duration-300 hover:scale-105 shrink-0">
             <img
-              src={globalTheme === "christmas" ? "/images/LogoChristmas.png" : "/images/LogoHappy.png"}
+              src={globalTheme === "christmas" ? "/images/LogoChristmas.png" : (globalTheme === "halloween" ? "/images/HalloweenTheme.png" : "/images/LogoHappy.png")}
               className="w-8 h-8 sm:w-10 sm:h-10 md:w-11 md:h-11 drop-shadow-md"
               alt="BookHunt logo"
             />
             <span 
-              className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight hidden sm:block bg-gradient-to-r from-emerald-400 to-cyan-500 bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(52,211,153,0.8)]"
+              className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight hidden sm:block bg-linear-to-r from-emerald-400 to-cyan-500 bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(52,211,153,0.8)]"
             >
               BookHunt
             </span>
