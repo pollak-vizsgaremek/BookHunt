@@ -654,4 +654,43 @@ router.patch("/reports/:id/resolve", ...adminGuard, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/admin/theme:
+ *   put:
+ *     summary: Update the global site theme (Admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [theme]
+ *             properties:
+ *               theme:
+ *                 type: string
+ *                 example: "christmas"
+ */
+router.put("/theme", ...adminGuard, async (req, res) => {
+  try {
+    const { theme } = req.body;
+    if (!theme) return res.status(400).json({ error: "Theme name is required" });
+
+    // Upsert GlobalSettings (id: 1)
+    const settings = await prisma.globalSettings.upsert({
+      where: { id: 1 },
+      update: { theme },
+      create: { id: 1, theme },
+    });
+
+    res.json({ message: "Theme updated globally", theme: settings.theme });
+  } catch (error) {
+    console.error("[Admin] Error updating theme:", error);
+    res.status(500).json({ error: "Failed to update theme" });
+  }
+});
+
 export default router;

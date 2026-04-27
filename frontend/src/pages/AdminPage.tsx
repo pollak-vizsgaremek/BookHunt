@@ -50,8 +50,12 @@ const AdminPage = () => {
   // Reports state
   const [reports, setReports] = useState<Report[]>([]);
   const [unreadReportsCount, setUnreadReportsCount] = useState(0);
-  const [activeTab, setActiveTab] = useState<"users" | "reports">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "reports" | "settings">("users");
   const [loadingReports, setLoadingReports] = useState(false);
+
+  // Global Settings State
+  const [globalTheme, setGlobalTheme] = useState("default");
+  const [loadingTheme, setLoadingTheme] = useState(false);
 
   const fetchUsers = async () => {
     try {
@@ -138,10 +142,50 @@ const AdminPage = () => {
     }
   };
 
+  const fetchGlobalTheme = async () => {
+    try {
+      const res = await fetch("/api/settings/theme");
+      if (res.ok) {
+        const data = await res.json();
+        setGlobalTheme(data.theme);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const updateGlobalTheme = async (newTheme: string) => {
+    try {
+      setLoadingTheme(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/admin/theme", {
+        method: "PUT",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}` 
+        },
+        body: JSON.stringify({ theme: newTheme })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setGlobalTheme(data.theme);
+        alert("Global Theme updated successfully! Refresh the page to see changes.");
+      } else {
+        alert("Failed to update theme.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error updating theme.");
+    } finally {
+      setLoadingTheme(false);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
     fetchCensoredWords();
     fetchReportsCount();
+    fetchGlobalTheme();
   }, []);
 
   useEffect(() => {
@@ -271,7 +315,7 @@ const AdminPage = () => {
         </motion.div>
 
         {/* Tab Switcher */}
-        <div className="flex gap-4 mb-8">
+        <div className="flex flex-wrap gap-4 mb-8">
           <button 
             onClick={() => setActiveTab("users")}
             className={`px-8 py-3 rounded-2xl font-bold transition-all relative ${activeTab === "users" ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" : "bg-white/40 dark:bg-white/5 text-gray-500 hover:bg-white/60 dark:hover:bg-white/10"}`}
@@ -288,6 +332,12 @@ const AdminPage = () => {
                 {unreadReportsCount}
               </span>
             )}
+          </button>
+          <button 
+            onClick={() => setActiveTab("settings")}
+            className={`px-8 py-3 rounded-2xl font-bold transition-all relative ${activeTab === "settings" ? "bg-blue-500 text-white shadow-lg shadow-blue-500/20" : "bg-white/40 dark:bg-white/5 text-gray-500 hover:bg-white/60 dark:hover:bg-white/10"}`}
+          >
+            Global Settings
           </button>
         </div>
 
@@ -491,7 +541,7 @@ const AdminPage = () => {
           </div>
         </motion.div>
         </>
-        ) : (
+        ) : activeTab === "reports" ? (
           /* Reports Manager Card */
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -580,7 +630,48 @@ const AdminPage = () => {
               )}
             </div>
           </motion.div>
-        )}
+        ) : activeTab === "settings" ? (
+          /* Global Settings Card */
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="rounded-[2.5rem] bg-white/40 dark:bg-white/5 backdrop-blur-xl border border-white/50 dark:border-white/10 p-8 shadow-2xl overflow-hidden"
+          >
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Global Settings</h2>
+            </div>
+
+            <div className="space-y-6">
+              <div className="p-6 rounded-3xl border bg-white/20 dark:bg-white/5 border-white/50 dark:border-white/10 shadow-xl">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Site Theme & Events</h3>
+                <p className="text-gray-500 dark:text-gray-400 mb-6 font-medium">Select a global theme to apply special effects (like snow for Christmas) across the entire application for all users.</p>
+                
+                <div className="flex flex-wrap gap-4">
+                  <button 
+                    onClick={() => updateGlobalTheme("default")}
+                    disabled={loadingTheme}
+                    className={`px-6 py-3 rounded-2xl font-bold transition-all ${globalTheme === "default" ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" : "bg-black/5 dark:bg-white/5 text-gray-600 dark:text-gray-300 hover:bg-black/10 dark:hover:bg-white/10"}`}
+                  >
+                    Default Theme
+                  </button>
+                  <button 
+                    onClick={() => updateGlobalTheme("christmas")}
+                    disabled={loadingTheme}
+                    className={`px-6 py-3 rounded-2xl font-bold transition-all flex items-center gap-2 ${globalTheme === "christmas" ? "bg-blue-500 text-white shadow-lg shadow-blue-500/20" : "bg-black/5 dark:bg-white/5 text-gray-600 dark:text-gray-300 hover:bg-black/10 dark:hover:bg-white/10"}`}
+                  >
+                    <span>❄️</span> Christmas Theme
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        ) : null}
       </main>
 
       {/* MODALS */}

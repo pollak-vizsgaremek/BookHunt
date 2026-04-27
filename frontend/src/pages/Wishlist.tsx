@@ -99,12 +99,14 @@ const Wishlist = () => {
             </div>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-20 text-center w-full bg-black/5 dark:bg-white/5 rounded-3xl border border-black/10 dark:border-white/10 backdrop-blur-sm">
-            <svg className="h-16 w-16 text-gray-400 dark:text-[#DFE6E6]/30 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-            </svg>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-[#DFE6E6] mb-2">No books wishlisted yet</h3>
-            <p className="text-md text-gray-500">Start exploring and saving books you love!</p>
+          <div className="flex flex-col items-center justify-center py-16 text-center w-full bg-black/5 dark:bg-white/5 rounded-3xl border border-black/10 dark:border-white/10 backdrop-blur-sm">
+            <img 
+              src="/images/LogoSadGlass.png" 
+              alt="No wishlist items found" 
+              className="w-32 h-32 md:w-40 md:h-40 object-contain drop-shadow-xl mb-4 opacity-80"
+            />
+            <h3 className="text-xl font-bold text-gray-900 dark:text-[#DFE6E6] mb-2">No wishlisted books yet</h3>
+            <p className="text-md text-gray-500">Start exploring and saving books you love to see them here!</p>
           </div>
         )}
       </div>

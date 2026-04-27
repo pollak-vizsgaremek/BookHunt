@@ -110,9 +110,9 @@ const RegisterPage = () => {
                 />
             </div>
             <Navigation />
-            <div className="relative z-10 flex min-h-screen items-center justify-center pt-20 p-4">
+            <div className="relative z-10 flex min-h-screen items-center justify-center pt-24 pb-12 p-4">
                 <SpotlightCard
-                    className="w-full max-w-lg aspect-3/4 bg-cover bg-center bg-no-repeat rounded-r-3xl shadow-2xl flex flex-col items-center justify-center py-12 pl-12 pr-20 sm:py-20 sm:pl-20 sm:pr-32"
+                    className="w-full max-w-lg aspect-auto sm:aspect-3/4 bg-cover bg-center bg-no-repeat rounded-3xl sm:rounded-none sm:rounded-r-3xl shadow-2xl flex flex-col items-center justify-center py-12 px-6 sm:py-20 sm:pl-20 sm:pr-32"
                     style={{ backgroundImage: "url('/images/book_cover.png')" }}
                 >
                     <div className="w-full max-w-xs space-y-4 relative z-10">

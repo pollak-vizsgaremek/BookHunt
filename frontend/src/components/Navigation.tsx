@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from "react-router"; 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import ProfileModal from "./ProfileModal";
 import ThemeToggler from "./ThemeToggler";
 
@@ -9,11 +9,31 @@ const Navigation = () => {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : null;
 
   const [unreadCount, setUnreadCount] = useState(0);
+  const [globalTheme, setGlobalTheme] = useState("default");
+
+  // Fetch global holiday theme
+  useEffect(() => {
+    const fetchTheme = async () => {
+      try {
+        const res = await fetch("/api/settings/theme");
+        if (res.ok) {
+          const data = await res.json();
+          setGlobalTheme(data.theme);
+        }
+      } catch (err) {
+        console.error("Failed to fetch theme in Navigation:", err);
+      }
+    };
+    fetchTheme();
+    const interval = setInterval(fetchTheme, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Scroll handler for Smart-Hide
   useEffect(() => {
@@ -92,23 +112,23 @@ const Navigation = () => {
         transition={{ duration: 0.3, ease: "easeInOut" }}
         className="w-full fixed top-0 sm:top-6 left-0 z-50 px-0 sm:px-4 flex justify-center"
       >
-        <div className="w-full max-w-7xl flex items-center justify-between bg-white/60 dark:bg-black/40 backdrop-blur-2xl border-b sm:border border-white/30 dark:border-white/10 rounded-none sm:rounded-full px-4 sm:px-6 py-2 sm:py-3 shadow-lg transition-all duration-500">
+        <div className="w-full max-w-7xl relative flex items-center justify-between bg-white/60 dark:bg-black/40 backdrop-blur-2xl border-b sm:border border-white/30 dark:border-white/10 rounded-none sm:rounded-full px-4 sm:px-6 py-2 sm:py-3 shadow-lg transition-all duration-500">
           
           <NavLink to="/" className="flex items-center gap-2 sm:gap-3 group transition-transform duration-300 hover:scale-105 shrink-0">
             <img
-              src="/images/LogoHappy.png"
+              src={globalTheme === "christmas" ? "/images/LogoChristmas.png" : "/images/LogoHappy.png"}
               className="w-8 h-8 sm:w-10 sm:h-10 md:w-11 md:h-11 drop-shadow-md"
               alt="BookHunt logo"
             />
             <span 
-              className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-emerald-500 hidden xs:block"
-              style={{ textShadow: "0 0 10px rgba(52,211,153,0.3)" }}
+              className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight hidden sm:block bg-gradient-to-r from-emerald-400 to-cyan-500 bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(52,211,153,0.8)]"
             >
               BookHunt
             </span>
           </NavLink>
 
-          <nav className="hidden md:flex items-center gap-6">
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex absolute left-1/2 -translate-x-1/2 items-center gap-6">
             {routes.map((r) => (
               <NavLink
                 key={r.route}
@@ -134,7 +154,7 @@ const Navigation = () => {
                 <NavLink 
                   to="/notifications" 
                   className={({ isActive }) => 
-                    `relative p-2 transition-colors ${
+                    `relative p-2 transition-colors flex items-center justify-center rounded-full ${
                       isActive 
                         ? "text-emerald-600 dark:text-emerald-400" 
                         : "text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400"
@@ -175,7 +195,7 @@ const Navigation = () => {
                   className="flex items-center gap-2 sm:gap-3 cursor-pointer outline-none group shrink-0"
                 >
                   <span className="text-gray-900 dark:text-white font-bold text-sm hidden lg:block group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors uppercase tracking-wider">{user.felhasznalonev || user.username}</span>
-                  <div className="relative p-0.5 rounded-full ring-2 ring-emerald-500/20 group-hover:ring-emerald-500/50 transition-all">
+                  <div className="relative flex items-center justify-center p-0.5 rounded-full ring-2 ring-emerald-500/20 group-hover:ring-emerald-500/50 transition-all">
                     <img 
                       src={user.profilkep || "/images/profile_icon.png"} 
                       alt="Profile" 
@@ -193,8 +213,54 @@ const Navigation = () => {
                  </div>
               </NavLink>
             )}
+
+            {/* Mobile Menu Toggle */}
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="md:hidden p-2 text-gray-700 dark:text-gray-300 hover:text-emerald-500 transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                {isMenuOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
+                )}
+              </svg>
+            </button>
           </div>
         </div>
+
+        {/* Mobile Menu Overlay */}
+        <AnimatePresence>
+          {isMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+              className="absolute top-full left-0 w-full bg-white/90 dark:bg-black/80 backdrop-blur-2xl md:hidden border-b border-white/20 dark:border-white/10 overflow-hidden shadow-2xl z-40"
+            >
+              <nav className="flex flex-col p-4 gap-2">
+                {routes.map((r) => (
+                  <NavLink
+                    key={r.route}
+                    to={r.route}
+                    onClick={() => setIsMenuOpen(false)}
+                    className={({ isActive }) =>
+                      `flex items-center px-4 py-3 rounded-xl text-lg font-bold transition-all ${
+                        isActive
+                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                          : "text-gray-700 dark:text-gray-300 hover:bg-emerald-500/5 hover:text-emerald-500"
+                      }`
+                    }
+                  >
+                    {r.name}
+                  </NavLink>
+                ))}
+              </nav>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <ProfileModal
           isOpen={isProfileModalOpen}
