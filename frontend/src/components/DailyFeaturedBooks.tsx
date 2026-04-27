@@ -62,12 +62,17 @@ const DailyFeaturedBooks: React.FC<DailyFeaturedBooksProps> = ({ onBookClick }) 
                             let bestImg = b.imageLinks?.extraLarge || b.imageLinks?.large || b.imageLinks?.medium || b.thumbnail;
                             
                             if (bestImg) {
-                                bestImg = bestImg
-                                    .replace('http:', 'https:')
-                                    .replace('&edge=curl', '')
-                                    .replace('&zoom=1', '&zoom=3')
-                                    .replace('zoom=1', 'zoom=3');
-                                // Upgrade fife resolution if present
+                                // Only upgrade standard Google Books thumbnail URLs to higher resolution zoom=3
+                                if (bestImg.includes('books.google.com/books/') && bestImg.includes('zoom=')) {
+                                    bestImg = bestImg
+                                        .replace('http:', 'https:')
+                                        .replace('&edge=curl', '')
+                                        .replace(/zoom=\d+/, 'zoom=3');
+                                } else {
+                                    bestImg = bestImg.replace('http:', 'https:').replace('&edge=curl', '');
+                                }
+                                
+                                // Upgrade fife resolution if present (Google Content CDN)
                                 if (bestImg.includes('fife=w')) {
                                     bestImg = bestImg.replace(/fife=w\d+-h\d+/, 'fife=w800-h1200');
                                 }

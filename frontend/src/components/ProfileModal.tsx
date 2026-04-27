@@ -52,6 +52,11 @@ const ProfileModal = ({ isOpen, onClose, user }: ProfileModalProps) => {
         onClose();
         navigate('/profile');
     };
+    
+    const handlePfpClick = () => {
+        onClose();
+        navigate('/profile?action=upload-pfp');
+    };
 
     if (!user) return null;
 
@@ -92,17 +97,30 @@ const ProfileModal = ({ isOpen, onClose, user }: ProfileModalProps) => {
                         <div className="px-6 pb-6 relative">
                             {/* Avatar pushing up into banner */}
                             <div className="absolute -top-12 left-6">
-                                <div className="w-24 h-24 rounded-full border-4 border-white dark:border-[#2A2B3D] overflow-hidden bg-gray-100 dark:bg-[#333446] transition-colors">
-                                    <img
-                                        src={user.profilkep || "/images/profile_icon.png"}
-                                        alt="Profile Avatar"
-                                        className="w-full h-full object-cover"
-                                        referrerPolicy="no-referrer"
-                                        onError={(e) => {
-                                            // Fallback if image fails
-                                            (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${user.username || user.felhasznalonev}&background=random`;
-                                        }}
-                                    />
+                                <div className="relative group/avatar">
+                                    <div className="w-24 h-24 rounded-full border-4 border-white dark:border-[#2A2B3D] overflow-hidden bg-gray-100 dark:bg-[#333446] transition-colors relative shadow-lg">
+                                        <img
+                                            src={user.profilkep || "/images/profile_icon.png"}
+                                            alt="Profile Avatar"
+                                            className="w-full h-full object-cover"
+                                            referrerPolicy="no-referrer"
+                                            onError={(e) => {
+                                                (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${user.username || user.felhasznalonev}&background=random`;
+                                            }}
+                                        />
+                                        
+                                        {/* Upload Overlay */}
+                                        <button 
+                                            onClick={handlePfpClick}
+                                            className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity cursor-pointer"
+                                            title="Change Profile Picture"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -117,20 +135,20 @@ const ProfileModal = ({ isOpen, onClose, user }: ProfileModalProps) => {
                                     onClose();
                                     navigate('/bookmarks');
                                 }}
-                                className="w-full mt-6 flex items-center justify-between p-4 bg-black/5 dark:bg-white/5 rounded-xl border border-black/5 dark:border-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-all group/stat cursor-pointer text-left"
+                                className="w-full mt-6 flex items-center justify-between p-4 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5 hover:bg-gray-100 dark:hover:bg-white/10 transition-all group/stat cursor-pointer text-left"
                             >
                                 <div className="flex flex-col">
-                                    <span className="text-xs font-semibold text-gray-600 dark:text-white/50 uppercase tracking-wider transition-colors">Bookmarks</span>
+                                    <span className="text-xs font-semibold text-gray-500 dark:text-white/50 uppercase tracking-wider transition-colors">Bookmarks</span>
                                     <span className="text-2xl font-bold text-gray-900 dark:text-white flex items-baseline gap-2 transition-colors">
                                         {loading ? (
-                                            <span className="w-6 h-6 border-2 border-gray-400 dark:border-white/20 border-t-gray-900 dark:border-t-white/80 rounded-full animate-spin"></span>
+                                            <span className="w-6 h-6 border-2 border-emerald-500/30 dark:border-white/20 border-t-emerald-500 dark:border-t-white/80 rounded-full animate-spin"></span>
                                         ) : (
                                             bookmarksCount
                                         )}
                                         <span className="text-sm font-normal text-gray-500 dark:text-white/40 transition-colors">books</span>
                                     </span>
                                 </div>
-                                <div className="w-12 h-12 rounded-full bg-blue-500/20 group-hover/stat:bg-blue-500/30 flex items-center justify-center text-blue-400 transition-colors">
+                                <div className="w-12 h-12 rounded-full bg-emerald-500/10 dark:bg-blue-500/20 group-hover/stat:bg-emerald-500/20 dark:group-hover/stat:bg-blue-500/30 flex items-center justify-center text-emerald-600 dark:text-blue-400 transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 group-hover/stat:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                                     </svg>
