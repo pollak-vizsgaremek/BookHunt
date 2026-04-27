@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from "react-router"; 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import ProfileModal from "./ProfileModal";
 import ThemeToggler from "./ThemeToggler";
 
@@ -9,6 +9,7 @@ const Navigation = () => {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : null;
@@ -127,6 +128,7 @@ const Navigation = () => {
             </span>
           </NavLink>
 
+          {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-6">
             {routes.map((r) => (
               <NavLink
@@ -212,8 +214,54 @@ const Navigation = () => {
                  </div>
               </NavLink>
             )}
+
+            {/* Mobile Menu Toggle */}
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="md:hidden p-2 text-gray-700 dark:text-gray-300 hover:text-emerald-500 transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                {isMenuOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
+                )}
+              </svg>
+            </button>
           </div>
         </div>
+
+        {/* Mobile Menu Overlay */}
+        <AnimatePresence>
+          {isMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+              className="absolute top-full left-0 w-full bg-white/90 dark:bg-black/80 backdrop-blur-2xl md:hidden border-b border-white/20 dark:border-white/10 overflow-hidden shadow-2xl z-40"
+            >
+              <nav className="flex flex-col p-4 gap-2">
+                {routes.map((r) => (
+                  <NavLink
+                    key={r.route}
+                    to={r.route}
+                    onClick={() => setIsMenuOpen(false)}
+                    className={({ isActive }) =>
+                      `flex items-center px-4 py-3 rounded-xl text-lg font-bold transition-all ${
+                        isActive
+                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                          : "text-gray-700 dark:text-gray-300 hover:bg-emerald-500/5 hover:text-emerald-500"
+                      }`
+                    }
+                  >
+                    {r.name}
+                  </NavLink>
+                ))}
+              </nav>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <ProfileModal
           isOpen={isProfileModalOpen}
