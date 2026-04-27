@@ -153,7 +153,7 @@ const ForumDiscussion = () => {
         const comment = post?.Hozzaszolasok.find(c => c.id === commentId);
         if (!comment) return;
 
-        const myCommentReactions = comment.Reakciok.filter(r => r.felhasznalo_id === user.id) || [];
+        const myCommentReactions = (comment.Reakciok || []).filter(r => r.felhasznalo_id === user.id);
         const alreadyHasEmoji = myCommentReactions.some(r => r.emoji === emoji);
         
         if (!alreadyHasEmoji && myCommentReactions.length >= 3) {
@@ -401,7 +401,7 @@ const ForumDiscussion = () => {
                         <div className="text-center py-10 opacity-70 text-gray-600 dark:text-gray-400 italic font-medium">Be the first to share your thoughts!</div>
                     ) : (
                         post.Hozzaszolasok.map(comment => (
-                            <div key={comment.id} className="p-5 rounded-2xl bg-white/30 dark:bg-black/20 backdrop-blur-sm border border-black/5 dark:border-white/5">
+                            <div key={comment.id} className="p-5 rounded-2xl bg-white/30 dark:bg-black/20 backdrop-blur-sm border border-black/5 dark:border-white/5 relative hover:z-50 focus-within:z-50 transition-all">
                                 <div className="flex justify-between items-start mb-3">
                                     <div className="flex items-center gap-3">
                                         <img src={comment.Felhasznalo.profilkep || '/images/profile_icon.png'} className="w-8 h-8 rounded-full object-cover" alt={comment.Felhasznalo.felhasznalonev} referrerPolicy="no-referrer" />

@@ -112,7 +112,7 @@ const Navigation = () => {
         transition={{ duration: 0.3, ease: "easeInOut" }}
         className="w-full fixed top-0 sm:top-6 left-0 z-50 px-0 sm:px-4 flex justify-center"
       >
-        <div className="w-full max-w-7xl flex items-center justify-between bg-white/60 dark:bg-black/40 backdrop-blur-2xl border-b sm:border border-white/30 dark:border-white/10 rounded-none sm:rounded-full px-4 sm:px-6 py-2 sm:py-3 shadow-lg transition-all duration-500">
+        <div className="w-full max-w-7xl relative flex items-center justify-between bg-white/60 dark:bg-black/40 backdrop-blur-2xl border-b sm:border border-white/30 dark:border-white/10 rounded-none sm:rounded-full px-4 sm:px-6 py-2 sm:py-3 shadow-lg transition-all duration-500">
           
           <NavLink to="/" className="flex items-center gap-2 sm:gap-3 group transition-transform duration-300 hover:scale-105 shrink-0">
             <img
@@ -121,15 +121,14 @@ const Navigation = () => {
               alt="BookHunt logo"
             />
             <span 
-              className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-emerald-500 hidden xs:block"
-              style={{ textShadow: "0 0 10px rgba(52,211,153,0.3)" }}
+              className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight hidden sm:block bg-gradient-to-r from-emerald-400 to-cyan-500 bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(52,211,153,0.8)]"
             >
               BookHunt
             </span>
           </NavLink>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-6">
+          <nav className="hidden md:flex absolute left-1/2 -translate-x-1/2 items-center gap-6">
             {routes.map((r) => (
               <NavLink
                 key={r.route}
@@ -155,7 +154,7 @@ const Navigation = () => {
                 <NavLink 
                   to="/notifications" 
                   className={({ isActive }) => 
-                    `relative p-2 transition-colors ${
+                    `relative p-2 transition-colors flex items-center justify-center rounded-full ${
                       isActive 
                         ? "text-emerald-600 dark:text-emerald-400" 
                         : "text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400"
@@ -196,7 +195,7 @@ const Navigation = () => {
                   className="flex items-center gap-2 sm:gap-3 cursor-pointer outline-none group shrink-0"
                 >
                   <span className="text-gray-900 dark:text-white font-bold text-sm hidden lg:block group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors uppercase tracking-wider">{user.felhasznalonev || user.username}</span>
-                  <div className="relative p-0.5 rounded-full ring-2 ring-emerald-500/20 group-hover:ring-emerald-500/50 transition-all">
+                  <div className="relative flex items-center justify-center p-0.5 rounded-full ring-2 ring-emerald-500/20 group-hover:ring-emerald-500/50 transition-all">
                     <img 
                       src={user.profilkep || "/images/profile_icon.png"} 
                       alt="Profile" 
