@@ -1,9 +1,34 @@
 import express from "express";
 import bcrypt from "bcryptjs";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 import { PrismaClient } from "../../generated/prisma/index.js";
 import { authenticate } from "./auth.js";
 import { authenticatedReadLimiter } from "../middleware/rateLimiter.js";
 import { isForbiddenUsername } from "../utils/censor.js";
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "src/uploads/");
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, "pfp-" + uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const filetypes = /jpeg|jpg|png|webp/;
+    const mimetype = filetypes.test(file.mimetype);
+    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+    if (mimetype && extname) return cb(null, true);
+    cb(new Error("Only images (jpeg, jpg, png, webp) are allowed"));
+  }
+});
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -171,6 +196,45 @@ router.put("/password", authenticatedReadLimiter, authenticate, async (req, res)
   } catch (error) {
     console.error("Error updating password:", error);
     res.status(500).json({ error: "Failed to update password" });
+  }
+});
+
+// Update Profile Picture
+router.patch("/profile-picture", authenticatedReadLimiter, authenticate, upload.single("profilePicture"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const userId = req.user.userId;
+    const profilePictureUrl = `http://localhost:5000/uploads/${req.file.filename}`;
+
+    // Delete old local profile picture if it exists
+    const user = await prisma.felhasznalo.findUnique({ where: { felhasznalo_id: userId } });
+    if (user.profilkep && user.profilkep.includes('/uploads/')) {
+        try {
+            const oldFilename = user.profilkep.split('/').pop();
+            const oldPath = path.join(process.cwd(), 'src', 'uploads', oldFilename);
+            if (fs.existsSync(oldPath)) {
+                fs.unlinkSync(oldPath);
+            }
+        } catch (err) {
+            console.warn("Failed to delete old profile picture:", err);
+        }
+    }
+
+    await prisma.felhasznalo.update({
+      where: { felhasznalo_id: userId },
+      data: { profilkep: profilePictureUrl },
+    });
+
+    res.json({ 
+      message: "Profile picture updated successfully",
+      profilkep: profilePictureUrl 
+    });
+  } catch (error) {
+    console.error("Error updating profile picture:", error);
+    res.status(500).json({ error: "Failed to update profile picture" });
   }
 });
 

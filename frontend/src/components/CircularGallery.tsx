@@ -277,9 +277,7 @@ class Media {
         precision highp float;
         uniform vec2 uImageSizes;
         uniform vec2 uPlaneSizes;
-        uniform sampler2D tMap;
-        uniform float uBorderRadius;
-        varying vec2 vUv;
+        uniform float uIsLoaded;
         
         float roundedBoxSDF(vec2 p, vec2 b, float r) {
           vec2 d = abs(p) - b;
@@ -287,32 +285,51 @@ class Media {
         }
         
         void main() {
-          vec2 ratio = vec2(
-            min((uPlaneSizes.x / uPlaneSizes.y) / (uImageSizes.x / uImageSizes.y), 1.0),
-            min((uPlaneSizes.y / uPlaneSizes.x) / (uImageSizes.y / uImageSizes.x), 1.0)
-          );
+          float planeAspect = uPlaneSizes.x / uPlaneSizes.y;
+          float imageAspect = max(uImageSizes.x, 0.01) / max(uImageSizes.y, 0.01);
+          
+          float aspectDiff = abs(planeAspect - imageAspect);
+          vec2 ratio;
+          
+          // If aspect ratio is too extreme (not a book cover), use contain instead of cover
+          if (aspectDiff > 1.2) {
+            ratio = vec2(
+              max(planeAspect / imageAspect, 1.0),
+              max((1.0 / planeAspect) / (1.0 / imageAspect), 1.0)
+            );
+          } else {
+            // Standard cover logic
+            ratio = vec2(
+              min(planeAspect / imageAspect, 1.0),
+              min((1.0 / planeAspect) / (1.0 / imageAspect), 1.0)
+            );
+          }
+          
           vec2 uv = vec2(
             vUv.x * ratio.x + (1.0 - ratio.x) * 0.5,
             vUv.y * ratio.y + (1.0 - ratio.y) * 0.5
           );
+          
           vec4 color = texture2D(tMap, uv);
+          vec4 loadingColor = vec4(0.08, 0.08, 0.09, 1.0); // Premium dark gray
           
           float d = roundedBoxSDF(vUv - 0.5, vec2(0.5 - uBorderRadius), uBorderRadius);
-          
-          // Smooth antialiasing for edges
           float edgeSmooth = 0.002;
           float alpha = 1.0 - smoothstep(-edgeSmooth, edgeSmooth, d);
           
-          gl_FragColor = vec4(color.rgb, alpha);
+          // Only show the image if it's actually loaded, otherwise show placeholder
+          vec4 finalColor = mix(loadingColor, color, uIsLoaded);
+          gl_FragColor = vec4(finalColor.rgb, finalColor.a * alpha);
         }
       `,
       uniforms: {
         tMap: { value: texture },
         uPlaneSizes: { value: [0, 0] },
-        uImageSizes: { value: [1, 1] },
+        uImageSizes: { value: [0.75, 1.0] }, // Initialize with book aspect ratio (3:4) to avoid initial zoom
         uSpeed: { value: 0 },
         uTime: { value: 100 * Math.random() },
-        uBorderRadius: { value: this.borderRadius }
+        uBorderRadius: { value: this.borderRadius },
+        uIsLoaded: { value: 0 }
       },
       transparent: true
     });
@@ -322,6 +339,11 @@ class Media {
     img.onload = () => {
       texture.image = img;
       this.program.uniforms.uImageSizes.value = [img.naturalWidth, img.naturalHeight];
+      this.program.uniforms.uIsLoaded.value = 1;
+    };
+    img.onerror = () => {
+      console.warn('[CircularGallery] Failed to load image:', this.image);
+      // Fallback to a dark gray texture color if possible, or just leave as is
     };
   }
 
