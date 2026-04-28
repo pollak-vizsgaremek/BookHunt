@@ -278,6 +278,9 @@ class Media {
         uniform vec2 uImageSizes;
         uniform vec2 uPlaneSizes;
         uniform float uIsLoaded;
+        uniform sampler2D tMap;
+        uniform float uBorderRadius;
+        varying vec2 vUv;
         
         float roundedBoxSDF(vec2 p, vec2 b, float r) {
           vec2 d = abs(p) - b;
@@ -782,5 +785,5 @@ export default function CircularGallery({
     };
   }, [items, bend, textColor, borderRadius, font, scrollSpeed, scrollEase, autoRotationSpeed]);
 
-  return <div className="w-full h-full overflow-hidden cursor-grab active:cursor-grabbing" ref={containerRef} />;
+  return <div className="relative w-full h-full overflow-hidden cursor-grab active:cursor-grabbing" ref={containerRef} />;
 }

@@ -10,6 +10,11 @@ const DailyFeaturedBooks: React.FC<DailyFeaturedBooksProps> = ({ onBookClick }) 
     const [timeLeft, setTimeLeft] = useState<string>('');
     const [featuredBooks, setFeaturedBooks] = useState<{ image: string; text: string; book: BookItem }[]>([]);
     const [loading, setLoading] = useState(true);
+    const [dayOffset, setDayOffset] = useState(0);
+
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    const isAdmin = user?.szerepkor === 'ADMIN';
 
     useEffect(() => {
         const updateTimer = () => {
@@ -33,29 +38,84 @@ const DailyFeaturedBooks: React.FC<DailyFeaturedBooksProps> = ({ onBookClick }) 
 
     useEffect(() => {
         const fetchFeatured = async () => {
+            setLoading(true);
             try {
                 // Fetch beautifully curated daily featured books via Google Books categories
                 const subjects = ['fiction', 'fantasy', 'mystery', 'romance', 'thriller', 'history'];
-                const dayIndex = new Date().getDate() % subjects.length;
+                const dayIndex = (new Date().getDate() + dayOffset) % subjects.length;
                 const querySubject = subjects[dayIndex];
                 
-                const url = `/api/books/search?maxResults=12&subject=${querySubject}&orderBy=relevance`;
-                const response = await fetch(url);
-                if (response.ok) {
-                    const data = await response.json();
-                    // Filter unique books by ID to prevent "repeats same 2 books" issue
+                const url = `/api/books/search?maxResults=40&subject=${querySubject}&orderBy=relevance`;
+                
+                const [googleResponse, libriResponse] = await Promise.all([
+                    fetch(url),
+                    fetch(`/api/books/libri-search?q=${querySubject}`).catch(() => null)
+                ]);
+
+                if (googleResponse.ok) {
+                    const data = await googleResponse.json();
+                    
+                    let libriBooks: any[] = [];
+                    if (libriResponse && libriResponse.ok) {
+                        try {
+                            const libriData = await libriResponse.json();
+                            libriBooks = (libriData.books || []).map((b: any) => ({
+                                googleId: b.googleId,
+                                title: b.title,
+                                authors: b.authors,
+                                thumbnail: b.thumbnail?.startsWith('//') ? `https:${b.thumbnail}` : b.thumbnail,
+                                imageLinks: b.thumbnail ? { thumbnail: b.thumbnail?.startsWith('//') ? `https:${b.thumbnail}` : b.thumbnail } : null,
+                                isbn: b.googleId.toUpperCase().replace('_', '-'),
+                                description: b.description || 'A trending book from Libri.',
+                                pageCount: null,
+                                publishedDate: null,
+                                categories: [querySubject],
+                                language: 'hu',
+                                isLibri: true,
+                                price: b.price,
+                                previewLink: b.previewLink
+                            }));
+                        } catch(e) {}
+                    }
+
+                    // Filter unique books by ID and similar titles to prevent clustering (e.g. 5 'BBC History' issues)
                     const seenIds = new Set();
-                    const uniqueBooks = (data.books || [])
+                    const seenTitles = new Set();
+                    
+                    const combinedBooks = [...libriBooks, ...(data.books || [])];
+                    // Randomize the results to make the "trending" gallery feel fresh
+                    const shuffledBooks = combinedBooks.sort(() => Math.random() - 0.5);
+                    
+                    const uniqueBooks = shuffledBooks
                         .filter((b: any) => {
                             // Stricter filtering: must have a thumbnail and it shouldn't be a generic placeholder
                             if (!b.googleId || !b.thumbnail || !b.title || seenIds.has(b.googleId)) return false;
                             
+                            // Prevent similar books from dominating the gallery (e.g. magazine issues)
+                            const titlePrefix = b.title.substring(0, 15).toLowerCase().replace(/[^a-z0-9]/g, '');
+                            if (seenTitles.has(titlePrefix)) return false;
+                            
+                            if (b.isLibri) {
+                                seenIds.add(b.googleId);
+                                seenTitles.add(titlePrefix);
+                                return true;
+                            }
+                            
                             // Google Books "no image" pattern
                             if (b.thumbnail.includes('content-type=image') || b.thumbnail.includes('noimage')) return false;
                             
+                            // Heuristic: Obscure editions without descriptions usually have auto-generated white covers
+                            if (!b.description || b.description.length < 20) return false;
+
+                            // Advanced Heuristic: Auto-generated text-only covers lack both the 'edge=curl' rendering artifact and high-res variants
+                            const hasEdgeCurl = b.thumbnail.includes('edge=curl');
+                            const hasHighRes = !!(b.imageLinks?.small || b.imageLinks?.medium || b.imageLinks?.large || b.thumbnail.includes('imgtk'));
+                            if (!hasEdgeCurl && !hasHighRes) return false;
+                            
                             seenIds.add(b.googleId);
+                            seenTitles.add(titlePrefix);
                             return true;
-                        });
+                        }).slice(0, 12);
 
                     const mapped = uniqueBooks.map((b: any) => {
                             // Prefer the highest resolution image available — same strategy as search results
@@ -92,11 +152,13 @@ const DailyFeaturedBooks: React.FC<DailyFeaturedBooksProps> = ({ onBookClick }) 
                                 isLocal: false,
                                 ratingsCount: b.ratingsCount || 0,
                                 averageRating: b.averageRating || 0,
+                                price: b.price,
+                                previewLink: b.previewLink
                             };
 
                             return {
                                 image: bestImg, // Use the high-res Google Books URL directly
-                                text: b.title,
+                                text: b.title.length > 25 ? b.title.substring(0, 25).trim() + '...' : b.title,
                                 book: bookItem
                             };
                         });
@@ -114,7 +176,7 @@ const DailyFeaturedBooks: React.FC<DailyFeaturedBooksProps> = ({ onBookClick }) 
         };
 
         fetchFeatured();
-    }, []);
+    }, [dayOffset]);
 
     const getDefaultBooks = (): { image: string; text: string; book: BookItem }[] => [
         { 
@@ -196,10 +258,21 @@ const DailyFeaturedBooks: React.FC<DailyFeaturedBooksProps> = ({ onBookClick }) 
                     </p>
                 </div>
                 <div className="text-right pb-1 flex flex-col items-end">
-                    <span className="text-sm font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1">
-                        Resets In
-                    </span>
-                    <span className="text-2xl md:text-3xl  font-bold text-gray-800 dark:text-[#DFE6E6] bg-black/5 dark:bg-black/40 px-4 py-1.5 rounded-lg border border-black/10 dark:border-white/10 backdrop-blur-sm">
+                    <div className="flex items-center space-x-3 mb-1">
+                        {isAdmin && (
+                            <button 
+                                onClick={() => setDayOffset(prev => prev + 1)}
+                                className="text-xs px-2 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-md transition-colors"
+                                title="Cycle to next day's featured books"
+                            >
+                                Refresh
+                            </button>
+                        )}
+                        <span className="text-sm font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                            Resets In
+                        </span>
+                    </div>
+                    <span className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-[#DFE6E6] bg-black/5 dark:bg-black/40 px-4 py-1.5 rounded-lg border border-black/10 dark:border-white/10 backdrop-blur-sm">
                         {timeLeft}
                     </span>
                 </div>

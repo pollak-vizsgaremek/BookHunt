@@ -8,6 +8,7 @@ const ALLOWED_HOSTS = [
     'books.googleusercontent.com',
     'lh3.googleusercontent.com',
     'covers.openlibrary.org',
+    'static.libri.hu',
 ];
 
 /**

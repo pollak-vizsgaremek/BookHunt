@@ -191,7 +191,7 @@ const Profile = () => {
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                     {/* PFP Sidebar Card */}
-                    <div className="lg:col-span-4 bg-white dark:bg-[#2A2B3D] border border-gray-200 dark:border-white/5 rounded-3xl p-8 shadow-xl transition-colors flex flex-col items-center text-center sticky top-32">
+                    <div className="lg:col-span-4 bg-white dark:bg-[#2A2B3D] border border-gray-200 dark:border-white/5 rounded-3xl p-8 shadow-xl transition-colors flex flex-col items-center text-center lg:sticky lg:top-32">
                         <div className="relative group/pfp-main mb-6">
                             <div className="w-48 h-48 rounded-full border-8 border-gray-50 dark:border-[#333446] overflow-hidden shadow-2xl relative">
                                 <img

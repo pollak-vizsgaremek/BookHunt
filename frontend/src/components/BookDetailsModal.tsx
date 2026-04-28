@@ -557,9 +557,9 @@ const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
                                                 Prices unavailable: No ISBN found for this book.
                                             </div>
                                         ) : loadingPrices && (!prices?.compare?.allRows || prices.compare.allRows.length === 0) ? (
-                                            <div className="overflow-x-auto">
+                                            <div className="overflow-x-hidden sm:overflow-x-auto">
                                                 <table className="w-full text-left text-sm">
-                                                    <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-emerald-100/50 dark:bg-emerald-900/20">
+                                                    <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-emerald-100/50 dark:bg-emerald-900/20 hidden sm:table-header-group">
                                                         <tr>
                                                             <th className="px-4 py-3 rounded-tl-lg">Store</th>
                                                             <th className="px-4 py-3">Condition</th>
@@ -567,19 +567,23 @@ const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
                                                             <th className="px-4 py-3 text-right rounded-tr-lg">Action</th>
                                                         </tr>
                                                     </thead>
-                                                    <tbody>
+                                                    <tbody className="block sm:table-row-group">
                                                         {Array.from({ length: 5 }).map((_, i) => (
-                                                            <tr key={i} className="border-b border-emerald-100 dark:border-emerald-800/30 last:border-0">
-                                                                <td className="px-4 py-3">
+                                                            <tr key={i} className="border-b border-emerald-100 dark:border-emerald-800/30 last:border-0 flex flex-col sm:table-row py-4 sm:py-0">
+                                                                <td className="px-4 py-2 sm:py-3 flex justify-between items-center sm:table-cell">
+                                                                    <span className="sm:hidden text-xs text-gray-500 uppercase font-bold">Store</span>
                                                                     <div className="h-3.5 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" style={{ width: `${60 + (i % 3) * 20}px` }} />
                                                                 </td>
-                                                                <td className="px-4 py-3">
+                                                                <td className="px-4 py-2 sm:py-3 flex justify-between items-center sm:table-cell">
+                                                                    <span className="sm:hidden text-xs text-gray-500 uppercase font-bold">Condition</span>
                                                                     <div className="h-6 w-12 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
                                                                 </td>
-                                                                <td className="px-4 py-3">
+                                                                <td className="px-4 py-2 sm:py-3 flex justify-between items-center sm:table-cell">
+                                                                    <span className="sm:hidden text-xs text-gray-500 uppercase font-bold">Price</span>
                                                                     <div className="h-3.5 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" style={{ width: `${70 + (i % 2) * 15}px` }} />
                                                                 </td>
-                                                                <td className="px-4 py-3 flex justify-end">
+                                                                <td className="px-4 py-2 sm:py-3 flex justify-between items-center sm:table-cell sm:text-right">
+                                                                    <span className="sm:hidden text-xs text-gray-500 uppercase font-bold">Action</span>
                                                                     <div className="h-7 w-14 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
                                                                 </td>
                                                             </tr>
@@ -629,9 +633,9 @@ const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
                                                         )}
                                                     </div>
                                                     
-                                                    <div className="overflow-x-auto">
+                                                    <div className="overflow-x-hidden sm:overflow-x-auto">
                                                         <table className="w-full text-left text-sm text-gray-700 dark:text-gray-300">
-                                                            <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-emerald-100/50 dark:bg-emerald-900/20">
+                                                            <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-emerald-100/50 dark:bg-emerald-900/20 hidden sm:table-header-group">
                                                                 <tr>
                                                                     <th scope="col" className="px-4 py-3 rounded-tl-lg">Store</th>
                                                                     <th scope="col" className="px-4 py-3">Condition</th>
@@ -639,7 +643,7 @@ const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
                                                                     <th scope="col" className="px-4 py-3 text-right rounded-tr-lg">Action</th>
                                                                 </tr>
                                                             </thead>
-                                                            <tbody className="relative">
+                                                            <tbody className="relative block sm:table-row-group">
                                                                 <AnimatePresence>
                                                                     {[...(prices.compare.allRows)]
                                                                         .sort((a: Offer, b: Offer) => {
@@ -661,24 +665,28 @@ const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
 
                                                                             if (isLoading) {
                                                                                 return (
-                                                                                    <motion.tr 
+                                                                                        <motion.tr 
                                                                                         key={`loading-${offer.store}-${idx}`}
                                                                                         layout
                                                                                         initial={{ opacity: 0 }}
                                                                                         animate={{ opacity: 1 }}
                                                                                         exit={{ opacity: 0 }}
-                                                                                        className="border-b border-emerald-100 dark:border-emerald-800/30 last:border-0"
+                                                                                        className="border-b border-emerald-100 dark:border-emerald-800/30 last:border-0 flex flex-col sm:table-row py-4 sm:py-0"
                                                                                     >
-                                                                                        <td className="px-4 py-3 font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
-                                                                                            {offer.store}
+                                                                                        <td className="px-4 py-2 sm:py-3 font-medium text-gray-600 dark:text-gray-400 flex justify-between items-center gap-2 sm:table-cell">
+                                                                                            <span className="sm:hidden text-xs text-gray-500 uppercase font-bold">Store</span>
+                                                                                            <span>{offer.store}</span>
                                                                                         </td>
-                                                                                        <td className="px-4 py-3">
+                                                                                        <td className="px-4 py-2 sm:py-3 flex justify-between items-center sm:table-cell">
+                                                                                            <span className="sm:hidden text-xs text-gray-500 uppercase font-bold">Condition</span>
                                                                                             <div className="h-6 w-12 bg-emerald-200/50 dark:bg-emerald-800/30 rounded-full animate-pulse object-contain" />
                                                                                         </td>
-                                                                                        <td className="px-4 py-3">
+                                                                                        <td className="px-4 py-2 sm:py-3 flex justify-between items-center sm:table-cell">
+                                                                                            <span className="sm:hidden text-xs text-gray-500 uppercase font-bold">Price</span>
                                                                                             <div className="h-4 w-16 bg-emerald-200/50 dark:bg-emerald-800/30 rounded animate-pulse" />
                                                                                         </td>
-                                                                                        <td className="px-4 py-3 flex justify-end">
+                                                                                        <td className="px-4 py-2 sm:py-3 flex justify-between items-center sm:table-cell sm:text-right">
+                                                                                            <span className="sm:hidden text-xs text-gray-500 uppercase font-bold">Action</span>
                                                                                             <div className="h-7 w-14 bg-emerald-200/50 dark:bg-emerald-800/30 rounded-lg animate-pulse" />
                                                                                         </td>
                                                                                     </motion.tr>
@@ -692,45 +700,61 @@ const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
                                                                                     initial={{ opacity: 0, backgroundColor: 'rgba(16, 185, 129, 0.4)' }}
                                                                                     animate={{ opacity: 1, backgroundColor: 'rgba(16, 185, 129, 0.0)' }}
                                                                                     transition={{ duration: 0.8 }}
-                                                                                    className={`border-b border-emerald-100 dark:border-emerald-800/30 last:border-0 transition-colors ${isFound ? 'hover:bg-white dark:hover:bg-emerald-900/40' : 'opacity-70'}`}
+                                                                                    className={`border-b border-emerald-100 dark:border-emerald-800/30 last:border-0 transition-colors flex flex-col sm:table-row py-4 sm:py-0 ${isFound ? 'hover:bg-white dark:hover:bg-emerald-900/40' : 'opacity-70'}`}
                                                                                 >
-                                                                                    <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{offer.store}</td>
-                                                                                    <td className="px-4 py-3">
-                                                                                        {offer.condition ? (
-                                                                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${offer.condition === 'New' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300'}`}>
-                                                                                                {offer.condition}
-                                                                                            </span>
-                                                                                        ) : (
-                                                                                            <span className="text-gray-300 dark:text-gray-600 text-xs">—</span>
-                                                                                        )}
+                                                                                    <td className="px-4 py-2 sm:py-3 font-medium text-gray-900 dark:text-white flex justify-between items-center sm:table-cell">
+                                                                                        <span className="sm:hidden text-xs text-gray-500 uppercase font-bold">Store</span>
+                                                                                        <span>{offer.store}</span>
                                                                                     </td>
-                                                                                    <td className="px-4 py-3">
-                                                                                        {isNotFound ? (
-                                                                                            <span
-                                                                                                className="flex flex-col cursor-help"
-                                                                                                title="Scraper operational, item missing"
-                                                                                            >
-                                                                                                <span className="font-medium text-gray-400 dark:text-gray-500">Not Found</span>
-                                                                                                <span className="text-xs text-gray-400 dark:text-gray-600 font-normal">Scraper operational, item missing</span>
-                                                                                            </span>
-                                                                                        ) : isError ? (
-                                                                                            <span className="font-medium text-amber-500 dark:text-amber-400">
-                                                                                                Webshop Server Error
-                                                                                            </span>
-                                                                                        ) : (
-                                                                                            <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                                                                                                {offer.price ? offer.price.toLocaleString('en-US') : '---'} {offer.currency}
-                                                                                            </span>
-                                                                                        )}
+                                                                                    <td className="px-4 py-2 sm:py-3 flex justify-between items-center sm:table-cell">
+                                                                                        <span className="sm:hidden text-xs text-gray-500 uppercase font-bold">Condition</span>
+                                                                                        <div>
+                                                                                            {isNotFound ? (
+                                                                                                <>
+                                                                                                    <span className="sm:hidden font-medium text-gray-400 dark:text-gray-500">Not Found</span>
+                                                                                                    <span className="hidden sm:inline text-gray-300 dark:text-gray-600 text-xs">—</span>
+                                                                                                </>
+                                                                                            ) : offer.condition ? (
+                                                                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${offer.condition === 'New' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300'}`}>
+                                                                                                    {offer.condition}
+                                                                                                </span>
+                                                                                            ) : (
+                                                                                                <span className="text-gray-300 dark:text-gray-600 text-xs">—</span>
+                                                                                            )}
+                                                                                        </div>
                                                                                     </td>
-                                                                                    <td className="px-4 py-3 text-right">
-                                                                                        {offer.buyUrl ? (
-                                                                                            <a href={offer.buyUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center bg-black hover:bg-gray-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white py-1 px-4 rounded-lg text-xs font-bold transition-all shadow-sm">
-                                                                                                buy
-                                                                                            </a>
-                                                                                        ) : (
-                                                                                            <span className="text-gray-300 dark:text-gray-600 text-xs">—</span>
-                                                                                        )}
+                                                                                    <td className={`px-4 py-2 sm:py-3 flex justify-between items-center sm:table-cell ${isNotFound ? 'hidden sm:table-cell' : ''}`}>
+                                                                                        <span className="sm:hidden text-xs text-gray-500 uppercase font-bold">Price</span>
+                                                                                        <div>
+                                                                                            {isNotFound ? (
+                                                                                                <span
+                                                                                                    className="font-medium text-gray-400 dark:text-gray-500 cursor-help"
+                                                                                                    title="Scraper operational, item missing"
+                                                                                                >
+                                                                                                    Not Found
+                                                                                                </span>
+                                                                                            ) : isError ? (
+                                                                                                <span className="font-medium text-amber-500 dark:text-amber-400">
+                                                                                                    Webshop Server Error
+                                                                                                </span>
+                                                                                            ) : (
+                                                                                                <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                                                                                                    {offer.price ? offer.price.toLocaleString('en-US') : '---'} {offer.currency}
+                                                                                                </span>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    </td>
+                                                                                    <td className={`px-4 py-2 sm:py-3 text-right flex justify-between items-center sm:table-cell sm:text-right ${isNotFound ? 'hidden sm:table-cell' : ''}`}>
+                                                                                        <span className="sm:hidden text-xs text-gray-500 uppercase font-bold">Action</span>
+                                                                                        <div>
+                                                                                            {offer.buyUrl ? (
+                                                                                                <a href={offer.buyUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center bg-black hover:bg-gray-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white py-1 px-4 rounded-lg text-xs font-bold transition-all shadow-sm">
+                                                                                                    buy
+                                                                                                </a>
+                                                                                            ) : (
+                                                                                                <span className="text-gray-300 dark:text-gray-600 text-xs">—</span>
+                                                                                            )}
+                                                                                        </div>
                                                                                     </td>
                                                                                 </motion.tr>
                                                                             );
@@ -748,6 +772,15 @@ const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
                             </div>
                         </div>
                     </motion.div>
+                    
+                    <style>{`
+                        @media (max-width: 768px) {
+                            button[title="Go to Wishlist"],
+                            button[title="Ask the Guide"] {
+                                display: none !important;
+                            }
+                        }
+                    `}</style>
                 </>
             )}
         </AnimatePresence>
