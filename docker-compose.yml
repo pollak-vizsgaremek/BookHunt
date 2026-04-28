@@ -22,7 +22,7 @@ services:
     depends_on:
       - db
     restart: always
-    command: sh -c "npx prisma migrate deploy && npm start"
+    command: sh -c "npx prisma db push && npm start"
 
   db:
     image: mysql:8.0
