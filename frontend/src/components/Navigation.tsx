@@ -97,6 +97,7 @@ const Navigation = () => {
 
   const routes = [
     { name: "Home", route: "/" },
+    { name: "Themes", route: "/themes" },
     { name: "Forums", route: "/forums" },
     ...(user ? [
       { name: "Wishlist", route: "/wishlist" },
@@ -121,7 +122,13 @@ const Navigation = () => {
               alt="BookHunt logo"
             />
             <span 
-              className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight hidden sm:block bg-linear-to-r from-emerald-400 to-cyan-500 bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(52,211,153,0.8)]"
+              className={`text-xl sm:text-2xl md:text-3xl font-black tracking-tight hidden sm:block bg-clip-text text-transparent transition-all duration-500 ${
+                globalTheme === 'halloween' 
+                  ? 'bg-linear-to-r from-orange-500 to-gray-400 drop-shadow-[0_0_12px_rgba(249,115,22,0.8)]' 
+                  : (globalTheme === 'christmas' 
+                    ? 'bg-linear-to-r from-red-500 to-green-500 drop-shadow-[0_0_12px_rgba(239,68,68,0.8)]' 
+                    : 'bg-linear-to-r from-emerald-400 to-cyan-500 drop-shadow-[0_0_12px_rgba(52,211,153,0.8)]')
+              }`}
             >
               BookHunt
             </span>

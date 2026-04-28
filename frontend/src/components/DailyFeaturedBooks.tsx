@@ -279,7 +279,7 @@ const DailyFeaturedBooks: React.FC<DailyFeaturedBooksProps> = ({ onBookClick }) 
             </div>
 
             <div 
-                className="w-full h-[500px] relative overflow-hidden"
+                className="w-full max-w-6xl h-[500px] relative overflow-hidden"
                 style={{ 
                     maskImage: 'linear-gradient(to right, transparent, black 15%, black 85%, transparent)', 
                     WebkitMaskImage: 'linear-gradient(to right, transparent, black 15%, black 85%, transparent)' 

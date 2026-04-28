@@ -14,6 +14,7 @@ import Forums from './pages/Forums';
 import ForumDiscussion from './pages/ForumDiscussion';
 import AdminPage from './pages/AdminPage';
 import Bookmarks from './pages/Bookmarks';
+import Themes from './pages/Themes';
 import { useNavigate } from "react-router";
 // ===============================
 
@@ -85,6 +86,7 @@ function App() {
         <Route path="/forums/:id" element={<ForumDiscussion />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/bookmarks" element={<Bookmarks />} />
+        <Route path="/themes" element={<Themes />} />
       </Routes>
       <FloatingWishlistButton />
       <GuideHelper />

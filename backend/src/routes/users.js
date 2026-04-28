@@ -207,10 +207,41 @@ router.patch("/profile-picture", authenticatedReadLimiter, authenticate, upload.
     }
 
     const userId = req.user.userId;
-    const profilePictureUrl = `http://localhost:5000/uploads/${req.file.filename}`;
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const user = await prisma.felhasznalo.findUnique({ where: { felhasznalo_id: userId } });
+    if (!user) {
+        return res.status(404).json({ error: "User not found" });
+    }
+
+    // --- Rate Limit Check (2x per day) ---
+    let counter = user.pfp_modositas_szamlalo || 0;
+    const lastUpdate = user.utolso_pfp_modositas;
+
+    if (lastUpdate) {
+        const lastUpdateDate = new Date(lastUpdate.getFullYear(), lastUpdate.getMonth(), lastUpdate.getDate());
+        if (lastUpdateDate.getTime() === today.getTime()) {
+            if (counter >= 2) {
+                // Delete the uploaded file since we are rejecting
+                const newPath = path.join(process.cwd(), 'src', 'uploads', req.file.filename);
+                if (fs.existsSync(newPath)) fs.unlinkSync(newPath);
+                
+                return res.status(429).json({ 
+                    error: "Daily limit reached", 
+                    message: "You can only change your profile picture 2 times per day. Please try again tomorrow!" 
+                });
+            }
+        } else {
+            counter = 0; // Reset for new day
+        }
+    } else {
+        counter = 0;
+    }
+
+    const profilePictureUrl = `/uploads/${req.file.filename}`;
 
     // Delete old local profile picture if it exists
-    const user = await prisma.felhasznalo.findUnique({ where: { felhasznalo_id: userId } });
     if (user.profilkep && user.profilkep.includes('/uploads/')) {
         try {
             const oldFilename = user.profilkep.split('/').pop();
@@ -225,7 +256,11 @@ router.patch("/profile-picture", authenticatedReadLimiter, authenticate, upload.
 
     await prisma.felhasznalo.update({
       where: { felhasznalo_id: userId },
-      data: { profilkep: profilePictureUrl },
+      data: { 
+        profilkep: profilePictureUrl,
+        pfp_modositas_szamlalo: counter + 1,
+        utolso_pfp_modositas: now
+      },
     });
 
     res.json({ 

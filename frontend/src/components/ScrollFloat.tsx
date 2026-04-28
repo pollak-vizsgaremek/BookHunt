@@ -19,7 +19,7 @@ const ScrollFloat = ({
             const isLastWord = wordIdx === wordsList.length - 1;
             const wordChars = word.split('');
             if (!isLastWord) wordChars.push(' ');
-            
+
             return wordChars.map((char) => ({
                 char,
                 index: currentIndex++

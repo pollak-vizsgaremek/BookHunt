@@ -16,7 +16,7 @@ const Bat = ({ delay, duration, startY, size }: { delay: number; duration: numbe
         repeat: Infinity, 
         ease: "linear" 
       }}
-      className="fixed top-0 left-0 pointer-events-none z-0"
+      className="fixed top-0 left-0 pointer-events-none z-1"
     >
       <motion.div
         animate={{ 
@@ -45,7 +45,7 @@ const HalloweenTheme: React.FC = () => {
   return (
     <>
       {/* Vignette Effect - Moved behind components */}
-      <div className="fixed inset-0 pointer-events-none z-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.3)_60%,rgba(0,0,0,0.6)_100%)]" />
+      <div className="fixed inset-0 pointer-events-none z-1 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.3)_60%,rgba(0,0,0,0.6)_100%)]" />
       
       {/* Flying Bats */}
       <Bat delay={0} duration={15} startY="30vh" size={46} />

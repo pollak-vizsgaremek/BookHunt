@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const Profile = () => {
     usePageTitle('Profile');
-    
+
     const navigate = useNavigate();
     const location = useLocation();
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -26,7 +26,7 @@ const Profile = () => {
 
     const [message, setMessage] = useState({ text: '', type: '' });
     const [uploading, setUploading] = useState(false);
-    
+
     // Confirmation settings
     const [showConfirmCheckbox, setShowConfirmCheckbox] = useState(() => {
         return localStorage.getItem('skipPfpConfirm') !== 'true';
@@ -78,7 +78,11 @@ const Profile = () => {
                 setMessage({ text: 'Profile picture updated!', type: 'success' });
             } else {
                 const data = await res.json();
-                setMessage({ text: data.error || 'Upload failed', type: 'error' });
+                if (res.status === 429) {
+                    setMessage({ text: data.message || "Daily limit reached.", type: 'error' });
+                } else {
+                    setMessage({ text: data.error || 'Upload failed', type: 'error' });
+                }
             }
         } catch (err) {
             setMessage({ text: 'Error uploading image', type: 'error' });
@@ -170,7 +174,7 @@ const Profile = () => {
         <div className="min-h-screen bg-gray-50 dark:bg-[#333446] transition-colors">
             <Navigation />
 
-            <div className="pt-32 pb-20 px-4 max-w-6xl mx-auto">
+            <div className="relative z-10 pt-32 pb-20 px-4 max-w-6xl mx-auto">
                 <div className="mb-10 text-center">
                     <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-[#DFE6E6] drop-shadow-lg tracking-tight mb-4">
                         Account Settings
@@ -182,8 +186,8 @@ const Profile = () => {
 
                 {message.text && (
                     <div className={`mb-8 p-4 rounded-xl text-center backdrop-blur-sm border ${message.type === 'error' ? 'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-200' :
-                            message.type === 'success' ? 'bg-green-500/10 border-green-500/30 text-green-600 dark:text-green-200' :
-                                'bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-200'
+                        message.type === 'success' ? 'bg-green-500/10 border-green-500/30 text-green-600 dark:text-green-200' :
+                            'bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-200'
                         }`}>
                         {message.text}
                     </div>
@@ -208,7 +212,7 @@ const Profile = () => {
                                     </div>
                                 )}
                             </div>
-                            
+
                             <button
                                 onClick={() => fileInputRef.current?.click()}
                                 className="absolute bottom-2 right-2 p-4 bg-emerald-500 hover:bg-emerald-400 text-white rounded-full shadow-xl transform transition-all hover:scale-110 active:scale-95 group-hover/pfp-main:rotate-12"
@@ -220,15 +224,24 @@ const Profile = () => {
                             </button>
                             <input type="file" ref={fileInputRef} onChange={handlePfpChange} className="hidden" accept="image/*" />
                         </div>
-                        
+
                         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{user.username}</h2>
                         <span className="px-4 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full text-xs font-bold uppercase tracking-widest">
                             {user.szerepkor || 'Member'}
                         </span>
-                        
+
                         <p className="mt-6 text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
                             Represent yourself across BookHunt by uploading a custom profile picture.
                         </p>
+
+                        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-white/5 w-full">
+                            <div className="flex items-center justify-center gap-2 text-xs font-semibold text-gray-400 dark:text-white/20 uppercase tracking-widest">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Daily Limit: 2 changes
+                            </div>
+                        </div>
                     </div>
 
                     {/* Main Forms */}
@@ -340,7 +353,7 @@ const Profile = () => {
             <AnimatePresence>
                 {pendingFile && (
                     <div className="fixed inset-0 flex items-center justify-center z-100 px-4">
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
@@ -355,11 +368,11 @@ const Profile = () => {
                         >
                             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Update Profile Picture?</h2>
                             <p className="text-gray-600 dark:text-gray-400 mb-8">Are you sure you want to change your profile picture to <span className="font-semibold text-emerald-500">{pendingFile.name}</span>?</p>
-                            
+
                             <div className="flex items-center gap-3 mb-8 p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5">
-                                <input 
-                                    type="checkbox" 
-                                    id="dont-show" 
+                                <input
+                                    type="checkbox"
+                                    id="dont-show"
                                     checked={skipNextTime}
                                     onChange={(e) => setSkipNextTime(e.target.checked)}
                                     className="w-5 h-5 accent-emerald-500 rounded cursor-pointer"
@@ -370,13 +383,13 @@ const Profile = () => {
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
-                                <button 
+                                <button
                                     onClick={() => setPendingFile(null)}
                                     className="py-3 px-6 rounded-xl border border-gray-200 dark:border-white/10 text-gray-700 dark:text-white font-bold hover:bg-gray-100 dark:hover:bg-white/5 transition-all"
                                 >
                                     Cancel
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => uploadPfp(pendingFile)}
                                     className="py-3 px-6 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white font-bold shadow-lg shadow-emerald-500/20 transition-all"
                                 >
