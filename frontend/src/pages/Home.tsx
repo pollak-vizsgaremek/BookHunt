@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import Navigation from "../components/Navigation";
 import ProductCard, { type BookItem } from "../components/ProductCard";
 import ScrollFloat from "../components/ScrollFloat";
@@ -9,7 +10,9 @@ import BookDetailsModal from "../components/BookDetailsModal";
 import FilterModal, { type FilterOptions } from "../components/FilterModal";
 import CountUp from "../components/CountUp";
 import DailyFeaturedBooks from "../components/DailyFeaturedBooks";
+import ThemeGallery from "../components/ThemeGallery";
 import { usePageTitle } from "../utils/usePageTitle";
+import { Link } from "react-router";
 
 const Home = () => {
   usePageTitle('Home');
@@ -36,6 +39,23 @@ const Home = () => {
 
   const [showLoginAlert, setShowLoginAlert] = useState(false);
   const [isExitingAlert, setIsExitingAlert] = useState(false);
+  const [globalTheme, setGlobalTheme] = useState("default");
+  const [showChristmasAlert, setShowChristmasAlert] = useState(() => {
+    return !localStorage.getItem("christmasAlertDismissed");
+  });
+
+  useEffect(() => {
+    const fetchGlobalTheme = async () => {
+      try {
+        const res = await fetch("/api/settings/theme");
+        if (res.ok) {
+          const data = await res.json();
+          setGlobalTheme(data.theme);
+        }
+      } catch (err) {}
+    };
+    fetchGlobalTheme();
+  }, []);
 
   // Keep track of previous query params to know if we are appending or resetting
   const lastFetchRef = useRef({ q: '', filters: filters });
@@ -365,6 +385,50 @@ const Home = () => {
           </div>
         )}
 
+        {/* Christmas Promotion Alert */}
+        <AnimatePresence>
+          {globalTheme === "christmas" && showChristmasAlert && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="w-full max-w-4xl mt-8 px-4"
+            >
+              <div className="bg-blue-500/20 dark:bg-blue-500/10 border border-blue-500/30 backdrop-blur-xl rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg shadow-blue-500/10">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500 text-xl">
+                    ❄️
+                  </div>
+                  <div>
+                    <p className="text-gray-900 dark:text-blue-100 font-bold">Exclusive Seasonal Content!</p>
+                    <p className="text-sm text-gray-700 dark:text-blue-200/70">Check out our new Christmas Book Collection on the Themes page.</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <Link 
+                    to="/themes"
+                    className="flex-1 sm:flex-none px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-bold transition-all text-sm text-center"
+                  >
+                    Explore Themes
+                  </Link>
+                  <button 
+                    onClick={() => {
+                      setShowChristmasAlert(false);
+                      localStorage.setItem("christmasAlertDismissed", "true");
+                    }}
+                    className="p-2 text-gray-500 hover:text-gray-900 dark:text-blue-200/50 dark:hover:text-white transition-colors"
+                    title="Dismiss"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Header Hero Section */}
         <div className="w-full max-w-4xl mb-20 text-center space-y-20 mt-16">
           <div>
@@ -449,6 +513,11 @@ const Home = () => {
                 {isSearching ? "Searching Google Books library..." : "Loading collections..."}
               </p>
             </div>
+            {globalTheme === "christmas" && (
+              <div className="w-full mb-8">
+                <ThemeGallery title="Christmas Collection" subject="christmas" onBookClick={handleBookClick} />
+              </div>
+            )}
             <DailyFeaturedBooks onBookClick={handleBookClick} />
           </div>
         ) : showResults ? (

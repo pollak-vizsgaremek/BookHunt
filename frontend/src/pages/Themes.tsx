@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Navigation from '../components/Navigation';
 import ThemeGallery from '../components/ThemeGallery';
 import BookDetailsModal from '../components/BookDetailsModal';
@@ -10,6 +10,20 @@ const Themes = () => {
     usePageTitle('Themes');
     const [selectedBook, setSelectedBook] = useState<BookItem | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [globalTheme, setGlobalTheme] = useState("default");
+
+    useEffect(() => {
+        const fetchTheme = async () => {
+            try {
+                const res = await fetch("/api/settings/theme");
+                if (res.ok) {
+                    const data = await res.json();
+                    setGlobalTheme(data.theme);
+                }
+            } catch (err) {}
+        };
+        fetchTheme();
+    }, []);
 
     const handleBookClick = (book: BookItem) => {
         setSelectedBook(book);
@@ -54,9 +68,16 @@ const Themes = () => {
                 </div>
 
                 <div className="w-full flex flex-col space-y-12">
+                    {globalTheme === "christmas" && (
+                        <ThemeGallery title="Christmas Collection" subject="christmas" onBookClick={handleBookClick} />
+                    )}
                     <ThemeGallery title="Thrilling Mysteries" subject="thriller" onBookClick={handleBookClick} />
                     <ThemeGallery title="Classic Mystery" subject="mystery" onBookClick={handleBookClick} />
                     <ThemeGallery title="Fantasy Worlds" subject="fantasy" onBookClick={handleBookClick} />
+                    <ThemeGallery title="Science Fiction" subject="science fiction" onBookClick={handleBookClick} />
+                    <ThemeGallery title="World Literature" subject="literature" onBookClick={handleBookClick} />
+                    <ThemeGallery title="Historical Records" subject="history" onBookClick={handleBookClick} />
+                    <ThemeGallery title="Modern History" subject="modern history" onBookClick={handleBookClick} />
                     <ThemeGallery title="Mangas & Graphic Novels" subject="manga" onBookClick={handleBookClick} />
                     <ThemeGallery title="Comic Books" subject="comics" onBookClick={handleBookClick} />
                 </div>

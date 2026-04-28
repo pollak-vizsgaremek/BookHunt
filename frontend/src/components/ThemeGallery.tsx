@@ -1,16 +1,34 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import CircularGallery from './CircularGallery';
 import type { BookItem } from './ProductCard';
+import ElectricBorder from './ElectricBorder';
 
 interface ThemeGalleryProps {
     title: string;
     subject: string;
     onBookClick?: (book: BookItem) => void;
+    isChristmas?: boolean;
 }
 
-const ThemeGallery: React.FC<ThemeGalleryProps> = ({ title, subject, onBookClick }) => {
+const ThemeGallery: React.FC<ThemeGalleryProps> = ({ title, subject, onBookClick, isChristmas = false }) => {
     const [books, setBooks] = useState<{ image: string; text: string; book: BookItem }[]>([]);
     const [loading, setLoading] = useState(true);
+    const [globalTheme, setGlobalTheme] = useState("default");
+
+    useEffect(() => {
+        const fetchTheme = async () => {
+            try {
+                const res = await fetch("/api/settings/theme");
+                if (res.ok) {
+                    const data = await res.json();
+                    setGlobalTheme(data.theme);
+                }
+            } catch (err) {}
+        };
+        fetchTheme();
+    }, []);
+
+    const effectiveIsChristmas = isChristmas || (globalTheme === "christmas" && subject.toLowerCase().includes("christmas"));
 
     useEffect(() => {
         const fetchBooks = async () => {
@@ -150,31 +168,63 @@ const ThemeGallery: React.FC<ThemeGalleryProps> = ({ title, subject, onBookClick
     if (books.length === 0) return null;
 
     return (
-        <div className="w-full my-12 relative flex flex-col items-center">
-            <div className="w-full max-w-6xl px-4 md:px-8 mb-6 relative z-10">
-                <h2 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-[#DFE6E6] tracking-tighter drop-shadow-md">
+        <div className={`w-full my-12 relative flex flex-col items-center transition-all duration-700 ${effectiveIsChristmas ? 'py-12' : ''}`}>
+            <div className="w-full max-w-7xl px-4 md:px-8 mb-6 relative z-10">
+                <h2 className={`text-3xl md:text-4xl font-black tracking-tighter transition-colors duration-500 ${
+                    effectiveIsChristmas 
+                        ? 'bg-linear-to-r from-green-400 to-red-500 bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(34,197,94,0.6)]' 
+                        : 'text-gray-900 dark:text-[#DFE6E6] drop-shadow-md'
+                }`}>
                     {title}
                 </h2>
-                <p className="text-gray-600 dark:text-gray-400 mt-2 font-medium capitalize">
-                    Explore top picks in {subject}
+                <p className={`mt-2 font-medium capitalize transition-colors duration-500 ${
+                    effectiveIsChristmas ? 'text-red-500/80 dark:text-red-400/80' : 'text-gray-600 dark:text-gray-400'
+                }`}>
+                    {effectiveIsChristmas ? '✨ Seasonal Magic Awaits ✨' : `Explore top picks in ${subject}`}
                 </p>
             </div>
 
-            <div 
-                className="w-full max-w-6xl h-[400px] md:h-[500px] relative overflow-hidden"
-                style={{ 
-                    maskImage: 'linear-gradient(to right, transparent, black 15%, black 85%, transparent)', 
-                    WebkitMaskImage: 'linear-gradient(to right, transparent, black 15%, black 85%, transparent)' 
-                }}
-            >
-                <CircularGallery 
-                    items={books} 
-                    bend={0} 
-                    textColor="#ffffff" 
-                    borderRadius={0.05}
-                    onItemClick={handleGalleryClick}
-                />
-            </div>
+            {effectiveIsChristmas ? (
+                <ElectricBorder 
+                    color="#22c55e" 
+                    speed={1} 
+                    chaos={0} 
+                    borderRadius={32}
+                    className="w-full max-w-7xl"
+                >
+                    <div 
+                        className="w-full h-[400px] md:h-[500px] relative overflow-hidden transition-all duration-500 rounded-3xl bg-green-950/5"
+                        style={{ 
+                            maskImage: 'linear-gradient(to right, transparent, black 15%, black 85%, transparent)', 
+                            WebkitMaskImage: 'linear-gradient(to right, transparent, black 15%, black 85%, transparent)' 
+                        }}
+                    >
+                        <CircularGallery 
+                            items={books} 
+                            bend={0} 
+                            textColor="#ffffff" 
+                            borderRadius={0.05}
+                            onItemClick={handleGalleryClick}
+                        />
+                    </div>
+                </ElectricBorder>
+            ) : (
+                <div 
+                    className="w-full max-w-7xl h-[400px] md:h-[500px] relative overflow-hidden transition-all duration-500"
+                    style={{ 
+                        maskImage: 'linear-gradient(to right, transparent, black 15%, black 85%, transparent)', 
+                        WebkitMaskImage: 'linear-gradient(to right, transparent, black 15%, black 85%, transparent)' 
+                    }}
+                >
+                    <CircularGallery 
+                        items={books} 
+                        bend={0} 
+                        textColor="#ffffff" 
+                        borderRadius={0.05}
+                        onItemClick={handleGalleryClick}
+                    />
+                </div>
+            )}
         </div>
     );
 };
