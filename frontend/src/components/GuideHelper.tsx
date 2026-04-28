@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router';
 
 // Types for our questions and book result
 type Genre = 'Fantasy' | 'Science Fiction' | 'Mystery' | 'Romance' | 'Non-Fiction' | 'Historical';
@@ -21,9 +22,20 @@ interface BookResult {
   description?: string;
 }
 
+interface HelpItem {
+  id: string;
+  title: string;
+  icon: string;
+  description: string;
+  action?: () => void;
+  actionText?: string;
+}
+
 const GuideHelper = () => {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(0); // 0: Hub, 1-5: Bookfinder, 10: Page Guide List, 11: Detail
+  const [selectedHelp, setSelectedHelp] = useState<HelpItem | null>(null);
   const [answers, setAnswers] = useState<Answers>({
     genre: null,
     length: null,
@@ -32,6 +44,43 @@ const GuideHelper = () => {
   const [loading, setLoading] = useState(false);
   const [isAddingToWishlist, setIsAddingToWishlist] = useState(false);
   const [recommendation, setRecommendation] = useState<BookResult | null>(null);
+
+  const HELP_ITEMS: HelpItem[] = [
+    {
+      id: 'password',
+      title: 'Password Change',
+      icon: '🔐',
+      description: 'You can change your password in your Profile settings under the Security section.',
+      action: () => { navigate('/profile'); setIsOpen(false); },
+      actionText: 'Go to Profile'
+    },
+    {
+      id: 'wishlist',
+      title: 'Wishlist not working',
+      icon: '❤️',
+      description: 'Make sure you are logged in first. To save a book, click the heart icon on any book card. You can view your saved books in your Wishlist page.'
+    },
+    {
+      id: 'darkmode',
+      title: 'Dark / Light Mode',
+      icon: '🌗',
+      description: 'You can toggle between dark and light themes using the moon/sun icon located at the top right of the navigation bar.'
+    },
+    {
+      id: 'search',
+      title: 'Search Tips',
+      icon: '🔍',
+      description: 'For best results, try searching by ISBN or the exact book title. You can also use the filter icon in the search bar to narrow down results.'
+    },
+    {
+      id: 'pfp',
+      title: 'Profile Picture',
+      icon: '🖼️',
+      description: 'Click your avatar in the top right, then go to Profile to update your image. You can change it once every 24 hours.',
+      action: () => { navigate('/profile?action=upload-pfp'); setIsOpen(false); },
+      actionText: 'Update Picture'
+    }
+  ];
   
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -59,9 +108,18 @@ const GuideHelper = () => {
 
   const toggleModal = () => {
     if (!isOpen) {
-      resetGuide();
+      setStep(0); // Always start at Hub
     }
     setIsOpen(!isOpen);
+  };
+
+  const startBookfinder = () => {
+    resetGuide();
+    setStep(1); // Intro
+  };
+
+  const openPageGuide = () => {
+    setStep(10);
   };
 
   const handleAnswer = (field: keyof Answers, value: string) => {
@@ -122,7 +180,7 @@ const GuideHelper = () => {
       setRecommendation(null);
     } finally {
       setLoading(false);
-      setStep(4); // Result step
+      setStep(5); // Result step (shifted)
     }
   };
 
@@ -187,24 +245,68 @@ const GuideHelper = () => {
       case 0:
         return (
           <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+            className="flex flex-col h-full items-center justify-center space-y-12"
+          >
+            <div className="text-center">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">How can I help?</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Select an option to get started</p>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-8">
+              <div className="flex flex-col items-center space-y-3">
+                <button 
+                  onClick={startBookfinder}
+                  className="w-24 h-24 rounded-full bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/30 flex items-center justify-center transition-all hover:scale-110 active:scale-95 group"
+                >
+                   <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white transform group-hover:rotate-12 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                </button>
+                <span className="font-bold text-gray-900 dark:text-white text-sm">Bookfinder</span>
+              </div>
+
+              <div className="flex flex-col items-center space-y-3">
+                <button 
+                  onClick={openPageGuide}
+                  className="w-24 h-24 rounded-full bg-blue-500 hover:bg-blue-600 shadow-lg shadow-blue-500/30 flex items-center justify-center transition-all hover:scale-110 active:scale-95 group"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white transform group-hover:-rotate-12 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </button>
+                <span className="font-bold text-gray-900 dark:text-white text-sm">Page Guide</span>
+              </div>
+            </div>
+          </motion.div>
+        );
+      case 1:
+        return (
+          <motion.div 
             initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
             className="flex flex-col h-full justify-between"
           >
             <div>
+              <button onClick={() => setStep(0)} className="mb-4 text-emerald-500 flex items-center gap-1 text-sm font-bold">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Back to Menu
+              </button>
               <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Hello there!</h3>
-              <p className="text-gray-600 dark:text-gray-300">
+              <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
                 I'm the BookHunt Guide. Having trouble deciding what to read next? Let me help you find the perfect book!
               </p>
             </div>
             <button 
-              onClick={() => setStep(1)}
+              onClick={() => setStep(2)}
               className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold shadow-md transition-colors"
             >
               Let's Go!
             </button>
           </motion.div>
         );
-      case 1:
+      case 2:
         return (
           <motion.div 
             initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
@@ -224,7 +326,7 @@ const GuideHelper = () => {
             </div>
           </motion.div>
         );
-      case 2:
+      case 3:
         return (
           <motion.div 
             initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
@@ -244,7 +346,7 @@ const GuideHelper = () => {
             </div>
           </motion.div>
         );
-      case 3:
+      case 4:
         return (
           <motion.div 
             initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
@@ -264,7 +366,7 @@ const GuideHelper = () => {
             </div>
           </motion.div>
         );
-      case 4:
+      case 5:
         return (
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
@@ -333,6 +435,86 @@ const GuideHelper = () => {
             )}
           </motion.div>
         );
+      case 10:
+        return (
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+            className="flex flex-col"
+          >
+            <div className="flex items-center gap-2 mb-6">
+              <button onClick={() => setStep(0)} className="text-blue-500 hover:text-blue-600">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              </button>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Page Guide</h3>
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar pb-10">
+              {HELP_ITEMS.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => { setSelectedHelp(item); setStep(11); }}
+                  className="w-full flex items-center gap-4 px-4 py-4 bg-gray-50 hover:bg-gray-100 dark:bg-white/5 dark:hover:bg-white/10 text-gray-800 dark:text-gray-200 rounded-2xl border border-gray-200 dark:border-white/10 transition-all text-left group"
+                >
+                  <span className="text-2xl group-hover:scale-110 transition-transform">{item.icon}</span>
+                  <div className="flex-1">
+                    <p className="font-bold text-sm">{item.title}</p>
+                    <p className="text-xs text-gray-500 line-clamp-1">{item.description}</p>
+                  </div>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        );
+      case 11:
+        return (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+            className="flex flex-col"
+          >
+            <div className="flex items-center gap-2 mb-6">
+              <button onClick={() => setStep(10)} className="text-blue-500 hover:text-blue-600">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              </button>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Guide Details</h3>
+            </div>
+            
+            {selectedHelp && (
+              <div className="flex flex-col bg-blue-500/5 dark:bg-blue-500/10 rounded-3xl p-6 pb-10 border border-blue-500/20 mb-6">
+                <div className="flex flex-col items-center text-center mb-4">
+                  <span className="text-4xl mb-3">{selectedHelp.icon}</span>
+                  <h4 className="text-xl font-bold text-gray-900 dark:text-white">{selectedHelp.title}</h4>
+                </div>
+                
+                <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-center mb-8">
+                  {selectedHelp.description}
+                </p>
+                
+                <div className="mt-auto space-y-3">
+                  {selectedHelp.action && (
+                    <button 
+                      onClick={selectedHelp.action}
+                      className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-bold shadow-md transition-colors"
+                    >
+                      {selectedHelp.actionText || 'Take Action'}
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => setStep(10)}
+                    className="w-full py-3 bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-gray-300 rounded-xl font-bold transition-colors"
+                  >
+                    Back to List
+                  </button>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        );
       default:
         return null;
     }
@@ -382,21 +564,21 @@ const GuideHelper = () => {
             </div>
 
             {/* Content Body */}
-            <div className="p-6 flex-1 overflow-hidden">
+            <div className="p-6 pb-20 flex-1 overflow-y-auto custom-scrollbar">
               <AnimatePresence mode="wait">
-                <div key={step} className="h-full">
+                <div key={step}>
                   {renderContent()}
                 </div>
               </AnimatePresence>
             </div>
             
             {/* Progress Bar (only show during questions) */}
-            {step > 0 && step < 4 && (
+            {step > 1 && step < 5 && (
               <div className="h-1 w-full bg-gray-200 dark:bg-white/5 shrink-0">
                 <motion.div 
                   className="h-full bg-emerald-500"
-                  initial={{ width: `${((step - 1) / 3) * 100}%` }}
-                  animate={{ width: `${(step / 3) * 100}%` }}
+                  initial={{ width: `${((step - 2) / 3) * 100}%` }}
+                  animate={{ width: `${((step - 1) / 3) * 100}%` }}
                   transition={{ duration: 0.3 }}
                 />
               </div>

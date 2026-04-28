@@ -17,6 +17,8 @@ model Felhasznalo {
   szerepkor      Szerepkor      @default(USER)
   tiltva_eddig   DateTime?
   tiltas_oka     String?        @db.Text
+  utolso_pfp_modositas   DateTime?
+  pfp_modositas_szamlalo Int            @default(0)
   Keres          Keres[]
   Kedvencek      Kedvencek[]
   Velemenyek     Velemeny[]

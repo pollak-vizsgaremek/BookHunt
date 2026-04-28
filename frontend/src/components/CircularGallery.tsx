@@ -278,6 +278,9 @@ class Media {
         uniform vec2 uImageSizes;
         uniform vec2 uPlaneSizes;
         uniform float uIsLoaded;
+        uniform sampler2D tMap;
+        uniform float uBorderRadius;
+        varying vec2 vUv;
         
         float roundedBoxSDF(vec2 p, vec2 b, float r) {
           vec2 d = abs(p) - b;
@@ -677,9 +680,12 @@ class App {
 
   onWheel(e: Event) {
     const wheelEvent = e as WheelEvent;
-    const delta = wheelEvent.deltaY || (wheelEvent as any).wheelDelta || (wheelEvent as any).detail;
-    this.scroll.target += (delta > 0 ? this.scrollSpeed : -this.scrollSpeed) * 0.2;
-    this.onCheckDebounce();
+    // Only slide on horizontal scrolling (e.g. trackpads)
+    if (Math.abs(wheelEvent.deltaX) > Math.abs(wheelEvent.deltaY)) {
+      e.preventDefault(); // Prevent page back/forward navigation
+      this.scroll.target += (wheelEvent.deltaX > 0 ? this.scrollSpeed : -this.scrollSpeed) * 0.2;
+      this.onCheckDebounce();
+    }
   }
 
   onCheck() {
@@ -697,8 +703,8 @@ class App {
     this.boundOnTouchMove = this.onTouchMove;
     this.boundOnTouchUp = this.onTouchUp;
     window.addEventListener('resize', this.boundOnResize);
-    window.addEventListener('mousewheel', this.boundOnWheel);
-    window.addEventListener('wheel', this.boundOnWheel);
+    this.container.addEventListener('mousewheel', this.boundOnWheel, { passive: false });
+    this.container.addEventListener('wheel', this.boundOnWheel, { passive: false });
     this.container.addEventListener('mousedown', this.boundOnTouchDown);
     window.addEventListener('mousemove', this.boundOnTouchMove);
     window.addEventListener('mouseup', this.boundOnTouchUp);
@@ -710,8 +716,8 @@ class App {
   destroy() {
     window.cancelAnimationFrame(this.raf);
     window.removeEventListener('resize', this.boundOnResize);
-    window.removeEventListener('mousewheel', this.boundOnWheel);
-    window.removeEventListener('wheel', this.boundOnWheel);
+    this.container.removeEventListener('mousewheel', this.boundOnWheel);
+    this.container.removeEventListener('wheel', this.boundOnWheel);
     this.container.removeEventListener('mousedown', this.boundOnTouchDown);
     window.removeEventListener('mousemove', this.boundOnTouchMove);
     window.removeEventListener('mouseup', this.boundOnTouchUp);
@@ -782,5 +788,5 @@ export default function CircularGallery({
     };
   }, [items, bend, textColor, borderRadius, font, scrollSpeed, scrollEase, autoRotationSpeed]);
 
-  return <div className="w-full h-full overflow-hidden cursor-grab active:cursor-grabbing" ref={containerRef} />;
+  return <div className="relative w-full h-full overflow-hidden cursor-grab active:cursor-grabbing" ref={containerRef} />;
 }

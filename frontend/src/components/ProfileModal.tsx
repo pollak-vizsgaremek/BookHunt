@@ -52,7 +52,7 @@ const ProfileModal = ({ isOpen, onClose, user }: ProfileModalProps) => {
         onClose();
         navigate('/profile');
     };
-    
+
     const handlePfpClick = () => {
         onClose();
         navigate('/profile?action=upload-pfp');
@@ -108,9 +108,9 @@ const ProfileModal = ({ isOpen, onClose, user }: ProfileModalProps) => {
                                                 (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${user.username || user.felhasznalonev}&background=random`;
                                             }}
                                         />
-                                        
+
                                         {/* Upload Overlay */}
-                                        <button 
+                                        <button
                                             onClick={handlePfpClick}
                                             className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity cursor-pointer"
                                             title="Change Profile Picture"
