@@ -300,10 +300,8 @@ const Home = () => {
   // Map filter display names to DB Prisma enum values
   const TYPE_TO_DB: Record<string, string> = {
     'Book': 'konyv',
-    'E-book': 'e_konyv',
     'Manga': 'manga',
-    'Graphic Novel': 'kepregeny',
-    'Audiobook': 'hangoskonyv',
+    'Comic': 'kepregeny',
   };
 
   const localMatches = localProducts.filter((product) => {
@@ -314,9 +312,9 @@ const Home = () => {
 
     const matchesGenre = filters.genre === 'All' || (product.categories && product.categories.includes(filters.genre));
 
-    // Filter by type: compare the DB enum value to the product's type field
-    const dbType = filters.type !== 'All' ? TYPE_TO_DB[filters.type] : null;
-    const matchesType = !dbType || product.type === dbType;
+    // Filter by type: compare the DB enum values to the product's type field
+    const selectedDbTypes = filters.types.map(t => TYPE_TO_DB[t]);
+    const matchesType = product.type ? selectedDbTypes.includes(product.type) : false;
 
     return matchesQuery && matchesGenre && matchesType;
   });
