@@ -97,7 +97,7 @@ const Navigation = () => {
 
   const routes = [
     { name: "Home", route: "/" },
-    { name: "Themes", route: "/themes" },
+    { name: "Genres", route: "/genres" },
     { name: "Forums", route: "/forums" },
     ...(user ? [
       { name: "Wishlist", route: "/wishlist" },
@@ -115,15 +115,17 @@ const Navigation = () => {
       >
         <div className="w-full max-w-7xl relative flex items-center justify-between bg-white/60 dark:bg-black/40 backdrop-blur-2xl border-b sm:border border-white/30 dark:border-white/10 rounded-none sm:rounded-full px-4 sm:px-6 py-2 sm:py-3 shadow-lg transition-all duration-500">
           
-          <NavLink to="/" className="flex items-center gap-2 sm:gap-3 group transition-transform duration-300 hover:scale-105 shrink-0">
+          <NavLink to="/" aria-label="Go to Home" className="flex items-center gap-2 sm:gap-3 group transition-transform duration-300 hover:scale-105 shrink-0">
             <img
-              src={globalTheme === "christmas" ? "/images/LogoChristmas.png" : (globalTheme === "halloween" ? "/images/HalloweenTheme.png" : "/images/LogoHappy.png")}
+              src={globalTheme === "easter" ? "/images/EasterTheme.png" : globalTheme === "christmas" ? "/images/LogoChristmas.png" : (globalTheme === "halloween" ? "/images/HalloweenTheme.png" : "/images/LogoHappy.png")}
               className="w-8 h-8 sm:w-10 sm:h-10 md:w-11 md:h-11 drop-shadow-md"
               alt="BookHunt logo"
             />
             <span 
               className={`text-xl sm:text-2xl md:text-3xl font-black tracking-tight hidden sm:block bg-clip-text text-transparent transition-all duration-500 ${
-                globalTheme === 'halloween' 
+                globalTheme === 'easter'
+                  ? 'bg-linear-to-r from-green-400 to-yellow-400 drop-shadow-[0_0_12px_rgba(74,222,128,0.8)]'
+                  : globalTheme === 'halloween' 
                   ? 'bg-linear-to-r from-orange-500 to-gray-400 drop-shadow-[0_0_12px_rgba(249,115,22,0.8)]' 
                   : (globalTheme === 'christmas' 
                     ? 'bg-linear-to-r from-green-500 to-red-600 drop-shadow-[0_0_20px_rgba(34,197,94,0.8)]' 
@@ -160,6 +162,7 @@ const Navigation = () => {
               {user && (
                 <NavLink 
                   to="/notifications" 
+                  aria-label="Notifications"
                   className={({ isActive }) => 
                     `relative p-2 transition-colors flex items-center justify-center rounded-full ${
                       isActive 
@@ -187,6 +190,7 @@ const Navigation = () => {
                 {user.szerepkor === 'ADMIN' && (
                   <button
                     onClick={() => navigate("/admin")}
+                    aria-label="Admin Panel"
                     className="p-2 rounded-full bg-yellow-400/10 hover:bg-yellow-400/20 text-yellow-500 transition-all hover:scale-110 active:scale-90 shadow-lg shadow-yellow-500/10 border border-yellow-500/20"
                     title="Admin Panel"
                   >
@@ -199,6 +203,7 @@ const Navigation = () => {
                 
                 <button
                   onClick={() => setIsProfileModalOpen(true)}
+                  aria-label="Open Profile Menu"
                   className="flex items-center gap-2 sm:gap-3 cursor-pointer outline-none group shrink-0"
                 >
                   <span className="text-gray-900 dark:text-white font-bold text-sm hidden lg:block group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors uppercase tracking-wider">{user.felhasznalonev || user.username}</span>
@@ -224,6 +229,8 @@ const Navigation = () => {
             {/* Mobile Menu Toggle */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
+              aria-label={isMenuOpen ? "Close Menu" : "Open Menu"}
+              aria-expanded={isMenuOpen}
               className="md:hidden p-2 text-gray-700 dark:text-gray-300 hover:text-emerald-500 transition-colors"
             >
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -6,8 +6,8 @@ import { type BookItem } from '../components/ProductCard';
 import { usePageTitle } from '../utils/usePageTitle';
 import LightRays from '../components/LightRays';
 
-const Themes = () => {
-    usePageTitle('Themes');
+const Genres = () => {
+    usePageTitle('Genres');
     const [selectedBook, setSelectedBook] = useState<BookItem | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [globalTheme, setGlobalTheme] = useState("default");
@@ -60,16 +60,22 @@ const Themes = () => {
             <div className="relative z-10 pt-32 pb-20 px-4 flex flex-col items-center">
                 <div className="w-full max-w-6xl text-center mb-8 px-4">
                     <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-gray-900 dark:text-[#DFE6E6] drop-shadow-lg tracking-tight">
-                        Explore by Theme
+                        Explore by Genre
                     </h1>
                     <p className="mt-4 text-lg md:text-xl text-gray-700 dark:text-[#DFE6E6]/80 max-w-2xl mx-auto font-medium">
-                        Dive into curated collections of our best books across different genres and themes.
+                        Dive into curated collections of our best books across different genres and categories.
                     </p>
                 </div>
 
                 <div className="w-full flex flex-col space-y-12">
                     {globalTheme === "christmas" && (
                         <ThemeGallery title="Christmas Collection" subject="christmas" onBookClick={handleBookClick} />
+                    )}
+                    {globalTheme === "halloween" && (
+                        <ThemeGallery title="Horror & Halloween" subject="horror" onBookClick={handleBookClick} isHalloween={true} />
+                    )}
+                    {globalTheme === "easter" && (
+                        <ThemeGallery title="Spring Discoveries" subject="easter" onBookClick={handleBookClick} isEaster={true} />
                     )}
                     <ThemeGallery title="Thrilling Mysteries" subject="thriller" onBookClick={handleBookClick} />
                     <ThemeGallery title="Classic Mystery" subject="mystery" onBookClick={handleBookClick} />
@@ -92,4 +98,4 @@ const Themes = () => {
     );
 };
 
-export default Themes;
+export default Genres;

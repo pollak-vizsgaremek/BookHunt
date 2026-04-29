@@ -10,7 +10,6 @@ import BookDetailsModal from "../components/BookDetailsModal";
 import FilterModal, { type FilterOptions } from "../components/FilterModal";
 import CountUp from "../components/CountUp";
 import DailyFeaturedBooks from "../components/DailyFeaturedBooks";
-import ThemeGallery from "../components/ThemeGallery";
 import { usePageTitle } from "../utils/usePageTitle";
 import { Link } from "react-router";
 
@@ -31,7 +30,7 @@ const Home = () => {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [filters, setFilters] = useState<FilterOptions>({
     genre: 'All',
-    type: 'All',
+    types: ['Book', 'Manga', 'Comic'],
     year: '',
     sortBy: 'Popularity'
   });
@@ -41,8 +40,28 @@ const Home = () => {
   const [isExitingAlert, setIsExitingAlert] = useState(false);
   const [globalTheme, setGlobalTheme] = useState("default");
   const [showChristmasAlert, setShowChristmasAlert] = useState(() => {
-    return !localStorage.getItem("christmasAlertDismissed");
+    const dismissedAt = localStorage.getItem("christmasAlertDismissedAt");
+    if (!dismissedAt) return true;
+    return Date.now() - parseInt(dismissedAt) > 24 * 60 * 60 * 1000;
   });
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [showHalloweenAlert, setShowHalloweenAlert] = useState(() => {
+    const dismissedAt = localStorage.getItem("halloweenAlertDismissedAt");
+    if (!dismissedAt) return true;
+    return Date.now() - parseInt(dismissedAt) > 24 * 60 * 60 * 1000;
+  });
+  const [showEasterAlert, setShowEasterAlert] = useState(() => {
+    const dismissedAt = localStorage.getItem("easterAlertDismissedAt");
+    if (!dismissedAt) return true;
+    return Date.now() - parseInt(dismissedAt) > 24 * 60 * 60 * 1000;
+  });
+
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const scrollToResults = useCallback(() => {
+    if (resultsRef.current) {
+      resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, []);
 
   useEffect(() => {
     const fetchGlobalTheme = async () => {
@@ -88,10 +107,12 @@ const Home = () => {
     const fetchWishlistIds = async () => {
       const token = localStorage.getItem('token');
       if (!token) {
+        setIsLoggedIn(false);
         const dismissed = sessionStorage.getItem('loginAlertDismissed');
         if (!dismissed) setShowLoginAlert(true);
         return;
       }
+      setIsLoggedIn(true);
       try {
         const res = await fetch('/api/wishlist', {
           headers: { 'Authorization': `Bearer ${token}` }
@@ -125,14 +146,26 @@ const Home = () => {
         JSON.stringify(lastFetchRef.current.filters) !== JSON.stringify(filters);
 
       setIsSearching(true);
+      if (searchQuery.trim() || filters.genre !== 'All') {
+        setTimeout(scrollToResults, 100);
+      }
       if (!ignore) setSearchError(null);
       try {
         let qParams = searchQuery.trim() || "";
+        
+        // If there is a search query, make the words required to prevent loose matching
+        if (searchQuery.trim()) {
+          qParams = searchQuery.trim().split(/\s+/).map(word => `+${word}`).join(' ');
+        }
+
         if (filters.year) qParams += ` ${filters.year}`;
-        // Append type-specific keywords to improve relevance
-        if (filters.type === 'Manga') qParams += ` manga comics`;
-        if (filters.type === 'Graphic Novel') qParams += ` graphic novel comics`;
-        if (filters.type === 'Audiobook') qParams += ` audiobook`;
+
+        // ONLY append keywords if we are filtering a SUBSET of types.
+        // If all 3 are selected (default), we don't need to append anything.
+        if (filters.types.length > 0 && filters.types.length < 3) {
+          if (filters.types.includes('Manga')) qParams += ` manga`;
+          if (filters.types.includes('Comic')) qParams += ` comics`;
+        }
 
         // At least one valid query string or subject needed
         if (!qParams && filters.genre === 'All') {
@@ -146,8 +179,8 @@ const Home = () => {
 
         if (qParams) url += `&q=${encodeURIComponent(qParams)}`;
         if (filters.genre !== 'All') url += `&subject=${encodeURIComponent(filters.genre)}`;
-        if (filters.type === 'Book') url += `&printType=books`;
-        if (filters.type === 'E-book') url += `&filter=ebooks`;
+        // Only use printType=books if ONLY Book is selected to avoid filtering out Mangas/Comics
+        if (filters.types.length === 1 && filters.types[0] === 'Book') url += `&printType=books`;
         if (filters.sortBy === 'Newest') url += `&orderBy=newest`;
         else if (filters.sortBy === 'Popularity') url += `&orderBy=relevance`;
 
@@ -354,7 +387,7 @@ const Home = () => {
               ? "opacity-0 -translate-y-8 pointer-events-none scale-95"
               : "animate-in fade-in slide-in-from-top-4"
             }`}>
-            <div className="bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/20 dark:border-emerald-500/40 backdrop-blur-md rounded-2xl p-6 pr-14 shadow-lg shadow-emerald-500/5 relative overflow-hidden group">
+            <div className="mt-6 bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/20 dark:border-emerald-500/40 backdrop-blur-md rounded-2xl p-6 pr-14 shadow-lg shadow-emerald-500/5 relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 blur-3xl -mr-16 -mt-16 group-hover:bg-emerald-500/20 transition-all duration-700" />
               <div className="flex items-start gap-4 relative z-10">
                 <div className="bg-emerald-500/20 dark:bg-emerald-500/40 p-2.5 rounded-xl text-emerald-600 dark:text-emerald-400">
@@ -414,9 +447,97 @@ const Home = () => {
                   <button 
                     onClick={() => {
                       setShowChristmasAlert(false);
-                      localStorage.setItem("christmasAlertDismissed", "true");
+                      localStorage.setItem("christmasAlertDismissedAt", Date.now().toString());
                     }}
                     className="p-2 text-gray-500 hover:text-gray-900 dark:text-blue-200/50 dark:hover:text-white transition-colors"
+                    title="Dismiss"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Halloween Promotion Alert */}
+        <AnimatePresence>
+          {globalTheme === "halloween" && showHalloweenAlert && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="w-full max-w-4xl mt-8 px-4"
+            >
+              <div className="bg-orange-500/20 dark:bg-orange-500/10 border border-orange-500/30 backdrop-blur-xl rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg shadow-orange-500/10">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center text-orange-500 text-xl">
+                    🎃
+                  </div>
+                  <div>
+                    <p className="text-gray-900 dark:text-orange-100 font-bold">Spooky Season is Here!</p>
+                    <p className="text-sm text-gray-700 dark:text-orange-200/70">Discover our curated Horror and Halloween collections on the Themes page.</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <Link 
+                    to="/themes"
+                    className="flex-1 sm:flex-none px-6 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold transition-all text-sm text-center"
+                  >
+                    Explore Themes
+                  </Link>
+                  <button 
+                    onClick={() => {
+                      setShowHalloweenAlert(false);
+                      localStorage.setItem("halloweenAlertDismissedAt", Date.now().toString());
+                    }}
+                    className="p-2 text-gray-500 hover:text-gray-900 dark:text-orange-200/50 dark:hover:text-white transition-colors"
+                    title="Dismiss"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Easter Promotion Alert */}
+        <AnimatePresence>
+          {globalTheme === "easter" && showEasterAlert && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="w-full max-w-4xl mt-8 px-4"
+            >
+              <div className="bg-green-400/20 dark:bg-green-400/10 border border-green-400/30 backdrop-blur-xl rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg shadow-green-400/10">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-green-400/20 flex items-center justify-center text-green-500 text-xl">
+                    🐰
+                  </div>
+                  <div>
+                    <p className="text-gray-900 dark:text-green-100 font-bold">Spring is Here!</p>
+                    <p className="text-sm text-gray-700 dark:text-green-200/70">Discover our curated Easter and Spring collections on the Themes page.</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <Link 
+                    to="/themes"
+                    className="flex-1 sm:flex-none px-6 py-2 bg-green-400 hover:bg-green-500 text-white rounded-xl font-bold transition-all text-sm text-center"
+                  >
+                    Explore Themes
+                  </Link>
+                  <button 
+                    onClick={() => {
+                      setShowEasterAlert(false);
+                      localStorage.setItem("easterAlertDismissedAt", Date.now().toString());
+                    }}
+                    className="p-2 text-gray-500 hover:text-gray-900 dark:text-green-200/50 dark:hover:text-white transition-colors"
                     title="Dismiss"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -443,25 +564,8 @@ const Home = () => {
             </p>
           </div>
 
-          <div className="text-2xl md:text-3xl font-medium text-gray-800 dark:text-[#DFE6E6]/90 mt-8 mb-4">
-            With BookHunt you can search over
-            <br />
-            <CountUp
-              from={0}
-              to={40000000}
-              separator=","
-              direction="up"
-              duration={1.5}
-              className="text-5xl md:text-6xl font-extrabold text-emerald-500 drop-shadow-md inline-block my-4"
-            />
-            <br />
-            Books!
-          </div>
-
-          <Carousel />
-
           {/* Premium Search Bar */}
-          <div className="relative mt-20 group w-full flex items-center bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl shadow-xl focus-within:ring-2 focus-within:ring-black/30 dark:focus-within:ring-white/30 focus-within:bg-black/10 dark:focus-within:bg-white/10 backdrop-blur-md transition-all duration-300">
+          <div className="relative group w-full max-w-3xl mx-auto flex items-center bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl shadow-xl focus-within:ring-2 focus-within:ring-black/30 dark:focus-within:ring-white/30 focus-within:bg-black/10 dark:focus-within:bg-white/10 backdrop-blur-md transition-all duration-300 z-20">
             <div className="pl-4 flex items-center pointer-events-none">
               <svg className="h-6 w-6 text-gray-500 dark:text-[#DFE6E6]/50 group-focus-within:text-gray-900 group-focus-within:dark:text-[#DFE6E6] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -471,6 +575,12 @@ const Home = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setStartIndex(0); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  scrollToResults();
+                }
+              }}
               placeholder="Search by title, author, or ISBN in Google Books..."
               className="block flex-1 pl-4 pr-12 py-4 bg-transparent text-lg text-gray-900 dark:text-[#DFE6E6] placeholder-gray-500 dark:placeholder-[#DFE6E6]/40 focus:outline-none"
             />
@@ -502,9 +612,28 @@ const Home = () => {
               </button>
             </div>
           </div>
+
+          <div className="text-2xl md:text-3xl font-medium text-gray-800 dark:text-[#DFE6E6]/90 mt-8 mb-4">
+            With BookHunt you can search over
+            <br />
+            <CountUp
+              from={0}
+              to={40000000}
+              separator=","
+              direction="up"
+              duration={1.5}
+              className="text-5xl md:text-6xl font-extrabold text-emerald-500 drop-shadow-md inline-block my-4"
+            />
+            <br />
+            Books!
+          </div>
+
+          {/* Carousel moved from above */}
+          <Carousel />
         </div>
 
         {/* Product Grid or Custom Content */}
+        <div ref={resultsRef} className="w-full scroll-mt-24">
         {loading || (isSearching && startIndex === 0) ? (
           <div className="w-full flex flex-col items-center">
             <div className="flex justify-center items-center py-20 w-full flex-col gap-4">
@@ -513,11 +642,7 @@ const Home = () => {
                 {isSearching ? "Searching Google Books library..." : "Loading collections..."}
               </p>
             </div>
-            {globalTheme === "christmas" && (
-              <div className="w-full mb-8">
-                <ThemeGallery title="Christmas Collection" subject="christmas" onBookClick={handleBookClick} />
-              </div>
-            )}
+
             <DailyFeaturedBooks onBookClick={handleBookClick} />
           </div>
         ) : showResults ? (
@@ -661,11 +786,14 @@ const Home = () => {
           </div>
         ) : (
           <div className="w-full flex flex-col items-center">
+
             <div className="w-full mb-8 mt-4">
               <DailyFeaturedBooks onBookClick={handleBookClick} />
             </div>
             <div className="w-full py-16 flex flex-col items-center justify-center space-y-32">
-              <ScrollFloat text="Join the BookHunt" textClassName="text-6xl md:text-8xl font-black text-gray-900 dark:text-[#DFE6E6] tracking-tighter drop-shadow-2xl" />
+              {!isLoggedIn && (
+                <ScrollFloat text="Join the BookHunt" textClassName="text-6xl md:text-8xl font-black text-gray-900 dark:text-[#DFE6E6] tracking-tighter drop-shadow-2xl" />
+              )}
 
               {/* Display default local products if any exist since we removed the direct rendering of all local products above. Let's just show a few */}
               {localProducts.length > 0 && (
@@ -688,15 +816,20 @@ const Home = () => {
                 <p></p>
                 <p></p>
               </div>
-              <ScrollFloat text="Search for any book in our massive library above, or browse our curated collections. Browse by genre, author, or ISBN number." textClassName="text-2xl md:text-2xl font-bold text-gray-600 dark:text-[#DFE6E6]/50" />
-              <ScrollFloat text="Or perhaps you'd want to keep track of your book progress in a fun modern way? We've got you covered with our state of the art progress tracking system that will make you want to read more and compete with others in a gameified system." textClassName="text-2xl md:text-2xl font-bold text-gray-600 dark:text-[#DFE6E6]/50" />
+              {!isLoggedIn && (
+                <>
+                  <ScrollFloat text="Search for any book in our massive library above, or browse our curated collections. Browse by genre, author, or ISBN number." textClassName="text-2xl md:text-2xl font-bold text-gray-600 dark:text-[#DFE6E6]/50" />
+                  <ScrollFloat text="Or perhaps you'd want to keep track of your book progress in a fun modern way? We've got you covered with our state of the art progress tracking system that will make you want to read more and compete with others in a gameified system." textClassName="text-2xl md:text-2xl font-bold text-gray-600 dark:text-[#DFE6E6]/50" />
 
-              <div className="mt-32 pb-40">
-                <ScrollFloat text="Keep exploring, keep hunting" textClassName="text-4xl md:text-5xl font-bold text-gray-600 dark:text-[#DFE6E6]/50" />
-              </div>
+                  <div className="mt-32 pb-40">
+                    <ScrollFloat text="Keep exploring, keep hunting" textClassName="text-4xl md:text-5xl font-bold text-gray-600 dark:text-[#DFE6E6]/50" />
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
+        </div>
 
       </div>
 

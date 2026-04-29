@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export interface FilterOptions {
     genre: string;
-    type: 'All' | 'Book' | 'E-book' | 'Manga' | 'Graphic Novel' | 'Audiobook';
+    types: ('Book' | 'Manga' | 'Comic')[];
     year: string;
     sortBy: 'Popularity' | 'Newest' | 'A-Z' | 'Z-A' | 'Year (Desc)' | 'Year (Asc)';
 }
@@ -38,7 +38,7 @@ const FilterModal = ({ isOpen, onClose, filters, onApply }: FilterModalProps) =>
     const handleReset = () => {
         setLocalFilters({
             genre: 'All',
-            type: 'All',
+            types: ['Book', 'Manga', 'Comic'],
             year: '',
             sortBy: 'Popularity'
         });
@@ -104,19 +104,39 @@ const FilterModal = ({ isOpen, onClose, filters, onApply }: FilterModalProps) =>
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 dark:text-[#DFE6E6]/80 mb-2">Format Type</label>
                         <div className="grid grid-cols-3 gap-2">
-                            {['All', 'Book', 'E-book', 'Manga', 'Graphic Novel', 'Audiobook'].map((type) => (
-                                <button
-                                    key={type}
-                                    onClick={() => setLocalFilters({ ...localFilters, type: type as FilterOptions['type'] })}
-                                    className={`py-2 px-3 rounded-lg border text-sm font-medium transition-all ${
-                                        localFilters.type === type 
-                                            ? 'bg-emerald-500 text-white border-emerald-500 shadow-md' 
-                                            : 'bg-white dark:bg-black/30 text-gray-700 dark:text-[#DFE6E6]/70 border-gray-200 dark:border-white/10 hover:border-emerald-300 dark:hover:border-emerald-700'
-                                    }`}
-                                >
-                                    {type}
-                                </button>
-                            ))}
+                            {['All', 'Book', 'Manga', 'Comic'].map((type) => {
+                                const isAll = type === 'All';
+                                const isActive = isAll 
+                                    ? localFilters.types.length === 3 
+                                    : localFilters.types.includes(type as any);
+
+                                return (
+                                    <button
+                                        key={type}
+                                        onClick={() => {
+                                            if (isAll) {
+                                                setLocalFilters({ 
+                                                    ...localFilters, 
+                                                    types: isActive ? [] : ['Book', 'Manga', 'Comic'] 
+                                                });
+                                            } else {
+                                                const currentTypes = [...localFilters.types];
+                                                const index = currentTypes.indexOf(type as any);
+                                                if (index > -1) currentTypes.splice(index, 1);
+                                                else currentTypes.push(type as any);
+                                                setLocalFilters({ ...localFilters, types: currentTypes });
+                                            }
+                                        }}
+                                        className={`py-2 px-3 rounded-lg border text-sm font-medium transition-all ${
+                                            isActive 
+                                                ? 'bg-emerald-500 text-white border-emerald-500 shadow-md' 
+                                                : 'bg-white dark:bg-black/30 text-gray-700 dark:text-[#DFE6E6]/70 border-gray-200 dark:border-white/10 hover:border-emerald-300 dark:hover:border-emerald-700'
+                                        }`}
+                                    >
+                                        {type}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
 

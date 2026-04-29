@@ -687,6 +687,13 @@ const AdminPage = () => {
                   >
                     <span>🎃</span> Halloween Theme
                   </button>
+                  <button 
+                    onClick={() => updateGlobalTheme("easter")}
+                    disabled={loadingTheme}
+                    className={`px-6 py-3 rounded-2xl font-bold transition-all flex items-center gap-2 ${globalTheme === "easter" ? "bg-green-500 text-white shadow-lg shadow-green-500/20" : "bg-black/5 dark:bg-white/5 text-gray-600 dark:text-gray-300 hover:bg-black/10 dark:hover:bg-white/10"}`}
+                  >
+                    <span>🐰</span> Easter Theme
+                  </button>
                 </div>
               </div>
             </div>

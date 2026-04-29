@@ -1,9 +1,11 @@
 import express from "express";
 import axios from "axios";
+import { PrismaClient } from "../../generated/prisma/index.js";
 import { scrapeLibri } from "../utils/libriScraper.js";
 import { scrapeBookline } from "../utils/booklineScraper.js";
 
 const router = express.Router();
+const prisma = new PrismaClient();
 
 /**
  * @swagger
@@ -90,7 +92,24 @@ router.get("/search", async (req, res) => {
     return res.status(400).json({ error: "Search query (q) or subject is required." });
   }
 
+  const cacheKey = JSON.stringify({ q, maxResults, startIndex, orderBy, printType, filter, subject });
+
   try {
+    // Check cache first
+    const cachedResult = await prisma.googleBooksCache.findUnique({
+      where: { kereses: cacheKey }
+    });
+
+    // Cache duration: 24 hours
+    const isFresh = cachedResult && (new Date() - new Date(cachedResult.frissitve)) < 24 * 60 * 60 * 1000;
+
+    if (isFresh) {
+      console.log(`[GoogleBooksCache] Hit: ${q || subject}`);
+      return res.json(cachedResult.adatok);
+    }
+
+    console.log(`[GoogleBooksCache] Miss: ${q || subject}. Fetching from Google...`);
+
     let finalQuery = q || "";
     if (subject) {
       finalQuery += finalQuery ? `+subject:${subject}` : `subject:${subject}`;
@@ -160,12 +179,20 @@ router.get("/search", async (req, res) => {
     });
 
     // Sort logic to surface popular matches (highest ratings/reviews) first
-    // This dramatically improves finding prices since more popular editions have actual store matches
     if (!orderBy || orderBy === 'relevance') {
       books.sort((a, b) => (b.ratingsCount || 0) - (a.ratingsCount || 0));
     }
 
-    res.json({ total: response.data.totalItems, books });
+    const responseData = { total: response.data.totalItems, books };
+
+    // Update Cache
+    await prisma.googleBooksCache.upsert({
+      where: { kereses: cacheKey },
+      update: { adatok: responseData, frissitve: new Date() },
+      create: { kereses: cacheKey, adatok: responseData }
+    });
+
+    res.json(responseData);
   } catch (error) {
     if (error.response) {
       console.error("Google Books API rejection:", error.response.status, error.response.data);

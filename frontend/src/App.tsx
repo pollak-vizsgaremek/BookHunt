@@ -1,21 +1,18 @@
-// import { useState } from 'react'
-
-// ============ pages ============
-// import ProtectedRoute from "./components/ProtectedRoute";
-import Home from "./pages/Home";
+import { lazy, Suspense } from 'react';
+const Home = lazy(() => import('./pages/Home'));
 import "./App.css";
-import { Routes, Route } from "react-router";
-import LoginPage from './pages/Login';
-import RegisterPage from './pages/Register';
-import Profile from './pages/Profile';
-import Wishlist from './pages/Wishlist';
-import Notifications from './pages/Notifications';
-import Forums from './pages/Forums';
-import ForumDiscussion from './pages/ForumDiscussion';
-import AdminPage from './pages/AdminPage';
-import Bookmarks from './pages/Bookmarks';
-import Themes from './pages/Themes';
-import { useNavigate } from "react-router";
+import { Routes, Route, useNavigate } from "react-router";
+
+const LoginPage = lazy(() => import('./pages/Login'));
+const RegisterPage = lazy(() => import('./pages/Register'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Wishlist = lazy(() => import('./pages/Wishlist'));
+const Notifications = lazy(() => import('./pages/Notifications'));
+const Forums = lazy(() => import('./pages/Forums'));
+const ForumDiscussion = lazy(() => import('./pages/ForumDiscussion'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
+const Bookmarks = lazy(() => import('./pages/Bookmarks'));
+const Genres = lazy(() => import('./pages/Genres'));
 // ===============================
 
 import ClickSpark from "./components/ClickSpark";
@@ -27,7 +24,8 @@ function FloatingWishlistButton() {
   return (
     <button
       onClick={() => navigate('/wishlist')}
-      className="fixed bottom-6 left-6 z-50 bg-emerald-500 hover:bg-emerald-600 text-white p-3 sm:p-4 rounded-full shadow-[0_0_15px_var(--color-emerald-500)] hover:shadow-[0_0_25px_var(--color-emerald-500)] transition-all duration-300 transform hover:-translate-y-1 focus:outline-none flex items-center justify-center group"
+      aria-label="Go to Wishlist"
+      className="fixed bottom-6 left-6 z-50 bg-emerald-500 hover:bg-emerald-600 text-white p-3 sm:p-4 rounded-full shadow-[0_0_15px_var(--color-emerald-500)] hover:shadow-[0_0_25px_var(--color-emerald-500)] transition-all duration-300 transform hover:-translate-y-1 focus:outline-none flex items-center justify-center group w-12 h-12 sm:w-14 sm:h-14"
       title="Go to Wishlist"
     >
       <svg className="w-6 h-6 transform group-hover:scale-110 transition-transform text-white drop-shadow-md" fill="currentColor" viewBox="0 0 24 24">
@@ -40,6 +38,7 @@ function FloatingWishlistButton() {
 import { useState, useEffect } from 'react';
 import ChristmasTheme from './components/themes/ChristmasTheme';
 import HalloweenTheme from './components/themes/HalloweenTheme';
+import EasterTheme from './components/themes/EasterTheme';
 
 function App() {
   const [globalTheme, setGlobalTheme] = useState("default");
@@ -75,19 +74,22 @@ function App() {
       />
       {globalTheme === "christmas" && <ChristmasTheme />}
       {globalTheme === "halloween" && <HalloweenTheme />}
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/wishlist" element={<Wishlist />} />
-        <Route path="/notifications" element={<Notifications />} />
-        <Route path="/forums" element={<Forums />} />
-        <Route path="/forums/:id" element={<ForumDiscussion />} />
-        <Route path="/admin" element={<AdminPage />} />
-        <Route path="/bookmarks" element={<Bookmarks />} />
-        <Route path="/themes" element={<Themes />} />
-      </Routes>
+      {globalTheme === "easter" && <EasterTheme />}
+      <Suspense fallback={<div className="flex justify-center items-center h-screen w-full"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-emerald-500"></div></div>}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/wishlist" element={<Wishlist />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/forums" element={<Forums />} />
+          <Route path="/forums/:id" element={<ForumDiscussion />} />
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/bookmarks" element={<Bookmarks />} />
+          <Route path="/genres" element={<Genres />} />
+        </Routes>
+      </Suspense>
       <FloatingWishlistButton />
       <GuideHelper />
     </>
