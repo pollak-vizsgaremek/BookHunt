@@ -313,8 +313,10 @@ const Home = () => {
     const matchesGenre = filters.genre === 'All' || (product.categories && product.categories.includes(filters.genre));
 
     // Filter by type: compare the DB enum values to the product's type field
+    // If all options are selected (length 3), we show everything including types not in the UI (like e-books)
+    const isAllSelected = filters.types.length === 3;
     const selectedDbTypes = filters.types.map(t => TYPE_TO_DB[t]);
-    const matchesType = product.type ? selectedDbTypes.includes(product.type) : false;
+    const matchesType = isAllSelected || (product.type ? selectedDbTypes.includes(product.type) : false);
 
     return matchesQuery && matchesGenre && matchesType;
   });
