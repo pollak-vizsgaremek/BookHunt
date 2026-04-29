@@ -719,7 +719,7 @@ const GuideHelper = () => {
             <div className="h-16 bg-emerald-500/10 flex items-center justify-between px-5 border-b border-gray-200/50 dark:border-white/5 shrink-0">
               <div className="flex items-center gap-3">
                 <img src="/images/LogoHappy.png" alt="Guide" className="w-8 h-8" />
-                <span className="font-bold text-gray-900 dark:text-white">Book Guide</span>
+                <span className="font-bold text-gray-900 dark:text-white">Book Guide Bob</span>
               </div>
               <button 
                 onClick={() => setIsOpen(false)}
