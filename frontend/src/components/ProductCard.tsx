@@ -20,25 +20,26 @@ export interface BookItem {
     previewLink?: string;
 }
 
+import { getBookType } from '../utils/type';
+
 /** Derive a display type + badge style from the book's categories */
 function getBookTypeBadge(product: BookItem): { label: string; className: string } {
-    const cats = (product.categories ?? []).map(c => c.toLowerCase()).join(' ');
-    const title = product.title.toLowerCase();
+    const type = getBookType(product);
     
-    // Manga Check
-    if (cats.includes('manga') || title.includes('manga')) {
+    if (type === 'Manga') {
         return {
             label: 'Manga',
             className: 'bg-pink-500/20 dark:bg-pink-500/30 border-pink-400/40 text-pink-700 dark:text-pink-300',
         };
     }
-    // Comic Check
-    if (cats.includes('comic') || cats.includes('graphic novel') || title.includes('comic') || title.includes('graphic novel')) {
+    
+    if (type === 'Comic') {
         return {
             label: 'Comic',
             className: 'bg-yellow-400/20 dark:bg-yellow-400/20 border-yellow-400/40 text-yellow-700 dark:text-yellow-300',
         };
     }
+    
     // Default to Book with Beige color
     return {
         label: 'Book',

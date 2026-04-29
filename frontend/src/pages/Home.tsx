@@ -12,6 +12,7 @@ import CountUp from "../components/CountUp";
 import DailyFeaturedBooks from "../components/DailyFeaturedBooks";
 import { usePageTitle } from "../utils/usePageTitle";
 import { Link } from "react-router";
+import { getBookType, type BookType } from "../utils/type";
 
 const Home = () => {
   usePageTitle('Home');
@@ -242,7 +243,16 @@ const Home = () => {
 
           // Only show books that have an ISBN — required for price lookup
           // Libri books have a dummy 'LIBRI-...' ISBN so they pass
-          const mapped = combinedMapped.filter(b => !!b.isbn);
+          let mapped = combinedMapped.filter(b => !!b.isbn);
+
+          // STRICT FILTERING: Filter by the selected types (Book, Manga, Comic)
+          // We apply this filter on the client side because Google's 'q' + keyword matching is not 100% accurate
+          if (filters.types.length < 3) {
+            mapped = mapped.filter(b => {
+              const detectedType = getBookType(b);
+              return filters.types.includes(detectedType as BookType);
+            });
+          }
 
           if (allMapped.length < 40) setHasMore(false);
           else setHasMore(true);
@@ -253,8 +263,9 @@ const Home = () => {
             // Appending, filter out duplicates just in case
             setSearchResults(prev => {
               const existingIds = new Set(prev.map(p => p.id));
-              const newItems = mapped.filter(p => !existingIds.has(p.id));
-              return [...prev, ...newItems];
+              // Also apply strict type filtering to new items being appended
+              let filteredNewItems = mapped.filter(p => !existingIds.has(p.id));
+              return [...prev, ...filteredNewItems];
             });
           }
 
