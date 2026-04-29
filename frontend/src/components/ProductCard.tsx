@@ -23,29 +23,26 @@ export interface BookItem {
 /** Derive a display type + badge style from the book's categories */
 function getBookTypeBadge(product: BookItem): { label: string; className: string } {
     const cats = (product.categories ?? []).map(c => c.toLowerCase()).join(' ');
-    const isLibri = product.isbn?.startsWith('LIBRI-');
-
-    if (cats.includes('manga')) {
+    const title = product.title.toLowerCase();
+    
+    // Manga Check
+    if (cats.includes('manga') || title.includes('manga')) {
         return {
             label: 'Manga',
             className: 'bg-pink-500/20 dark:bg-pink-500/30 border-pink-400/40 text-pink-700 dark:text-pink-300',
         };
     }
-    if (cats.includes('comic') || cats.includes('graphic novel')) {
+    // Comic Check
+    if (cats.includes('comic') || cats.includes('graphic novel') || title.includes('comic') || title.includes('graphic novel')) {
         return {
             label: 'Comic',
             className: 'bg-yellow-400/20 dark:bg-yellow-400/20 border-yellow-400/40 text-yellow-700 dark:text-yellow-300',
         };
     }
-    if (isLibri) {
-        return {
-            label: 'Libri',
-            className: 'bg-emerald-500/20 dark:bg-emerald-500/30 border-emerald-400/40 text-emerald-700 dark:text-emerald-300',
-        };
-    }
+    // Default to Book with Beige color
     return {
-        label: product.type || 'Book',
-        className: 'bg-black/10 dark:bg-black/60 border-black/10 dark:border-white/10 text-gray-900 dark:text-[#DFE6E6]',
+        label: 'Book',
+        className: 'bg-[#f5f5dc]/40 dark:bg-[#f5f5dc]/20 border-[#d2b48c]/30 text-[#8b4513] dark:text-[#f5f5dc]/90',
     };
 }
 

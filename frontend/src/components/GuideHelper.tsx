@@ -20,6 +20,7 @@ interface BookResult {
   thumbnail?: string;
   pageCount?: number;
   description?: string;
+  isbn?: string;
 }
 
 interface HelpItem {
@@ -31,6 +32,25 @@ interface HelpItem {
   actionText?: string;
 }
 
+const Stepper = ({ current, total }: { current: number; total: number }) => {
+  return (
+    <div className="flex items-center justify-center gap-2 mb-6">
+      {Array.from({ length: total }).map((_, i) => (
+        <div 
+          key={i}
+          className={`h-1.5 rounded-full transition-all duration-300 ${
+            i < current 
+              ? "w-8 bg-emerald-500" 
+              : i === current 
+                ? "w-8 bg-emerald-500/30 animate-pulse" 
+                : "w-4 bg-gray-200 dark:bg-white/10"
+          }`}
+        />
+      ))}
+    </div>
+  );
+};
+
 const GuideHelper = () => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
@@ -40,6 +60,10 @@ const GuideHelper = () => {
     genre: null,
     length: null,
     format: null,
+  });
+  const [genreAnswers, setGenreAnswers] = useState<{ mood: string | null; setting: string | null }>({
+    mood: null,
+    setting: null
   });
   const [loading, setLoading] = useState(false);
   const [isAddingToWishlist, setIsAddingToWishlist] = useState(false);
@@ -116,6 +140,11 @@ const GuideHelper = () => {
   const startBookfinder = () => {
     resetGuide();
     setStep(1); // Intro
+  };
+
+  const startGenrefinder = () => {
+    resetGuide();
+    setStep(20);
   };
 
   const openPageGuide = () => {
@@ -205,6 +234,7 @@ const GuideHelper = () => {
           cim: recommendation.title,
           szerzo: recommendation.authors ? recommendation.authors.join(", ") : "Unknown Author",
           boritokep_url: recommendation.thumbnail?.replace('http:', 'https:') || null,
+          isbn: recommendation.isbn || null,
         })
       });
 
@@ -253,29 +283,43 @@ const GuideHelper = () => {
               <p className="text-sm text-gray-500 dark:text-gray-400">Select an option to get started</p>
             </div>
             
-            <div className="grid grid-cols-2 gap-8">
-              <div className="flex flex-col items-center space-y-3">
-                <button 
-                  onClick={startBookfinder}
-                  className="w-24 h-24 rounded-full bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/30 flex items-center justify-center transition-all hover:scale-110 active:scale-95 group"
-                >
-                   <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white transform group-hover:rotate-12 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                </button>
-                <span className="font-bold text-gray-900 dark:text-white text-sm">Bookfinder</span>
+            <div className="flex flex-col items-center w-full space-y-4">
+              <div className="grid grid-cols-2 gap-5 w-full px-4">
+                <div className="flex flex-col items-center space-y-3">
+                  <button 
+                    onClick={startBookfinder}
+                    className="w-20 h-20 rounded-full bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/30 flex items-center justify-center transition-all hover:scale-110 active:scale-95 group"
+                  >
+                     <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white transform group-hover:rotate-12 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                  </button>
+                  <span className="font-bold text-gray-900 dark:text-white text-xs text-center">Bookfinder</span>
+                </div>
+
+                <div className="flex flex-col items-center space-y-3">
+                  <button 
+                    onClick={openPageGuide}
+                    className="w-20 h-20 rounded-full bg-blue-500 hover:bg-blue-600 shadow-lg shadow-blue-500/30 flex items-center justify-center transition-all hover:scale-110 active:scale-95 group"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white transform group-hover:-rotate-12 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                  <span className="font-bold text-gray-900 dark:text-white text-xs text-center">Page Guide</span>
+                </div>
               </div>
 
               <div className="flex flex-col items-center space-y-3">
                 <button 
-                  onClick={openPageGuide}
-                  className="w-24 h-24 rounded-full bg-blue-500 hover:bg-blue-600 shadow-lg shadow-blue-500/30 flex items-center justify-center transition-all hover:scale-110 active:scale-95 group"
+                  onClick={startGenrefinder}
+                  className="w-20 h-20 rounded-full bg-purple-500 hover:bg-purple-600 shadow-lg shadow-purple-500/30 flex items-center justify-center transition-all hover:scale-110 active:scale-95 group"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white transform group-hover:-rotate-12 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white transform group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                   </svg>
                 </button>
-                <span className="font-bold text-gray-900 dark:text-white text-sm">Page Guide</span>
+                <span className="font-bold text-gray-900 dark:text-white text-xs text-center">Genrefinder</span>
               </div>
             </div>
           </motion.div>
@@ -312,6 +356,7 @@ const GuideHelper = () => {
             initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
             className="flex flex-col h-full"
           >
+            <Stepper current={0} total={3} />
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">What kind of world do you want to explore?</h3>
             <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
               {['Fantasy', 'Science Fiction', 'Mystery', 'Romance', 'Non-Fiction', 'Historical'].map((genre) => (
@@ -332,6 +377,7 @@ const GuideHelper = () => {
             initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
             className="flex flex-col h-full"
           >
+            <Stepper current={1} total={3} />
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">How long of a journey are you up for?</h3>
             <div className="flex-1 space-y-2">
               {['Short (<300 pages)', 'Medium (300-500 pages)', 'Epic (>500 pages)', 'Any'].map((len) => (
@@ -352,6 +398,7 @@ const GuideHelper = () => {
             initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
             className="flex flex-col h-full"
           >
+            <Stepper current={2} total={3} />
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Traditional reading or visual storytelling?</h3>
             <div className="flex-1 space-y-2">
               {['Traditional Book', 'Graphic Novel / Comic'].map((fmt) => (
@@ -364,6 +411,127 @@ const GuideHelper = () => {
                 </button>
               ))}
             </div>
+          </motion.div>
+        );
+      case 20:
+        return (
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+            className="flex flex-col h-full justify-between"
+          >
+            <div>
+              <button onClick={() => setStep(0)} className="mb-4 text-purple-500 flex items-center gap-1 text-sm font-bold transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Back to Menu
+              </button>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Genrefinder</h3>
+              <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+                Not sure what genre fits your current vibe? Let me analyze your mood and pick the perfect category for you!
+              </p>
+            </div>
+            <button 
+              onClick={() => setStep(21)}
+              className="w-full py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-xl font-bold shadow-md transition-colors"
+            >
+              Start Analysis
+            </button>
+          </motion.div>
+        );
+      case 21:
+        return (
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+            className="flex flex-col h-full"
+          >
+            <Stepper current={0} total={2} />
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">What's your current mood?</h3>
+            <div className="flex-1 space-y-2">
+              {[
+                { label: 'Excited & Adventurous', val: 'adventure' },
+                { label: 'Curious & Thoughtful', val: 'thoughtful' },
+                { label: 'Romantic & Soft', val: 'romantic' },
+                { label: 'Fearful & Thrilled', val: 'fear' },
+                { label: 'Nostalgic', val: 'nostalgic' }
+              ].map((mood) => (
+                <button
+                  key={mood.val}
+                  onClick={() => { setGenreAnswers({...genreAnswers, mood: mood.val}); setStep(22); }}
+                  className="w-full text-left px-4 py-3 bg-gray-50 hover:bg-gray-100 dark:bg-white/5 dark:hover:bg-white/10 text-gray-800 dark:text-gray-200 rounded-xl border border-gray-200 dark:border-white/10 transition-colors"
+                >
+                  {mood.label}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        );
+      case 22:
+        return (
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+            className="flex flex-col h-full"
+          >
+            <Stepper current={1} total={2} />
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">What kind of setting sounds best?</h3>
+            <div className="flex-1 space-y-2">
+              {[
+                { label: 'Distant Future / Space', val: 'space' },
+                { label: 'Ancient Past / Magic', val: 'past' },
+                { label: 'Modern Day Realism', val: 'modern' },
+                { label: 'Imaginary / Surreal', val: 'surreal' }
+              ].map((setting) => (
+                <button
+                  key={setting.val}
+                  onClick={() => { 
+                    setGenreAnswers({...genreAnswers, setting: setting.val}); 
+                    setStep(23); 
+                  }}
+                  className="w-full text-left px-4 py-3 bg-gray-50 hover:bg-gray-100 dark:bg-white/5 dark:hover:bg-white/10 text-gray-800 dark:text-gray-200 rounded-xl border border-gray-200 dark:border-white/10 transition-colors"
+                >
+                  {setting.label}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        );
+      case 23:
+        const getRecommendedGenre = () => {
+          const { mood, setting } = genreAnswers;
+          if (mood === 'adventure' && setting === 'past') return { name: 'Fantasy Worlds', slug: 'fantasy' };
+          if (mood === 'adventure' && setting === 'space') return { name: 'Science Fiction', slug: 'science fiction' };
+          if (mood === 'thoughtful' && setting === 'modern') return { name: 'World Literature', slug: 'literature' };
+          if (mood === 'fear') return { name: 'Horror & Halloween', slug: 'horror' };
+          if (mood === 'romantic') return { name: 'Romance', slug: 'romance' };
+          if (setting === 'past') return { name: 'Historical Records', slug: 'history' };
+          return { name: 'Thrilling Mysteries', slug: 'thriller' };
+        };
+        const rec = getRecommendedGenre();
+        return (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col h-full items-center text-center justify-center space-y-6"
+          >
+            <div className="w-20 h-20 bg-purple-500/20 rounded-full flex items-center justify-center text-4xl shadow-inner">
+              ✨
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Analysis Complete!</h3>
+              <p className="text-gray-600 dark:text-gray-400 text-sm mt-2">Based on your mood, I think you'll love:</p>
+              <h4 className="text-2xl font-black text-purple-500 mt-2 uppercase tracking-tight">{rec.name}</h4>
+            </div>
+            <button 
+              onClick={() => { navigate('/genres'); setIsOpen(false); }}
+              className="w-full py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-xl font-bold shadow-md transition-all hover:-translate-y-1 active:scale-95"
+            >
+              Take me there!
+            </button>
+            <button 
+              onClick={resetGuide}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-white text-xs font-medium transition-colors"
+            >
+              Try another mood
+            </button>
           </motion.div>
         );
       case 5:

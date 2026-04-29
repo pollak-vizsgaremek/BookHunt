@@ -12,7 +12,7 @@ const Forums = lazy(() => import('./pages/Forums'));
 const ForumDiscussion = lazy(() => import('./pages/ForumDiscussion'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const Bookmarks = lazy(() => import('./pages/Bookmarks'));
-const Themes = lazy(() => import('./pages/Themes'));
+const Genres = lazy(() => import('./pages/Genres'));
 // ===============================
 
 import ClickSpark from "./components/ClickSpark";
@@ -87,7 +87,7 @@ function App() {
           <Route path="/forums/:id" element={<ForumDiscussion />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/bookmarks" element={<Bookmarks />} />
-          <Route path="/themes" element={<Themes />} />
+          <Route path="/genres" element={<Genres />} />
         </Routes>
       </Suspense>
       <FloatingWishlistButton />

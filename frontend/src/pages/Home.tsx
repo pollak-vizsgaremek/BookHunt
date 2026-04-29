@@ -30,7 +30,7 @@ const Home = () => {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [filters, setFilters] = useState<FilterOptions>({
     genre: 'All',
-    type: 'All',
+    types: ['Book', 'Manga', 'Comic'],
     year: '',
     sortBy: 'Popularity'
   });
@@ -152,11 +152,20 @@ const Home = () => {
       if (!ignore) setSearchError(null);
       try {
         let qParams = searchQuery.trim() || "";
+        
+        // If there is a search query, make the words required to prevent loose matching
+        if (searchQuery.trim()) {
+          qParams = searchQuery.trim().split(/\s+/).map(word => `+${word}`).join(' ');
+        }
+
         if (filters.year) qParams += ` ${filters.year}`;
-        // Append type-specific keywords to improve relevance
-        if (filters.type === 'Manga') qParams += ` manga comics`;
-        if (filters.type === 'Graphic Novel') qParams += ` graphic novel comics`;
-        if (filters.type === 'Audiobook') qParams += ` audiobook`;
+
+        // ONLY append keywords if we are filtering a SUBSET of types.
+        // If all 3 are selected (default), we don't need to append anything.
+        if (filters.types.length > 0 && filters.types.length < 3) {
+          if (filters.types.includes('Manga')) qParams += ` manga`;
+          if (filters.types.includes('Comic')) qParams += ` comics`;
+        }
 
         // At least one valid query string or subject needed
         if (!qParams && filters.genre === 'All') {
@@ -170,8 +179,8 @@ const Home = () => {
 
         if (qParams) url += `&q=${encodeURIComponent(qParams)}`;
         if (filters.genre !== 'All') url += `&subject=${encodeURIComponent(filters.genre)}`;
-        if (filters.type === 'Book') url += `&printType=books`;
-        if (filters.type === 'E-book') url += `&filter=ebooks`;
+        // Only use printType=books if ONLY Book is selected to avoid filtering out Mangas/Comics
+        if (filters.types.length === 1 && filters.types[0] === 'Book') url += `&printType=books`;
         if (filters.sortBy === 'Newest') url += `&orderBy=newest`;
         else if (filters.sortBy === 'Popularity') url += `&orderBy=relevance`;
 

@@ -97,7 +97,7 @@ const Navigation = () => {
 
   const routes = [
     { name: "Home", route: "/" },
-    { name: "Themes", route: "/themes" },
+    { name: "Genres", route: "/genres" },
     { name: "Forums", route: "/forums" },
     ...(user ? [
       { name: "Wishlist", route: "/wishlist" },
