@@ -117,13 +117,15 @@ const Navigation = () => {
           
           <NavLink to="/" aria-label="Go to Home" className="flex items-center gap-2 sm:gap-3 group transition-transform duration-300 hover:scale-105 shrink-0">
             <img
-              src={globalTheme === "christmas" ? "/images/LogoChristmas.png" : (globalTheme === "halloween" ? "/images/HalloweenTheme.png" : "/images/LogoHappy.png")}
+              src={globalTheme === "easter" ? "/images/EasterTheme.png" : globalTheme === "christmas" ? "/images/LogoChristmas.png" : (globalTheme === "halloween" ? "/images/HalloweenTheme.png" : "/images/LogoHappy.png")}
               className="w-8 h-8 sm:w-10 sm:h-10 md:w-11 md:h-11 drop-shadow-md"
               alt="BookHunt logo"
             />
             <span 
               className={`text-xl sm:text-2xl md:text-3xl font-black tracking-tight hidden sm:block bg-clip-text text-transparent transition-all duration-500 ${
-                globalTheme === 'halloween' 
+                globalTheme === 'easter'
+                  ? 'bg-linear-to-r from-green-400 to-yellow-400 drop-shadow-[0_0_12px_rgba(74,222,128,0.8)]'
+                  : globalTheme === 'halloween' 
                   ? 'bg-linear-to-r from-orange-500 to-gray-400 drop-shadow-[0_0_12px_rgba(249,115,22,0.8)]' 
                   : (globalTheme === 'christmas' 
                     ? 'bg-linear-to-r from-green-500 to-red-600 drop-shadow-[0_0_20px_rgba(34,197,94,0.8)]' 

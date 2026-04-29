@@ -8,9 +8,11 @@ interface ThemeGalleryProps {
     subject: string;
     onBookClick?: (book: BookItem) => void;
     isChristmas?: boolean;
+    isHalloween?: boolean;
+    isEaster?: boolean;
 }
 
-const ThemeGallery: React.FC<ThemeGalleryProps> = ({ title, subject, onBookClick, isChristmas = false }) => {
+const ThemeGallery: React.FC<ThemeGalleryProps> = ({ title, subject, onBookClick, isChristmas = false, isHalloween = false, isEaster = false }) => {
     const [books, setBooks] = useState<{ image: string; text: string; book: BookItem }[]>([]);
     const [loading, setLoading] = useState(true);
     const [globalTheme, setGlobalTheme] = useState("default");
@@ -29,6 +31,8 @@ const ThemeGallery: React.FC<ThemeGalleryProps> = ({ title, subject, onBookClick
     }, []);
 
     const effectiveIsChristmas = isChristmas || (globalTheme === "christmas" && subject.toLowerCase().includes("christmas"));
+    const effectiveIsHalloween = isHalloween || (globalTheme === "halloween" && (subject.toLowerCase().includes("horror") || subject.toLowerCase().includes("halloween")));
+    const effectiveIsEaster = isEaster || (globalTheme === "easter" && (subject.toLowerCase().includes("easter") || subject.toLowerCase().includes("spring") || subject.toLowerCase().includes("religion")));
 
     useEffect(() => {
         const fetchBooks = async () => {
@@ -173,14 +177,24 @@ const ThemeGallery: React.FC<ThemeGalleryProps> = ({ title, subject, onBookClick
                 <h2 className={`text-3xl md:text-4xl font-black tracking-tighter transition-colors duration-500 ${
                     effectiveIsChristmas 
                         ? 'bg-linear-to-r from-green-400 to-red-500 bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(34,197,94,0.6)]' 
+                        : effectiveIsHalloween
+                        ? 'bg-linear-to-r from-orange-400 to-amber-600 bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(249,115,22,0.6)]'
+                        : effectiveIsEaster
+                        ? 'bg-linear-to-r from-green-400 to-yellow-400 bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(74,222,128,0.6)]'
                         : 'text-gray-900 dark:text-[#DFE6E6] drop-shadow-md'
                 }`}>
                     {title}
                 </h2>
                 <p className={`mt-2 font-medium capitalize transition-colors duration-500 ${
-                    effectiveIsChristmas ? 'text-red-500/80 dark:text-red-400/80' : 'text-gray-600 dark:text-gray-400'
+                    effectiveIsChristmas ? 'text-red-500/80 dark:text-red-400/80' : 
+                    effectiveIsHalloween ? 'text-orange-500/80 dark:text-orange-400/80' :
+                    effectiveIsEaster ? 'text-green-500/80 dark:text-green-400/80' :
+                    'text-gray-600 dark:text-gray-400'
                 }`}>
-                    {effectiveIsChristmas ? '✨ Seasonal Magic Awaits ✨' : `Explore top picks in ${subject}`}
+                    {effectiveIsChristmas ? '✨ Seasonal Magic Awaits ✨' : 
+                     effectiveIsHalloween ? '🎃 Spooky Tales Await 🎃' :
+                     effectiveIsEaster ? '🐰 Spring Discoveries 🐰' :
+                     `Explore top picks in ${subject}`}
                 </p>
             </div>
 
@@ -189,6 +203,54 @@ const ThemeGallery: React.FC<ThemeGalleryProps> = ({ title, subject, onBookClick
                     color="#22c55e" 
                     speed={1} 
                     chaos={0} 
+                    borderRadius={32}
+                    className="w-full max-w-7xl"
+                >
+                    <div 
+                        className="w-full h-[400px] md:h-[500px] relative overflow-hidden transition-all duration-500 rounded-3xl bg-green-950/5"
+                        style={{ 
+                            maskImage: 'linear-gradient(to right, transparent, black 15%, black 85%, transparent)', 
+                            WebkitMaskImage: 'linear-gradient(to right, transparent, black 15%, black 85%, transparent)' 
+                        }}
+                    >
+                        <CircularGallery 
+                            items={books} 
+                            bend={0} 
+                            textColor="#ffffff" 
+                            borderRadius={0.05}
+                            onItemClick={handleGalleryClick}
+                        />
+                    </div>
+                </ElectricBorder>
+            ) : effectiveIsHalloween ? (
+                <ElectricBorder 
+                    color="#f97316" 
+                    speed={1} 
+                    chaos={0.1} 
+                    borderRadius={32}
+                    className="w-full max-w-7xl"
+                >
+                    <div 
+                        className="w-full h-[400px] md:h-[500px] relative overflow-hidden transition-all duration-500 rounded-3xl bg-orange-950/5"
+                        style={{ 
+                            maskImage: 'linear-gradient(to right, transparent, black 15%, black 85%, transparent)', 
+                            WebkitMaskImage: 'linear-gradient(to right, transparent, black 15%, black 85%, transparent)' 
+                        }}
+                    >
+                        <CircularGallery 
+                            items={books} 
+                            bend={0} 
+                            textColor="#ffffff" 
+                            borderRadius={0.05}
+                            onItemClick={handleGalleryClick}
+                        />
+                    </div>
+                </ElectricBorder>
+            ) : effectiveIsEaster ? (
+                <ElectricBorder 
+                    color="#86efac" 
+                    speed={1} 
+                    chaos={0.0} 
                     borderRadius={32}
                     className="w-full max-w-7xl"
                 >

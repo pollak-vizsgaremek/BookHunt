@@ -172,6 +172,15 @@ model GyorsitotarazottAr {
   frissitve DateTime @default(now()) @updatedAt
 }
 
+model GoogleBooksCache {
+  id        Int      @id @default(autoincrement())
+  kereses   String   @unique @db.VarChar(500) // Normalized query key
+  adatok    Json     // Google Books API response data
+  frissitve DateTime @default(now()) @updatedAt
+
+  @@index([kereses])
+}
+
 model Kivansaglista {
   id               Int      @id @default(autoincrement())
   felhasznalo_id   Int

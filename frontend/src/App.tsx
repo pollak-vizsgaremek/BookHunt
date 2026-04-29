@@ -38,6 +38,7 @@ function FloatingWishlistButton() {
 import { useState, useEffect } from 'react';
 import ChristmasTheme from './components/themes/ChristmasTheme';
 import HalloweenTheme from './components/themes/HalloweenTheme';
+import EasterTheme from './components/themes/EasterTheme';
 
 function App() {
   const [globalTheme, setGlobalTheme] = useState("default");
@@ -73,6 +74,7 @@ function App() {
       />
       {globalTheme === "christmas" && <ChristmasTheme />}
       {globalTheme === "halloween" && <HalloweenTheme />}
+      {globalTheme === "easter" && <EasterTheme />}
       <Suspense fallback={<div className="flex justify-center items-center h-screen w-full"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-emerald-500"></div></div>}>
         <Routes>
           <Route path="/" element={<Home />} />

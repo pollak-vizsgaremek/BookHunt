@@ -71,6 +71,12 @@ const Themes = () => {
                     {globalTheme === "christmas" && (
                         <ThemeGallery title="Christmas Collection" subject="christmas" onBookClick={handleBookClick} />
                     )}
+                    {globalTheme === "halloween" && (
+                        <ThemeGallery title="Horror & Halloween" subject="horror" onBookClick={handleBookClick} isHalloween={true} />
+                    )}
+                    {globalTheme === "easter" && (
+                        <ThemeGallery title="Spring Discoveries" subject="easter" onBookClick={handleBookClick} isEaster={true} />
+                    )}
                     <ThemeGallery title="Thrilling Mysteries" subject="thriller" onBookClick={handleBookClick} />
                     <ThemeGallery title="Classic Mystery" subject="mystery" onBookClick={handleBookClick} />
                     <ThemeGallery title="Fantasy Worlds" subject="fantasy" onBookClick={handleBookClick} />

@@ -10,7 +10,6 @@ import BookDetailsModal from "../components/BookDetailsModal";
 import FilterModal, { type FilterOptions } from "../components/FilterModal";
 import CountUp from "../components/CountUp";
 import DailyFeaturedBooks from "../components/DailyFeaturedBooks";
-import ThemeGallery from "../components/ThemeGallery";
 import { usePageTitle } from "../utils/usePageTitle";
 import { Link } from "react-router";
 
@@ -41,9 +40,21 @@ const Home = () => {
   const [isExitingAlert, setIsExitingAlert] = useState(false);
   const [globalTheme, setGlobalTheme] = useState("default");
   const [showChristmasAlert, setShowChristmasAlert] = useState(() => {
-    return !localStorage.getItem("christmasAlertDismissed");
+    const dismissedAt = localStorage.getItem("christmasAlertDismissedAt");
+    if (!dismissedAt) return true;
+    return Date.now() - parseInt(dismissedAt) > 24 * 60 * 60 * 1000;
   });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [showHalloweenAlert, setShowHalloweenAlert] = useState(() => {
+    const dismissedAt = localStorage.getItem("halloweenAlertDismissedAt");
+    if (!dismissedAt) return true;
+    return Date.now() - parseInt(dismissedAt) > 24 * 60 * 60 * 1000;
+  });
+  const [showEasterAlert, setShowEasterAlert] = useState(() => {
+    const dismissedAt = localStorage.getItem("easterAlertDismissedAt");
+    if (!dismissedAt) return true;
+    return Date.now() - parseInt(dismissedAt) > 24 * 60 * 60 * 1000;
+  });
 
   const resultsRef = useRef<HTMLDivElement>(null);
   const scrollToResults = useCallback(() => {
@@ -367,7 +378,7 @@ const Home = () => {
               ? "opacity-0 -translate-y-8 pointer-events-none scale-95"
               : "animate-in fade-in slide-in-from-top-4"
             }`}>
-            <div className="bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/20 dark:border-emerald-500/40 backdrop-blur-md rounded-2xl p-6 pr-14 shadow-lg shadow-emerald-500/5 relative overflow-hidden group">
+            <div className="mt-6 bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/20 dark:border-emerald-500/40 backdrop-blur-md rounded-2xl p-6 pr-14 shadow-lg shadow-emerald-500/5 relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 blur-3xl -mr-16 -mt-16 group-hover:bg-emerald-500/20 transition-all duration-700" />
               <div className="flex items-start gap-4 relative z-10">
                 <div className="bg-emerald-500/20 dark:bg-emerald-500/40 p-2.5 rounded-xl text-emerald-600 dark:text-emerald-400">
@@ -427,9 +438,97 @@ const Home = () => {
                   <button 
                     onClick={() => {
                       setShowChristmasAlert(false);
-                      localStorage.setItem("christmasAlertDismissed", "true");
+                      localStorage.setItem("christmasAlertDismissedAt", Date.now().toString());
                     }}
                     className="p-2 text-gray-500 hover:text-gray-900 dark:text-blue-200/50 dark:hover:text-white transition-colors"
+                    title="Dismiss"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Halloween Promotion Alert */}
+        <AnimatePresence>
+          {globalTheme === "halloween" && showHalloweenAlert && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="w-full max-w-4xl mt-8 px-4"
+            >
+              <div className="bg-orange-500/20 dark:bg-orange-500/10 border border-orange-500/30 backdrop-blur-xl rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg shadow-orange-500/10">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center text-orange-500 text-xl">
+                    🎃
+                  </div>
+                  <div>
+                    <p className="text-gray-900 dark:text-orange-100 font-bold">Spooky Season is Here!</p>
+                    <p className="text-sm text-gray-700 dark:text-orange-200/70">Discover our curated Horror and Halloween collections on the Themes page.</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <Link 
+                    to="/themes"
+                    className="flex-1 sm:flex-none px-6 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold transition-all text-sm text-center"
+                  >
+                    Explore Themes
+                  </Link>
+                  <button 
+                    onClick={() => {
+                      setShowHalloweenAlert(false);
+                      localStorage.setItem("halloweenAlertDismissedAt", Date.now().toString());
+                    }}
+                    className="p-2 text-gray-500 hover:text-gray-900 dark:text-orange-200/50 dark:hover:text-white transition-colors"
+                    title="Dismiss"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Easter Promotion Alert */}
+        <AnimatePresence>
+          {globalTheme === "easter" && showEasterAlert && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="w-full max-w-4xl mt-8 px-4"
+            >
+              <div className="bg-green-400/20 dark:bg-green-400/10 border border-green-400/30 backdrop-blur-xl rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg shadow-green-400/10">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-green-400/20 flex items-center justify-center text-green-500 text-xl">
+                    🐰
+                  </div>
+                  <div>
+                    <p className="text-gray-900 dark:text-green-100 font-bold">Spring is Here!</p>
+                    <p className="text-sm text-gray-700 dark:text-green-200/70">Discover our curated Easter and Spring collections on the Themes page.</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <Link 
+                    to="/themes"
+                    className="flex-1 sm:flex-none px-6 py-2 bg-green-400 hover:bg-green-500 text-white rounded-xl font-bold transition-all text-sm text-center"
+                  >
+                    Explore Themes
+                  </Link>
+                  <button 
+                    onClick={() => {
+                      setShowEasterAlert(false);
+                      localStorage.setItem("easterAlertDismissedAt", Date.now().toString());
+                    }}
+                    className="p-2 text-gray-500 hover:text-gray-900 dark:text-green-200/50 dark:hover:text-white transition-colors"
                     title="Dismiss"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -534,11 +633,7 @@ const Home = () => {
                 {isSearching ? "Searching Google Books library..." : "Loading collections..."}
               </p>
             </div>
-            {globalTheme === "christmas" && (
-              <div className="w-full mb-8">
-                <ThemeGallery title="Christmas Collection" subject="christmas" onBookClick={handleBookClick} />
-              </div>
-            )}
+
             <DailyFeaturedBooks onBookClick={handleBookClick} />
           </div>
         ) : showResults ? (
@@ -682,11 +777,14 @@ const Home = () => {
           </div>
         ) : (
           <div className="w-full flex flex-col items-center">
+
             <div className="w-full mb-8 mt-4">
               <DailyFeaturedBooks onBookClick={handleBookClick} />
             </div>
             <div className="w-full py-16 flex flex-col items-center justify-center space-y-32">
-              <ScrollFloat text="Join the BookHunt" textClassName="text-6xl md:text-8xl font-black text-gray-900 dark:text-[#DFE6E6] tracking-tighter drop-shadow-2xl" />
+              {!isLoggedIn && (
+                <ScrollFloat text="Join the BookHunt" textClassName="text-6xl md:text-8xl font-black text-gray-900 dark:text-[#DFE6E6] tracking-tighter drop-shadow-2xl" />
+              )}
 
               {/* Display default local products if any exist since we removed the direct rendering of all local products above. Let's just show a few */}
               {localProducts.length > 0 && (
