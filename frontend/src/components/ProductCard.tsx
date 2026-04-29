@@ -142,6 +142,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, onWishlistT
                         <img
                             src={product.coverUrl}
                             alt={product.title}
+                            loading="lazy"
                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                             onError={(e) => {
                                 // Fallback if image fails to load

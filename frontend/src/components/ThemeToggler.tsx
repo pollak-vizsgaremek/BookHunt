@@ -12,7 +12,7 @@ const ThemeToggler = () => {
     return (
         <button
             onClick={handleClick}
-            className="relative p-2 rounded-full bg-black/10 dark:bg-white/10 text-gray-800 dark:text-[#DFE6E6] hover:bg-black/20 dark:hover:bg-white/20 transition-colors focus:outline-none focus:ring-2 focus:ring-black/30 dark:focus:ring-white/30 overflow-hidden w-10 h-10 flex items-center justify-center"
+            className="relative p-2 rounded-full bg-black/10 dark:bg-white/10 text-gray-800 dark:text-[#DFE6E6] hover:bg-black/20 dark:hover:bg-white/20 transition-colors focus:outline-none focus:ring-2 focus:ring-black/30 dark:focus:ring-white/30 overflow-hidden w-11 h-11 flex items-center justify-center"
             aria-label="Toggle theme"
         >
             <motion.div

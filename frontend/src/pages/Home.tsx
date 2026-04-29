@@ -43,6 +43,14 @@ const Home = () => {
   const [showChristmasAlert, setShowChristmasAlert] = useState(() => {
     return !localStorage.getItem("christmasAlertDismissed");
   });
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const scrollToResults = useCallback(() => {
+    if (resultsRef.current) {
+      resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, []);
 
   useEffect(() => {
     const fetchGlobalTheme = async () => {
@@ -88,10 +96,12 @@ const Home = () => {
     const fetchWishlistIds = async () => {
       const token = localStorage.getItem('token');
       if (!token) {
+        setIsLoggedIn(false);
         const dismissed = sessionStorage.getItem('loginAlertDismissed');
         if (!dismissed) setShowLoginAlert(true);
         return;
       }
+      setIsLoggedIn(true);
       try {
         const res = await fetch('/api/wishlist', {
           headers: { 'Authorization': `Bearer ${token}` }
@@ -125,6 +135,9 @@ const Home = () => {
         JSON.stringify(lastFetchRef.current.filters) !== JSON.stringify(filters);
 
       setIsSearching(true);
+      if (searchQuery.trim() || filters.genre !== 'All') {
+        setTimeout(scrollToResults, 100);
+      }
       if (!ignore) setSearchError(null);
       try {
         let qParams = searchQuery.trim() || "";
@@ -443,25 +456,8 @@ const Home = () => {
             </p>
           </div>
 
-          <div className="text-2xl md:text-3xl font-medium text-gray-800 dark:text-[#DFE6E6]/90 mt-8 mb-4">
-            With BookHunt you can search over
-            <br />
-            <CountUp
-              from={0}
-              to={40000000}
-              separator=","
-              direction="up"
-              duration={1.5}
-              className="text-5xl md:text-6xl font-extrabold text-emerald-500 drop-shadow-md inline-block my-4"
-            />
-            <br />
-            Books!
-          </div>
-
-          <Carousel />
-
           {/* Premium Search Bar */}
-          <div className="relative mt-20 group w-full flex items-center bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl shadow-xl focus-within:ring-2 focus-within:ring-black/30 dark:focus-within:ring-white/30 focus-within:bg-black/10 dark:focus-within:bg-white/10 backdrop-blur-md transition-all duration-300">
+          <div className="relative group w-full max-w-3xl mx-auto flex items-center bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl shadow-xl focus-within:ring-2 focus-within:ring-black/30 dark:focus-within:ring-white/30 focus-within:bg-black/10 dark:focus-within:bg-white/10 backdrop-blur-md transition-all duration-300 z-20">
             <div className="pl-4 flex items-center pointer-events-none">
               <svg className="h-6 w-6 text-gray-500 dark:text-[#DFE6E6]/50 group-focus-within:text-gray-900 group-focus-within:dark:text-[#DFE6E6] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -471,6 +467,12 @@ const Home = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setStartIndex(0); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  scrollToResults();
+                }
+              }}
               placeholder="Search by title, author, or ISBN in Google Books..."
               className="block flex-1 pl-4 pr-12 py-4 bg-transparent text-lg text-gray-900 dark:text-[#DFE6E6] placeholder-gray-500 dark:placeholder-[#DFE6E6]/40 focus:outline-none"
             />
@@ -502,9 +504,28 @@ const Home = () => {
               </button>
             </div>
           </div>
+
+          <div className="text-2xl md:text-3xl font-medium text-gray-800 dark:text-[#DFE6E6]/90 mt-8 mb-4">
+            With BookHunt you can search over
+            <br />
+            <CountUp
+              from={0}
+              to={40000000}
+              separator=","
+              direction="up"
+              duration={1.5}
+              className="text-5xl md:text-6xl font-extrabold text-emerald-500 drop-shadow-md inline-block my-4"
+            />
+            <br />
+            Books!
+          </div>
+
+          {/* Carousel moved from above */}
+          <Carousel />
         </div>
 
         {/* Product Grid or Custom Content */}
+        <div ref={resultsRef} className="w-full scroll-mt-24">
         {loading || (isSearching && startIndex === 0) ? (
           <div className="w-full flex flex-col items-center">
             <div className="flex justify-center items-center py-20 w-full flex-col gap-4">
@@ -688,15 +709,20 @@ const Home = () => {
                 <p></p>
                 <p></p>
               </div>
-              <ScrollFloat text="Search for any book in our massive library above, or browse our curated collections. Browse by genre, author, or ISBN number." textClassName="text-2xl md:text-2xl font-bold text-gray-600 dark:text-[#DFE6E6]/50" />
-              <ScrollFloat text="Or perhaps you'd want to keep track of your book progress in a fun modern way? We've got you covered with our state of the art progress tracking system that will make you want to read more and compete with others in a gameified system." textClassName="text-2xl md:text-2xl font-bold text-gray-600 dark:text-[#DFE6E6]/50" />
+              {!isLoggedIn && (
+                <>
+                  <ScrollFloat text="Search for any book in our massive library above, or browse our curated collections. Browse by genre, author, or ISBN number." textClassName="text-2xl md:text-2xl font-bold text-gray-600 dark:text-[#DFE6E6]/50" />
+                  <ScrollFloat text="Or perhaps you'd want to keep track of your book progress in a fun modern way? We've got you covered with our state of the art progress tracking system that will make you want to read more and compete with others in a gameified system." textClassName="text-2xl md:text-2xl font-bold text-gray-600 dark:text-[#DFE6E6]/50" />
 
-              <div className="mt-32 pb-40">
-                <ScrollFloat text="Keep exploring, keep hunting" textClassName="text-4xl md:text-5xl font-bold text-gray-600 dark:text-[#DFE6E6]/50" />
-              </div>
+                  <div className="mt-32 pb-40">
+                    <ScrollFloat text="Keep exploring, keep hunting" textClassName="text-4xl md:text-5xl font-bold text-gray-600 dark:text-[#DFE6E6]/50" />
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
+        </div>
 
       </div>
 

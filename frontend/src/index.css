@@ -20,6 +20,7 @@
   src: url('/fonts/CONTRAIL.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
+  font-display: swap;
 }
 
 @theme {
