@@ -213,9 +213,25 @@ async function main() {
       felhasznalonev: 'testuser',
       email:          'testuser@bookhunt.com',
       jelszo:         hashedPassword,
+      szerepkor:      'USER',
     },
   });
-  console.log('✅ Test user seeded.\n');
+  console.log('✅ Test user seeded (password: password123).');
+
+  // 3.1 Test admin user
+  const adminPassword = 'Xc.-x785_Admin_Hunt'; // Fixed complex password
+  const hashedAdminPassword = await bcrypt.hash(adminPassword, 10);
+  await prisma.felhasznalo.upsert({
+    where:  { felhasznalonev: 'admin' },
+    update: {},
+    create: {
+      felhasznalonev: 'admin',
+      email:          'admin@bookhunt.com',
+      jelszo:         hashedAdminPassword,
+      szerepkor:      'ADMIN',
+    },
+  });
+  console.log(`✅ Test admin user seeded (password: ${adminPassword}).\n`);
 
   // 4. Run categorized scrapers and cache results
   console.log('🔍 Running scrapers for each item (this may take several minutes)...\n');
