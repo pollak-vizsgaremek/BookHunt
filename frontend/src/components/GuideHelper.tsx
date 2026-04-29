@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router';
+import { getBookType } from '../utils/type';
 
 // Types for our questions and book result
 type Genre = 'Fantasy' | 'Science Fiction' | 'Mystery' | 'Romance' | 'Non-Fiction' | 'Historical';
@@ -21,6 +22,7 @@ interface BookResult {
   pageCount?: number;
   description?: string;
   isbn?: string;
+  categories?: string[];
 }
 
 interface HelpItem {
@@ -182,8 +184,19 @@ const GuideHelper = () => {
 
         // Filter by length if possible
         let filteredBooks = books;
+        
+        // STRICT FORMAT FILTERING
+        if (finalAnswers.format === 'Traditional Book') {
+          filteredBooks = filteredBooks.filter(b => getBookType(b) === 'Book');
+        } else if (finalAnswers.format === 'Graphic Novel / Comic') {
+          filteredBooks = filteredBooks.filter(b => {
+            const type = getBookType(b);
+            return type === 'Manga' || type === 'Comic';
+          });
+        }
+
         if (finalAnswers.length !== 'Any') {
-          filteredBooks = books.filter(b => {
+          filteredBooks = filteredBooks.filter(b => {
             const pages = b.pageCount || 0;
             if (pages === 0) return false; // skip books with unknown page count if length matters
             if (finalAnswers.length === 'Short (<300 pages)' && pages < 300) return true;

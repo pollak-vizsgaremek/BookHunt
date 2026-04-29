@@ -12,6 +12,7 @@ import CountUp from "../components/CountUp";
 import DailyFeaturedBooks from "../components/DailyFeaturedBooks";
 import { usePageTitle } from "../utils/usePageTitle";
 import { Link } from "react-router";
+import { getBookType, type BookType } from "../utils/type";
 
 const Home = () => {
   usePageTitle('Home');
@@ -242,7 +243,16 @@ const Home = () => {
 
           // Only show books that have an ISBN — required for price lookup
           // Libri books have a dummy 'LIBRI-...' ISBN so they pass
-          const mapped = combinedMapped.filter(b => !!b.isbn);
+          let mapped = combinedMapped.filter(b => !!b.isbn);
+
+          // STRICT FILTERING: Filter by the selected types (Book, Manga, Comic)
+          // We apply this filter on the client side because Google's 'q' + keyword matching is not 100% accurate
+          if (filters.types.length < 3) {
+            mapped = mapped.filter(b => {
+              const detectedType = getBookType(b);
+              return filters.types.includes(detectedType as BookType);
+            });
+          }
 
           if (allMapped.length < 40) setHasMore(false);
           else setHasMore(true);
@@ -253,8 +263,9 @@ const Home = () => {
             // Appending, filter out duplicates just in case
             setSearchResults(prev => {
               const existingIds = new Set(prev.map(p => p.id));
-              const newItems = mapped.filter(p => !existingIds.has(p.id));
-              return [...prev, ...newItems];
+              // Also apply strict type filtering to new items being appended
+              let filteredNewItems = mapped.filter(p => !existingIds.has(p.id));
+              return [...prev, ...filteredNewItems];
             });
           }
 
@@ -300,10 +311,8 @@ const Home = () => {
   // Map filter display names to DB Prisma enum values
   const TYPE_TO_DB: Record<string, string> = {
     'Book': 'konyv',
-    'E-book': 'e_konyv',
     'Manga': 'manga',
-    'Graphic Novel': 'kepregeny',
-    'Audiobook': 'hangoskonyv',
+    'Comic': 'kepregeny',
   };
 
   const localMatches = localProducts.filter((product) => {
@@ -314,9 +323,11 @@ const Home = () => {
 
     const matchesGenre = filters.genre === 'All' || (product.categories && product.categories.includes(filters.genre));
 
-    // Filter by type: compare the DB enum value to the product's type field
-    const dbType = filters.type !== 'All' ? TYPE_TO_DB[filters.type] : null;
-    const matchesType = !dbType || product.type === dbType;
+    // Filter by type: compare the DB enum values to the product's type field
+    // If all options are selected (length 3), we show everything including types not in the UI (like e-books)
+    const isAllSelected = filters.types.length === 3;
+    const selectedDbTypes = filters.types.map(t => TYPE_TO_DB[t]);
+    const matchesType = isAllSelected || (product.type ? selectedDbTypes.includes(product.type) : false);
 
     return matchesQuery && matchesGenre && matchesType;
   });
