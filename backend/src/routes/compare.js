@@ -74,7 +74,10 @@ router.get('/:isbn', async (req, res) => {
 
   try {
     const cached = await prisma.gyorsitotarazottAr.findUnique({ where: { isbn: safeIsbn } });
-    const isFresh = cached && refresh !== 'true' && (new Date() - cached.frissitve) < 60 * 60 * 1000;
+    
+    // Bypass cache if it contains any scraper errors to allow retries
+    const hasErrors = cached?.adatok?.allRows && Array.isArray(cached.adatok.allRows) && cached.adatok.allRows.some(r => r.status === 'Error');
+    const isFresh = cached && refresh !== 'true' && !hasErrors && (new Date() - cached.frissitve) < 60 * 60 * 1000;
 
     const liveUsdRate = currency.toUpperCase() === 'USD' ? await getUsdToHufRate().catch(() => 360) : null;
 

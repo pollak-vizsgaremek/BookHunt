@@ -1,4 +1,4 @@
-import { launchStealthBrowser, configurePage, emulateHumanBehavior, emulateHumanScrolling, detectBotBlock } from '../utils/browserUtils.js';
+import { launchStealthBrowser, configurePage, emulateHumanBehavior, emulateHumanScrolling, detectBotBlock, releaseBrowserSlot } from '../utils/browserUtils.js';
 
 export const scrapeCrunchyroll = async (isbn, signal) => {
   let browser = null;
@@ -12,7 +12,7 @@ export const scrapeCrunchyroll = async (isbn, signal) => {
     signal.addEventListener('abort', onAbort, { once: true });
   }
   try {
-    browser = await launchStealthBrowser();
+    browser = await launchStealthBrowser(signal);
     const page = await browser.newPage();
     await configurePage(page, 'Crunchyroll');
 
@@ -105,6 +105,16 @@ export const scrapeCrunchyroll = async (isbn, signal) => {
     throw wrapped;
   } finally {
     if (signal) signal.removeEventListener('abort', onAbort);
-    if (browser) await browser.close();
+    if (browser) {
+      try {
+        await Promise.race([
+          browser.close(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('browser.close timeout')), 5000))
+        ]).catch(err => console.warn('[Crunchyroll] browser.close warning:', err.message));
+      } catch (err) {
+        console.warn('[Crunchyroll] browser.close error:', err.message);
+      }
+      releaseBrowserSlot();
+    }
   }
 };

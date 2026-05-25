@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 // Add a book to wishlist
 router.post("/", authenticatedLimiter, authenticate, async (req, res) => {
   try {
-    const { konyv_id, cim, szerzo, boritokep_url, isbn, utolso_ismert_ar } = req.body;
+    const { konyv_id, cim, szerzo, boritokep_url, isbn, utolso_ismert_ar, categories } = req.body;
     const felhasznalo_id = req.user.userId;
 
     if (!konyv_id || !cim) {
@@ -30,15 +30,29 @@ router.post("/", authenticatedLimiter, authenticate, async (req, res) => {
       data: {
         felhasznalo_id,
         konyv_id,
-        cim,
-        szerzo,
-        boritokep_url,
-        isbn: isbn || null,
+        cim: cim.substring(0, 500),
+        szerzo: szerzo ? szerzo.substring(0, 255) : null,
+        boritokep_url: boritokep_url ? boritokep_url.substring(0, 500) : null,
+        isbn: isbn ? isbn.substring(0, 50) : null,
         utolso_ismert_ar: utolso_ismert_ar ? parseFloat(utolso_ismert_ar) : null,
+        categories: categories ? (Array.isArray(categories) ? JSON.stringify(categories) : String(categories)) : null,
       },
     });
 
-    res.status(201).json(wishlistItem);
+    // Parse categories for the response as well
+    let parsedResCategories = [];
+    if (wishlistItem.categories) {
+      try {
+        parsedResCategories = JSON.parse(wishlistItem.categories);
+      } catch (e) {
+        parsedResCategories = wishlistItem.categories.split(",").map(c => c.trim()).filter(Boolean);
+      }
+    }
+
+    res.status(201).json({
+      ...wishlistItem,
+      categories: parsedResCategories
+    });
   } catch (error) {
     console.error("Error adding to wishlist:", error);
     res.status(500).json({ error: "Failed to add to wishlist", details: error.message });
@@ -53,7 +67,26 @@ router.get("/", authenticatedReadLimiter, authenticate, async (req, res) => {
       where: { felhasznalo_id },
       orderBy: { letrehozva: 'desc' }
     });
-    res.json(items);
+
+    const parsedItems = items.map(item => {
+      let parsedCategories = [];
+      if (item.categories) {
+        try {
+          parsedCategories = JSON.parse(item.categories);
+          if (!Array.isArray(parsedCategories)) {
+            parsedCategories = [item.categories];
+          }
+        } catch (e) {
+          parsedCategories = item.categories.split(",").map(c => c.trim()).filter(Boolean);
+        }
+      }
+      return {
+        ...item,
+        categories: parsedCategories
+      };
+    });
+
+    res.json(parsedItems);
   } catch (error) {
     console.error("Error fetching wishlist:", error);
     res.status(500).json({ error: "Failed to fetch wishlist" });

@@ -23,12 +23,44 @@ const queue = [];
  * Acquires a browser slot. Resolves immediately if a slot is free,
  * otherwise waits until one is released.
  */
-export async function acquireBrowserSlot() {
+export async function acquireBrowserSlot(signal) {
+  if (signal?.aborted) {
+    throw new Error('Aborted before acquiring browser slot');
+  }
+
   if (running < MAX_CONCURRENT_BROWSERS) {
     running++;
     return;
   }
-  await new Promise(resolve => queue.push(resolve));
+
+  let resolvePromise;
+  const promise = new Promise(resolve => {
+    resolvePromise = resolve;
+    queue.push(resolve);
+  });
+
+  const onAbort = () => {
+    const idx = queue.indexOf(resolvePromise);
+    if (idx !== -1) {
+      queue.splice(idx, 1);
+    }
+    resolvePromise(true);
+  };
+
+  if (signal) {
+    signal.addEventListener('abort', onAbort, { once: true });
+  }
+
+  const abortedInQueue = await promise;
+
+  if (signal) {
+    signal.removeEventListener('abort', onAbort);
+  }
+
+  if (abortedInQueue) {
+    throw new Error('Aborted while waiting in browser slot queue');
+  }
+
   running++;
 }
 
@@ -40,6 +72,7 @@ export function releaseBrowserSlot() {
   running = Math.max(0, running - 1);
   if (queue.length > 0) {
     const next = queue.shift();
-    next();
+    next(false);
   }
 }
+

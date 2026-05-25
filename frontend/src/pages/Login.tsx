@@ -44,7 +44,17 @@ const LoginPage = () => {
                 body: JSON.stringify(formData),
             });
 
-            const data = await response.json();
+            let data: any = {};
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    throw new Error('Server returned an invalid response.');
+                }
+            } else if (!response.ok) {
+                throw new Error('Unable to connect to the server. Please try again later.');
+            }
 
             if (!response.ok) {
                 if (response.status === 403 && data.error === "Banned") {
@@ -76,7 +86,17 @@ const LoginPage = () => {
                 body: JSON.stringify({ credential: credentialResponse.credential }),
             });
 
-            const data = await response.json();
+            let data: any = {};
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    throw new Error('Server returned an invalid response.');
+                }
+            } else if (!response.ok) {
+                throw new Error('Unable to connect to the server. Please try again later.');
+            }
 
             if (!response.ok) {
                 if (response.status === 403 && data.error === "Banned") {

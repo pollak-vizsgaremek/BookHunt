@@ -101,7 +101,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, onWishlistT
                         cim: product.title,
                         szerzo: product.author,
                         boritokep_url: product.coverUrl,
-                        isbn: product.isbn || null
+                        isbn: product.isbn || null,
+                        categories: product.categories || null
                     })
                 });
                 

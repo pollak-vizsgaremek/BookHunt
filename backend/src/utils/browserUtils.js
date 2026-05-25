@@ -47,10 +47,10 @@ function pickRandomAgent() {
 // Exports
 // ---------------------------------------------------------------------------
 
-export const launchStealthBrowser = async () => {
+export const launchStealthBrowser = async (signal) => {
   // Wait for a free slot before spawning a new Chromium process.
   // This prevents RAM exhaustion when multiple scrapers run in parallel.
-  await acquireBrowserSlot();
+  await acquireBrowserSlot(signal);
 
   const memMB = (process.memoryUsage().rss / 1024 / 1024).toFixed(0);
   console.log(`[BrowserUtils] Launching stealth browser (slot acquired). Process RSS: ${memMB} MB`);

@@ -12,7 +12,7 @@ export const scrapeLibristo = async (isbn, signal) => {
     signal.addEventListener('abort', onAbort, { once: true });
   }
   try {
-    browser = await launchStealthBrowser();
+    browser = await launchStealthBrowser(signal);
     const page = await browser.newPage();
     await configurePage(page, 'Libristo');
 
@@ -117,7 +117,14 @@ export const scrapeLibristo = async (isbn, signal) => {
   } finally {
     if (signal) signal.removeEventListener('abort', onAbort);
     if (browser) {
-      await browser.close().catch(() => {});
+      try {
+        await Promise.race([
+          browser.close(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('browser.close timeout')), 5000))
+        ]).catch(err => console.warn('[Libristo] browser.close warning:', err.message));
+      } catch (err) {
+        console.warn('[Libristo] browser.close error:', err.message);
+      }
       releaseBrowserSlot();
     }
   }

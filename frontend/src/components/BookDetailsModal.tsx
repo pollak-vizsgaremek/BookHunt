@@ -236,7 +236,8 @@ const BookDetailsModal = ({ isOpen, onClose, book }: BookDetailsModalProps) => {
                         cim: book.title,
                         szerzo: book.author,
                         boritokep_url: book.coverUrl,
-                        isbn: book.isbn || null
+                        isbn: book.isbn || null,
+                        categories: book.categories || null
                     })
                 });
                 if (res.ok) setIsWishlisted(true);

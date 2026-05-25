@@ -190,6 +190,7 @@ model Kivansaglista {
   boritokep_url    String?  @db.VarChar(500)
   isbn             String?  @db.VarChar(50)
   utolso_ismert_ar Decimal? @db.Decimal(10, 2)
+  categories       String?  @db.VarChar(1000)
   letrehozva       DateTime @default(now())
   
   Felhasznalo      Felhasznalo @relation(fields: [felhasznalo_id], references: [felhasznalo_id], onDelete: Cascade, onUpdate: Cascade)
